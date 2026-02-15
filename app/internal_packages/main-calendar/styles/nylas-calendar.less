@@ -1,0 +1,966 @@
+@import 'ui-variables';
+
+body.platform-win32 {
+  .calendar-source-list {
+    .colored-checkbox {
+      border-radius: 0;
+      .bg-color {
+        border-radius: 0;
+      }
+    }
+  }
+}
+
+.mailspring-calendar {
+  height: 100%;
+  display: flex;
+
+  .calendar-source-list {
+    display: flex;
+    background-color: @source-list-bg;
+    border-right: 1px solid @border-color-divider;
+    color: @text-color-subtle;
+    .calendar-source-list-wrap {
+      padding: 12px;
+      padding-top: 0;
+    }
+    .colored-checkbox {
+      position: relative;
+      top: 1px;
+      margin-left: 1px;
+      display: inline-block;
+      border-radius: 3px;
+      width: 12px;
+      height: 12px;
+      box-shadow:
+        0 0 0.5px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(0, 0, 0, 0.13);
+      background: white;
+      .bg-color {
+        width: 100%;
+        height: 100%;
+        border-radius: 3px;
+      }
+    }
+    label {
+      padding-left: 0.4em;
+    }
+    .toggle-wrap,
+    .account-label {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .account-calendars-wrap {
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+    .account-label {
+      cursor: default;
+      color: @text-color-very-subtle;
+      font-weight: @font-weight-semi-bold;
+      font-size: @font-size-small * 0.9;
+      margin-top: @padding-large-vertical;
+      letter-spacing: -0.2px;
+    }
+  }
+
+  background: @background-off-primary;
+  .calendar-view {
+    height: 100%;
+    flex: 1;
+    position: relative;
+  }
+
+  .calendar-event {
+    @interval-height: 21px;
+    position: absolute;
+    font-size: 11px;
+    line-height: 11px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: @interval-height;
+
+    border-top: 0;
+    border-bottom: 2px solid @background-primary;
+    border-left: 0;
+
+    display: flex;
+    flex-direction: column;
+    cursor: default;
+
+    // Apple Calendar-style text uses the theme color
+    .default-header {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin: 4px 4px 0 6px; // Extra left margin for the colored band
+      cursor: default;
+      color: var(--event-text-color, inherit);
+      opacity: 1;
+      flex-shrink: 0;
+    }
+
+    // Event details (meeting link, time range) - Apple Calendar style
+    .event-details {
+      display: flex;
+      flex-direction: column;
+      margin: 2px 4px 3px 6px;
+      font-size: 10px;
+      line-height: 12px;
+      font-weight: 400;
+      color: var(--event-text-color, inherit);
+      opacity: 0.85;
+      overflow: hidden;
+
+      .event-meeting-link,
+      .event-time-range {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        .meeting-icon,
+        .time-icon {
+          font-size: 9px;
+          margin-right: 2px;
+          opacity: 0.7;
+        }
+      }
+    }
+
+    // Solid colored left band (Apple Calendar-style)
+    &:before {
+      content: '';
+      position: absolute;
+      width: 3px;
+      height: 100%;
+      left: 0;
+      top: 0;
+      background: var(--event-band-color, rgba(0, 0, 0, 0.3));
+      border-radius: 2px 0 0 2px;
+    }
+
+    &.horizontal {
+      white-space: nowrap;
+      flex-direction: row;
+
+      // For horizontal events (all-day), remove vertical borders
+      // since drag handles are on left/right edges
+      border-top: 0;
+      border-bottom: 0;
+      border-left: 2px solid @background-primary;
+      border-right: 2px solid @background-primary;
+
+      // Remove the left accent bar for horizontal events
+      &:before {
+        display: none;
+      }
+
+      // Hide event details in horizontal (all-day) view
+      .event-details {
+        display: none;
+      }
+
+      .default-header {
+        margin: 4px 1px 3px 4px;
+        flex: 1;
+      }
+    }
+    &.selected {
+      background-color: @accent-primary !important;
+      .default-header,
+      .event-details {
+        color: @text-color-inverse;
+      }
+      &:before {
+        background: darken(@accent-primary, 15%);
+      }
+    }
+
+    // Tentative/pending events: gray background with theme-colored left band
+    &.pending {
+      background-color: rgba(128, 128, 128, 0.15);
+
+      .default-header,
+      .event-details {
+        color: @text-color;
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        background-image: repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 7px,
+          rgba(128, 128, 128, 0.12) 7px,
+          rgba(128, 128, 128, 0.12) 8.5px
+        );
+      }
+    }
+
+    // Cancelled events: dotted border, transparent background, strikethrough text
+    &.cancelled {
+      border: 2px dashed;
+      border-bottom: 2px dashed;
+      background-color: transparent !important;
+      background-image: none;
+      .default-header {
+        opacity: 0.5;
+        s {
+          text-decoration: line-through;
+        }
+      }
+      &:before {
+        display: none; // Hide the left accent bar for cancelled events
+      }
+    }
+
+    // Exception events: small "Modified" tag in corner
+    &.exception {
+      .exception-tag {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        font-size: 8px;
+        font-weight: 600;
+        text-transform: uppercase;
+        background: var(--event-band-color, rgba(0, 0, 0, 0.2));
+        color: rgba(255, 255, 255, 0.9);
+        padding: 1px 3px;
+        border-radius: 2px;
+        line-height: 1;
+        letter-spacing: 0.3px;
+      }
+    }
+
+    // Hide exception tag on cancelled events (the visual is clear enough)
+    &.cancelled.exception {
+      .exception-tag {
+        display: none;
+      }
+    }
+
+    // Draggable events - cursor changes handled in JS
+    // Note: We can't use ::before/::after for resize handles because
+    // ::before is already used for the left accent bar
+    &.draggable {
+      // Slight highlight on hover to indicate draggability
+      &:hover {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      }
+    }
+
+    // Dragging state - reduce opacity to show original position
+    &.dragging {
+      opacity: 0.4;
+    }
+
+    // Drag preview - synthetic event styling
+    &.drag-preview {
+      opacity: 0.7;
+      border: 2px dashed;
+      border-color: var(--event-band-color, inherit);
+      pointer-events: none;
+      z-index: 1000;
+
+      .drag-preview-time-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: @background-primary;
+        color: @text-color;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        margin-bottom: 4px;
+      }
+
+      // For horizontal (all-day) events, position tooltip differently
+      &.horizontal .drag-preview-time-tooltip {
+        bottom: auto;
+        top: 100%;
+        margin-bottom: 0;
+        margin-top: 4px;
+      }
+    }
+  }
+
+  .calendar-mouse-handler {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .week-view {
+    height: 100%;
+
+    @legend-width: 75px;
+
+    .calendar-body-wrap {
+      display: flex;
+      flex-direction: row;
+      position: relative;
+      height: 100%;
+
+      .calendar-area-wrap {
+        &::-webkit-scrollbar {
+          display: none;
+        }
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow-x: auto;
+        overflow-y: hidden;
+        position: relative;
+        scroll-snap-type: x mandatory;
+      }
+
+      .calendar-legend {
+        width: @legend-width;
+        box-shadow: 1px 0 0 rgba(177, 177, 177, 0.15);
+        z-index: 2;
+      }
+    }
+
+    .week-header {
+      position: relative;
+      padding-top: 75px;
+      border-bottom: 1px solid @border-color-divider;
+      flex-shrink: 0;
+    }
+
+    .date-labels {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      left: 0;
+      height: 100%;
+      display: flex;
+    }
+
+    .all-day-events {
+      position: relative;
+      width: auto;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .all-day-legend {
+      width: @legend-width;
+      position: relative;
+    }
+
+    .legend-text {
+      font-size: 11px;
+      position: absolute;
+      color: @text-color-very-subtle;
+      right: 10px;
+    }
+
+    .date-label-legend {
+      width: @legend-width;
+      position: relative;
+      border-bottom: 1px solid @border-color-divider;
+      box-shadow: 0 1px 2.5px rgba(0, 0, 0, 0.15);
+      z-index: 3;
+      .legend-text {
+        bottom: 7px;
+      }
+    }
+
+    .day-label-wrap {
+      padding: 15px;
+      text-align: center;
+      flex: 1;
+      box-shadow: inset 1px 0 0 rgba(177, 177, 177, 0.15);
+      scroll-snap-align: start;
+      &.is-hard-stop {
+        scroll-snap-stop: always;
+      }
+      &.is-today {
+        .date-label {
+          color: @accent-primary;
+        }
+        .weekday-label {
+          color: @accent-primary;
+        }
+      }
+    }
+    .date-label {
+      display: block;
+      font-size: 16px;
+      font-weight: 300;
+      color: @text-color-subtle;
+    }
+    .weekday-label {
+      display: block;
+      font-weight: 500;
+      text-transform: uppercase;
+      margin-top: 3px;
+      font-size: 12px;
+      color: @text-color-subtle;
+    }
+
+    .event-grid-wrap {
+      flex: 1;
+      overflow: auto;
+      background: @background-primary;
+      box-shadow: inset 0 1px 2.5px rgba(0, 0, 0, 0.15);
+      height: 100%;
+    }
+    .event-grid {
+      display: flex;
+      position: relative;
+    }
+    .event-grid-legend-wrap {
+      overflow: hidden;
+      box-shadow: 1px 0 0 rgba(177, 177, 177, 0.15);
+    }
+    .event-grid-legend {
+      position: relative;
+      background: @background-primary;
+      z-index: 2;
+    }
+    .event-grid-bg-wrap {
+      .event-grid-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .cursor {
+        background: rgba(0, 0, 0, 0.04);
+        position: absolute;
+      }
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+    }
+
+    .event-column {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      z-index: 1;
+      overflow: hidden;
+      box-shadow: 1px 0 0 rgba(177, 177, 177, 0.15);
+      &.weekend {
+        background: rgba(0, 0, 0, 0.02);
+      }
+    }
+  }
+
+  .month-view {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .month-view-grid-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: @background-primary;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .month-view-weekday-headers {
+      display: flex;
+      border-bottom: 1px solid @border-color-divider;
+      background: @background-off-primary;
+      flex-shrink: 0;
+      width: 100%;
+    }
+
+    .month-view-weekday-header {
+      flex: 1;
+      text-align: center;
+      padding: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: @text-color-subtle;
+      box-shadow: inset 1px 0 0 rgba(177, 177, 177, 0.15);
+      min-width: 0;
+
+      &:first-child {
+        box-shadow: none;
+      }
+    }
+
+    .month-view-grid {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .month-view-week {
+      flex: 1;
+      display: flex;
+      min-height: 0; // Allow flex children to shrink
+      min-width: 0;
+      width: 100%;
+      border-bottom: 1px solid @border-color-divider;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .month-view-day-cell {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0; // Allow flex children to shrink
+      box-shadow: inset 1px 0 0 rgba(177, 177, 177, 0.15);
+      overflow: hidden;
+
+      &:first-child {
+        box-shadow: none;
+      }
+
+      &.is-other-month {
+        background: rgba(0, 0, 0, 0.02);
+
+        .month-view-day-number {
+          color: @text-color-very-subtle;
+        }
+      }
+
+      &.is-today {
+        .month-view-day-number {
+          &.is-today {
+            background-color: @accent-primary;
+            color: @text-color-inverse;
+          }
+        }
+      }
+    }
+
+    .month-view-day-header {
+      padding: 4px 8px;
+      flex-shrink: 0;
+    }
+
+    .month-view-day-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      color: @text-color-subtle;
+      cursor: pointer;
+      border-radius: 50%;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
+    }
+
+    .month-view-day-events {
+      flex: 1;
+      overflow: hidden;
+      padding: 0 4px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .month-view-event {
+      @event-height: 20px;
+
+      height: @event-height;
+      min-height: @event-height;
+      max-height: @event-height;
+      padding: 2px 4px 2px 8px; // Extra left padding for colored band
+      border-radius: 3px;
+      font-size: 11px;
+      line-height: 16px;
+      cursor: default;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+
+      // Solid colored left band (Apple Calendar-style)
+      &:before {
+        content: '';
+        position: absolute;
+        width: 3px;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: var(--event-band-color, rgba(0, 0, 0, 0.3));
+        border-radius: 3px 0 0 3px;
+      }
+
+      .month-view-event-title {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--event-text-color, inherit);
+        opacity: 1;
+      }
+
+      &:hover {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+      }
+
+      &:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+      }
+
+      &.selected {
+        background-color: @accent-primary !important;
+
+        .month-view-event-title {
+          color: @text-color-inverse;
+          opacity: 1;
+        }
+
+        &:before {
+          background: darken(@accent-primary, 15%);
+        }
+      }
+
+      // Tentative/pending events: hatched diagonal stripes pattern
+      &.pending {
+        background-image: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 3px,
+          var(--event-band-color, rgba(0, 0, 0, 0.1)) 3px,
+          var(--event-band-color, rgba(0, 0, 0, 0.1)) 4px
+        );
+        background-size: auto;
+      }
+
+      &.drag-preview {
+        opacity: 0.7;
+        border: 2px dashed;
+        border-color: var(--event-band-color, inherit);
+        pointer-events: none;
+        position: relative;
+
+        .drag-preview-time-tooltip {
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          background: @background-primary;
+          color: @text-color;
+          padding: 4px 8px;
+          border-radius: 3px;
+          font-size: 11px;
+          font-weight: 500;
+          white-space: nowrap;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+          margin-top: 4px;
+          z-index: 100;
+        }
+      }
+
+      &.dragging {
+        opacity: 0.4;
+      }
+    }
+
+    .month-view-overflow {
+      padding: 2px 4px;
+      font-size: 11px;
+      color: @text-color-subtle;
+      cursor: pointer;
+      flex-shrink: 0;
+
+      &:hover {
+        color: @text-color;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .current-time-indicator {
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    opacity: 0;
+    border-top: 1px solid rgb(255, 100, 100);
+    z-index: 2;
+    transition: opacity ease-in-out 300ms;
+
+    &.visible {
+      opacity: 1;
+    }
+    div {
+      position: absolute;
+      width: 11px;
+      height: 11px;
+      border-radius: 6px;
+      background-color: rgb(255, 100, 100);
+      transform: translate3d(-75%, -50%, 0);
+      border: 1px solid @background-primary;
+    }
+  }
+
+  .top-banner {
+    color: rgba(33, 99, 146, 0.6);
+    background: @gray-lighter;
+    font-size: 12px;
+    line-height: 25px;
+    text-align: center;
+    box-shadow: inset 0 -1px 1px rgba(0, 0, 0, 0.07);
+  }
+
+  .header-controls {
+    padding: 10px;
+    display: flex;
+    color: @text-color-subtle;
+    border-bottom: 1px solid @border-color-divider;
+    box-shadow: inset 0 -1px 1px rgba(191, 191, 191, 0.12);
+    flex-shrink: 0;
+
+    .title {
+      display: inline-block;
+      width: 275px;
+    }
+    .title,
+    .btn-icon {
+      font-size: 15px;
+      line-height: 25px;
+    }
+
+    .btn-icon {
+      margin: 0;
+      height: auto;
+      img {
+        vertical-align: baseline;
+      }
+    }
+
+    .view-controls {
+      position: absolute;
+      right: 10px;
+      border-radius: @border-radius-base;
+      box-shadow:
+        0 0.5px 0 rgba(0, 0, 0, 0.15),
+        0 -0.5px 0 rgba(0, 0, 0, 0.15),
+        0.5px 0 0 rgba(0, 0, 0, 0.15),
+        -0.5px 0 0 rgba(0, 0, 0, 0.15),
+        0 0.5px 1px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+
+      .view-btn {
+        width: 60px;
+        border: 0;
+        cursor: default;
+        display: inline-block;
+        color: @btn-default-text-color;
+        background: @background-primary;
+
+        &:hover {
+          background: darken(@background-primary, 5%);
+        }
+      }
+
+      .cur-view-btn {
+        width: 60px;
+        border: 0;
+        cursor: default;
+        display: inline-block;
+        color: @text-color-inverse;
+        background: @accent-primary;
+      }
+    }
+  }
+
+  .center-controls {
+    text-align: center;
+    flex: 1;
+    order: 0;
+  }
+
+  .agenda-view {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .agenda-scroll-region {
+      flex: 1;
+      background: @background-primary;
+    }
+
+    .agenda-event-list {
+      padding: 0 20px 20px;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .agenda-day {
+      &:first-child {
+        .agenda-day-header {
+          border-top: none;
+        }
+      }
+    }
+
+    .agenda-day-header {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 16px 0 8px;
+      border-top: 1px solid @border-color-divider;
+      position: sticky;
+      top: 0;
+      background: @background-primary;
+      z-index: 1;
+
+      .agenda-day-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: @text-color;
+      }
+
+      .agenda-day-date {
+        font-size: 13px;
+        color: @text-color-subtle;
+      }
+
+      .agenda-today-badge {
+        font-size: 11px;
+        font-weight: 600;
+        color: @accent-primary;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      &.is-today {
+        .agenda-day-name,
+        .agenda-day-date {
+          color: @accent-primary;
+        }
+      }
+    }
+
+    .agenda-day-events {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .agenda-event {
+      display: flex;
+      align-items: flex-start;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: default;
+      position: relative;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      &:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+      }
+
+      &.selected {
+        background: @accent-primary;
+        // Match thread-list .inverseContent() for legibility on dark backgrounds
+        -webkit-font-smoothing: antialiased;
+
+        .agenda-event-time,
+        .agenda-event-title,
+        .agenda-event-location {
+          color: @text-color-inverse;
+        }
+
+        .agenda-event-color-bar {
+          background-color: @text-color-inverse !important;
+        }
+      }
+
+      &.cancelled {
+        opacity: 0.6;
+
+        .agenda-event-title s {
+          text-decoration: line-through;
+        }
+      }
+
+      &.pending {
+        .agenda-event-color-bar {
+          opacity: 0.5;
+        }
+      }
+    }
+
+    .agenda-event-color-bar {
+      width: 4px;
+      min-height: 32px;
+      align-self: stretch;
+      border-radius: 2px;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    .agenda-event-time {
+      width: 130px;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: @text-color-subtle;
+      padding-top: 2px;
+    }
+
+    .agenda-event-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .agenda-event-title {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agenda-event-location {
+      font-size: 12px;
+      color: @text-color-subtle;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agenda-no-events {
+      padding: 8px 12px;
+      font-size: 13px;
+      color: @text-color-very-subtle;
+      font-style: italic;
+    }
+  }
+}

@@ -1,0 +1,181 @@
+@import 'ui-variables';
+
+.ignore-in-parent-frame {
+  // ----- Font Families -----
+  @font-face {
+    font-family: 'Nylas-Pro';
+    font-style: normal;
+    font-weight: 200;
+    src: url('mailspring://custom-fonts/fonts/Custom-Thin.otf');
+  }
+
+  @font-face {
+    font-family: 'Nylas-Pro';
+    font-style: normal;
+    font-weight: 300;
+    src: url('mailspring://custom-fonts/fonts/Custom-Blond.otf');
+  }
+
+  @font-face {
+    font-family: 'Nylas-Pro';
+    font-style: normal;
+    font-weight: 400;
+    src: url('mailspring://custom-fonts/fonts/Custom-Normal.otf');
+  }
+
+  @font-face {
+    font-family: 'Nylas-Pro';
+    font-style: normal;
+    font-weight: 500;
+    src: url('mailspring://custom-fonts/fonts/Custom-Medium.otf');
+  }
+
+  @font-face {
+    font-family: 'Nylas-Pro';
+    font-style: normal;
+    font-weight: 600;
+    src: url('mailspring://custom-fonts/fonts/Custom-SemiBold.otf');
+  }
+
+  // Pro-SemiBold doesn't render emoji properly. Override the emjoi unicode
+  // block so that it uses the "Normal" weight even at font-weight:600.
+  @font-face {
+    font-family: 'Nylas-Pro';
+    font-style: normal;
+    font-weight: 600;
+    src: url('mailspring://custom-fonts/fonts/Custom-Normal.otf'), Helvetica, sans-serif;
+    unicode-range: U+1f300-1f5ff, U+1f600-1f64f, U+1f680-1f6ff, U+2600-26ff;
+  }
+
+  html,
+  body {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: @text-color;
+    background-color: transparent !important;
+    border: 0;
+    margin: 0;
+    padding: 0;
+
+    -webkit-text-size-adjust: auto;
+    word-wrap: break-word;
+    -webkit-nbsp-mode: space;
+    -webkit-line-break: after-white-space;
+  }
+
+  html {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  #inbox-html-wrapper {
+    font-family: 'Nylas-Pro', 'Helvetica', 'Lucidia Grande', sans-serif;
+  }
+
+  #inbox-html-wrapper.platform-win32 {
+    font-family: system-ui;
+  }
+
+  #inbox-plain-wrapper {
+    font-family: @font-family-monospace;
+    font-size: 14px;
+    white-space: pre-line;
+  }
+
+  strong,
+  b,
+  .bold {
+    font-weight: 600;
+  }
+
+  body {
+    padding: 0;
+    margin: auto;
+    -webkit-font-smoothing: antialiased;
+    &.restrict-width {
+      max-width: 840px;
+    }
+  }
+
+  a {
+    word-break: break-word;
+  }
+
+  blockquote {
+    border-left: 2px solid #eee;
+    margin: 0;
+    padding: 0 0 0 10px;
+    -webkit-margin-after: initial !important;
+    -webkit-margin-before: initial !important;
+    -webkit-margin-start: initial !important;
+    -webkit-margin-end: initial !important;
+  }
+
+  a {
+    color: @text-color-link;
+  }
+
+  a:hover {
+    color: @text-color-link-hover;
+  }
+
+  a:visited {
+    color: darken(@text-color-link, 10%);
+  }
+  a img {
+    border-bottom: 0;
+  }
+
+  div,
+  pre {
+    max-width: 100%;
+  }
+
+  p {
+    margin: 0;
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  pre.nylas-plaintext {
+    // The default font for <pre> tags is the system monospace font. We want
+    // themes to be able to override with monospace, but not have that be the
+    // default for normal people.
+    font-family: 'Nylas-Pro', 'Helvetica', 'Lucidia Grande', sans-serif;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  img {
+    border: 0;
+  }
+
+  search-match,
+  .search-match {
+    background: @text-color-search-match;
+    border-radius: @border-radius-base;
+    box-shadow: 0 0.5px 0.5px rgba(0, 0, 0, 0.25);
+    &.current-match {
+      background: @text-color-search-current-match;
+    }
+  }
+
+  .inline-download-prompt {
+    border: solid 1px rgba(0, 0, 0, 0.09);
+    border-radius: 2px;
+    color: @text-color;
+    background: @background-off-primary;
+    margin: 4px 0;
+    padding: 4px 8px;
+    cursor: pointer;
+    display: inline-block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .inline-download-prompt:hover {
+    cursor: pointer;
+    color: @text-color;
+    border: solid 1px rgba(0, 0, 0, 0.16);
+  }
+}

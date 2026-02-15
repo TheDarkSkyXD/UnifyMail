@@ -1,0 +1,42 @@
+@import 'ui-variables';
+
+.theme-picker {
+  text-align: center;
+  cursor: default;
+  h4 {
+    font-size: 14.5px;
+    margin-top: -10px;
+    margin-bottom: 5px;
+  }
+  .clickable-theme-option {
+    width: 115px;
+    height: 70px;
+    margin: 2px;
+    top: -20px;
+    iframe {
+      pointer-events: none;
+      position: relative;
+      z-index: 0;
+    }
+  }
+  .create-theme {
+    width: 100%;
+    text-align: center;
+    margin-top: 5px;
+    a {
+      text-decoration: none;
+      cursor: default;
+    }
+  }
+}
+
+@media (-webkit-min-device-pixel-ratio: 2) {
+  .theme-picker {
+    .theme-picker-x {
+      margin: 12px;
+    }
+    .clickable-theme-option {
+      top: -10px;
+    }
+  }
+}

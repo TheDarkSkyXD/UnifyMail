@@ -1,0 +1,22 @@
+{
+  "name": "activity",
+  "main": "./lib/main",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "engines": {
+    "mailspring": "*"
+  },
+
+  "isOptional": true,
+  "isIdentityRequired": true,
+
+  "title":"Activity Notifications and Dashboard",
+  "icon":"./assets/icon.png",
+  "description": "Get notifications for open and link tracking activity.",
+  "supportedEnvs": ["development", "staging", "production"],
+
+  "license": "GPL-3.0"
+}

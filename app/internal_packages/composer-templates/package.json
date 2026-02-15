@@ -1,0 +1,22 @@
+{
+  "name": "composer-templates",
+  "version": "0.1.0",
+  "main": "./lib/main",
+
+  "isOptional": true,
+
+  "title": "Quick Replies",
+  "description": "Create templated messages you can use to pre-fill the composer.",
+  "icon": "./icon.png",
+
+  "license": "GPL-3.0",
+  "private": true,
+  "engines": {
+    "mailspring": "*"
+  },
+  "windowTypes": {
+    "default": true,
+    "composer": true,
+    "thread-popout": true
+  }
+}

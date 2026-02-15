@@ -1,0 +1,347 @@
+<body style="padding:0; border:0; margin: 15px; background-color: white;" tabindex="1">
+  <script src="./dompurify/purify.min.js"></script>
+  <script>
+    // Sanitization config matching SanitizeTransformer
+    const SanitizeConfig = {
+      ALLOWED_TAGS: [
+        '#text', 'a', 'abbr', 'address', 'area', 'article', 'aside', 'b', 'bdi', 'bdo',
+        'big', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'cite', 'center',
+        'code', 'col', 'colgroup', 'data', 'datalist', 'dd', 'del', 'details', 'dfn',
+        'dialog', 'div', 'dl', 'dt', 'em', 'fieldset', 'figcaption', 'figure', 'footer',
+        'font', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'i', 'img',
+        'input', 'ins', 'kbd', 'keygen', 'label', 'legend', 'li', 'main', 'map', 'mark',
+        'menu', 'menuitem', 'meta', 'meter', 'nav', 'ol', 'optgroup', 'option', 'output',
+        'p', 'param', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp',
+        'section', 'select', 'small', 'source', 'span', 'strong', 'style', 'strike', 'sub',
+        'summary', 'sup', 'table', 'tbody', 'td', 'textarea', 'tfoot', 'th', 'thead', 'time',
+        'title', 'tr', 'track', 'u', 'ul', 'var', 'wbr', 'html'
+      ],
+      ALLOWED_ATTR: [
+        'abbr', 'accept', 'acceptcharset', 'accesskey', 'action', 'align', 'alt', 'async',
+        'autocomplete', 'axis', 'border', 'background', 'bgcolor', 'cellpadding', 'cellspacing',
+        'char', 'charoff', 'charset', 'checked', 'classid', 'class', 'classname', 'clear',
+        'colspan', 'cols', 'color', 'content', 'contextmenu', 'controls', 'compact', 'coords',
+        'data', 'datetime', 'defer', 'dir', 'disabled', 'download', 'draggable', 'enctype',
+        'face', 'form', 'formaction', 'formenctype', 'formmethod', 'formnovalidate', 'formtarget',
+        'frame', 'frameborder', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang',
+        'htmlfor', 'httpequiv', 'hspace', 'icon', 'id', 'label', 'lang', 'list', 'loop', 'low',
+        'manifest', 'marginheight', 'marginwidth', 'max', 'maxlength', 'media', 'mediagroup',
+        'method', 'min', 'multiple', 'muted', 'name', 'novalidate', 'nowrap', 'noshade', 'open',
+        'optimum', 'pattern', 'placeholder', 'poster', 'preload', 'radiogroup', 'readonly',
+        'rel', 'required', 'role', 'rowspan', 'rows', 'rules', 'sandbox', 'scope', 'scoped',
+        'scrolling', 'seamless', 'selected', 'shape', 'size', 'sizes', 'start', 'sortable',
+        'sorted', 'span', 'spellcheck', 'src', 'srcdoc', 'srcset', 'start', 'step', 'style',
+        'summary', 'tabindex', 'target', 'title', 'translate', 'type', 'usemap', 'valign',
+        'value', 'vspace', 'width', 'wmode'
+      ],
+      ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|xxx):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+      KEEP_CONTENT: true
+    };
+
+    function sanitizeHTML(html) {
+      return DOMPurify.sanitize(html, SanitizeConfig);
+    }
+  </script>
+  <style>
+    .xlsx-content {
+      margin: -15px;
+      margin-bottom: 30px;
+    }
+    .xlsx-tabs {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: row;
+      height: 30px;
+      background: #98a7b9;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      border-top: 1px solid #777;
+    }
+    .xlsx-tabs .tab {
+      padding: 0 10px;
+      margin-right: 3px;
+      border-left: 1px solid #ddd;
+      background: #e2e2e2;
+      height: 26px;
+      line-height: 26px;
+      box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
+      color: #333;
+      cursor: default;
+      user-select: none;
+    }
+    .xlsx-tabs .tab.active {
+      background: white;
+    }
+    .xlsx-content table {
+      border-collapse: collapse;
+    }
+    .xlsx-content td {
+      border: 1px solid #eee;
+      padding: 3px;
+    }
+  </style>
+
+  <div id="the-doc"><canvas id="the-canvas"></canvas></div>
+
+  <script>
+    const div = document.getElementById('the-doc');
+
+    function finishWithWindowCapture(previewToken, startedAt = Date.now()) {
+      // Remove scroll bars or they appear in the capture on Windows
+      document.body.style.overflow = 'hidden';
+
+      // Wait up to 1 sec for images in the rendered HTML to finish loading
+      const waitingForImage = Array.from(document.querySelectorAll('img')).find(
+        i => i.complete === false
+      );
+      if (waitingForImage && Date.now() - startedAt < 1000) {
+        setTimeout(() => finishWithWindowCapture(previewToken, startedAt), 50);
+        return;
+      }
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(async () => {
+            await window.electronAPI.finishCapture(previewToken);
+            document.title = 'Finished';
+          });
+        });
+      });
+    }
+
+    async function runPDFCapture({ previewToken }) {
+      const canvas = document.getElementById('the-canvas');
+      const context = canvas.getContext('2d');
+      const el = document.createElement('script');
+      el.onload = async () => {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs-4.3.136/build/pdf.worker.mjs';
+
+        const buffer = await window.electronAPI.previewFileAsBuffer();
+        const pdf = await (pdfjsLib.getDocument(buffer, {
+          cMapUrl: './pdfjs-4.3.136/web/cmaps',
+          cMapPacked: true,
+        }).promise);
+
+        const page = await pdf.getPage(1);
+
+        const viewport = page.getViewport({ scale: 1 });
+        const scale = window.outerWidth / (viewport.width || viewport.viewBox[2]);
+        const scaledViewport = page.getViewport({ scale: scale });
+
+        scaledViewport.height = scaledViewport.height || viewport.viewBox[3] * scale;
+        scaledViewport.width = scaledViewport.width || viewport.viewBox[2] * scale;
+        if (Number.isNaN(scaledViewport.transform[0])) {
+          scaledViewport.transform = [scale, 0, 0, -scale, 0, scaledViewport.height];
+        }
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+        canvas.style.height = scaledViewport.height / window.devicePixelRatio + 'px';
+        canvas.style.width = scaledViewport.width / window.devicePixelRatio + 'px';
+
+        const renderTask = page.render({
+          canvasContext: context,
+          viewport: scaledViewport,
+        });
+
+        await renderTask.promise.then(function() {
+          canvas.toBlob(blob => {
+            const reader = new FileReader();
+            reader.addEventListener('loadend', async () => {
+              await window.electronAPI.finishWithData(previewToken, new Uint8Array(reader.result));
+              document.title = 'Finished';
+            });
+            reader.readAsArrayBuffer(blob);
+          });
+        });
+      };
+
+      el.type="module";
+      el.src = `pdfjs-4.3.136/build/pdf.mjs`;
+      document.body.appendChild(el);
+    }
+
+    async function runXLSX({ previewToken }) {
+      const data = await window.electronAPI.previewFileAsBuffer();
+      const xlsx = document.createElement('script');
+      xlsx.onload = () => {
+        const workbook = window.XLSX.read(data, {
+          type: 'array',
+          cellStyles: true,
+          cellHTML: true,
+        });
+
+        div.innerHTML = '';
+
+        if (mode === 'capture') {
+          div.innerHTML = sanitizeHTML(window.XLSX.write(workbook, {
+            sheet: workbook.SheetNames[0],
+            type: 'string',
+            bookType: 'html',
+            header: '<div>',
+            footer: '</div>',
+          }));
+          finishWithWindowCapture(previewToken);
+        } else {
+          const content = document.createElement('div');
+          content.classList.add('xlsx-content');
+          div.appendChild(content);
+          const tabs = document.createElement('div');
+          tabs.classList.add('xlsx-tabs');
+          div.appendChild(tabs);
+
+          const showTab = sheetName => {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            const tab = document.querySelector(`[data-sheet-name="${sheetName}"]`);
+            if (tab) tab.classList.add('active');
+
+            content.innerHTML = sanitizeHTML(window.XLSX.write(workbook, {
+              sheet: sheetName,
+              type: 'string',
+              bookType: 'html',
+              header: '<div>',
+              footer: '</div>',
+            }));
+          };
+
+          workbook.SheetNames.forEach(sheetName => {
+            const tab = document.createElement('div');
+            tab.classList.add('tab');
+            tab.innerText = sheetName;
+            tab.dataset.sheetName = sheetName;
+            tab.addEventListener('click', () => showTab(sheetName));
+            tabs.appendChild(tab);
+          });
+
+          showTab(workbook.SheetNames[0]);
+        }
+      };
+      xlsx.src = './xlsx-0.18.5/xlsx.full.min.js';
+      document.body.appendChild(xlsx);
+    }
+
+    async function runPrism({ filePath, previewToken, mode }) {
+      const ext = filePath.split('.').pop();
+      const str = await window.electronAPI.previewFileAsString({
+        truncate: mode === 'capture',
+      });
+
+      const grammars = {
+        html: 'html',
+        xml: 'xml',
+        svg: 'svg',
+        css: 'css',
+        js: 'javascript',
+        c: 'c',
+        h: 'c',
+        cs: 'csharp',
+        cc: 'cpp',
+        cpp: 'cpp',
+        patch: 'diff',
+        go: 'go',
+        java: 'java',
+        json: 'json',
+        jsonp: 'json',
+        tex: 'latex',
+        m: 'objectivec',
+        mm: 'objectivec',
+        py: 'python',
+        jsx: 'jsx',
+        tsx: 'tsx',
+        rb: 'ruby',
+        rs: 'rust',
+        sql: 'sql',
+        swift: 'swift',
+        ts: 'typescript',
+        yaml: 'yaml',
+        txt: 'clike',
+        log: 'clike',
+      };
+
+      const grammar = grammars[ext] || 'clike';
+
+      // Attach Prism CSS
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = './prism-1.15.0/prism.css';
+      document.body.appendChild(link);
+      document.body.style.margin = '0';
+
+      // Attach <pre><code class="language-XXX">{text}</code></pre> to the DOM
+      div.innerHTML = '';
+      if (mode !== 'capture') {
+        div.style.opacity = 0;
+      }
+      const preEl = document.createElement('pre');
+      preEl.style = 'min-height: 100%; margin: 0; border-radius: 0;';
+      div.appendChild(preEl);
+
+      const codeEl = document.createElement('code');
+      codeEl.textContent = str;
+      codeEl.classList.add(`language-${grammar}`);
+      preEl.appendChild(codeEl);
+
+      // Load the Prism script and capture/show the DOM when it's completed
+      const finish = () => {
+        const stylesReady = window.getComputedStyle(preEl).fontFamily.includes('Monaco');
+        if (!stylesReady) {
+          setTimeout(finish, 1);
+          return;
+        }
+
+        div.style.opacity = 1;
+        if (mode === 'capture') {
+          finishWithWindowCapture(previewToken);
+        }
+      };
+
+      const script = document.createElement('script');
+      script.onload = finish;
+      script.src = './prism-1.15.0/prism.js';
+      document.body.appendChild(script);
+    }
+
+    async function runMammoth({ previewToken, mode }) {
+      const rawHTML = await window.electronAPI.previewFileAsMammothHTML();
+      div.innerHTML = sanitizeHTML(rawHTML);
+      if (mode === 'capture') {
+        finishWithWindowCapture(previewToken);
+      }
+    }
+
+    async function runSnarkdown({ previewToken, mode }) {
+      const rawHTML = await window.electronAPI.previewFileAsSnarkdownHTML();
+      div.innerHTML = sanitizeHTML(rawHTML);
+      div.style.fontFamily =
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
+      if (mode === 'capture') {
+        finishWithWindowCapture(previewToken);
+      }
+    }
+
+    const { mode, filePath, previewToken, strategy } = JSON.parse(
+      decodeURIComponent(window.location.search.substr(1))
+    );
+
+    window.requestAnimationFrame(() => {
+      if (strategy === 'pdfjs') {
+        if (mode === 'capture') {
+          runPDFCapture({ previewToken });
+        } else {
+          // To view PDFs we use the separate pdfviewer included with pdfjs
+        }
+      } else if (strategy === 'mammoth') {
+        runMammoth({ mode, previewToken });
+      } else if (strategy === 'snarkdown') {
+        runSnarkdown({ mode, previewToken });
+      } else if (strategy === 'prism') {
+        runPrism({ filePath, mode, previewToken });
+      } else if (strategy === 'xlsx') {
+        runXLSX({ mode, previewToken });
+      }
+    });
+  </script>
+</body>

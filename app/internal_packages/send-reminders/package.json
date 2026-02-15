@@ -1,0 +1,23 @@
+{
+  "name": "send-reminders",
+  "version": "1.0.0",
+  "title": "Send Reminders",
+  "description": "Get reminded if you don't receive a reply for a message within a specified time in the future",
+  "icon": "./icon.png",
+  "main": "lib/main",
+  "supportedEnvs": ["development", "staging", "production"],
+
+  "isOptional": true,
+  "isIdentityRequired": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "windowTypes": {
+    "default": true,
+    "composer": true
+  },
+  "engines": {
+    "mailspring": "*"
+  },
+  "license": "GPL-3.0"
+}

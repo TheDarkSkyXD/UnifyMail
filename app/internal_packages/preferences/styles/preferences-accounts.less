@@ -1,0 +1,132 @@
+@import 'ui-variables';
+
+// Preferences Specific
+.preferences-wrap {
+  .container-accounts {
+    min-width: 420px;
+    margin: 0 auto;
+    .accounts-content {
+      display: flex;
+      justify-content: center;
+
+      .account-list {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        width: 400px;
+
+        .items-wrapper {
+          flex: 1;
+        }
+
+        .account {
+          padding: 10px;
+          border-bottom: 1px solid @border-color-divider;
+        }
+
+        .list-item:not(.selected) .sync-error {
+          color: @color-error;
+        }
+
+        .account-name {
+          font-size: @font-size-large;
+          cursor: default;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          vertical-align: middle;
+        }
+
+        .account-subtext {
+          font-size: @font-size-small;
+          cursor: default;
+        }
+
+        .btn-editable-list {
+          height: 37px;
+          width: 37px;
+          line-height: 37px;
+          font-size: 1em;
+        }
+      }
+
+      .account-details {
+        width: 400px;
+        padding: 20px;
+        padding-left: @spacing-standard * 2.25;
+        padding-right: @spacing-standard * 2.25;
+        background-color: @gray-lighter;
+        border-top: 1px solid @border-color-divider;
+        border-right: 1px solid @border-color-divider;
+        border-bottom: 1px solid @border-color-divider;
+
+        .key-commands-region {
+          height: inherit;
+        }
+
+        .items-wrapper {
+          height: 100px;
+        }
+
+        .account-error-detail {
+          display: flex;
+          flex-direction: column;
+          background: linear-gradient(to top, #ca2541 0%, #d55268 100%);
+
+          .action {
+            flex-shrink: 0;
+            background-color: rgba(0, 0, 0, 0.15);
+            text-align: center;
+            padding: 3px @padding-base-horizontal;
+            color: @text-color-inverse;
+            flex: 1;
+            border-top: solid rgba(255, 255, 255, 0.5) 1px;
+            border-right: solid rgba(255, 255, 255, 0.5) 1px;
+            &:last-child {
+              border-right: 0;
+            }
+          }
+          .action:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            text-decoration: none;
+          }
+          .message {
+            flex-grow: 1;
+            padding: 3px @padding-base-horizontal;
+            color: @text-color-inverse;
+          }
+        }
+
+        .newsletter {
+          padding-top: @padding-base-vertical * 2;
+          input[type='checkbox'] {
+            margin: 0;
+            position: relative;
+            top: 0;
+          }
+        }
+
+        & > h6 {
+          &:first-child {
+            margin-top: 0;
+          }
+        }
+
+        & > input {
+          font-size: 0.9em;
+          width: 100%;
+        }
+
+        .default-alias-selector {
+          padding-top: @padding-base-vertical * 3;
+          padding-bottom: @padding-base-vertical;
+
+          & > select {
+            font-size: 0.9em;
+            margin-left: 0;
+            width: 100%;
+          }
+        }
+      }
+    }
+  }
+}

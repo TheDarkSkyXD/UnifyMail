@@ -1,0 +1,21 @@
+{
+  "name": "github-contact-card",
+  "version": "0.1.0",
+  "main": "./lib/main",
+
+  "isOptional": true,
+  "isHiddenOnPluginsPage": true,
+
+  "title": "GitHub Sidebar Info",
+  "description": "Extend the contact card in the sidebar to show public repos of the people you email.",
+  "icon": "./icon.png",
+
+  "license": "GPL-3.0",
+  "engines": {
+    "mailspring": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bengotow/nylas-sidebar-github-profile"
+  }
+}

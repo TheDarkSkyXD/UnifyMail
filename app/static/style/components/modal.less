@@ -1,0 +1,47 @@
+@import 'ui-variables';
+
+.modal-container {
+  perspective: 1000px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  z-index: 1000;
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0);
+  transition: background-color 100ms ease-out;
+
+  .modal {
+    position: absolute;
+    transform-origin: top;
+    z-index: 40;
+    opacity: 0;
+    transform: translateY(10px) rotateX(-7deg);
+    transition: transform 360ms ease-out, opacity 240ms ease-out;
+
+    .modal-close {
+      margin: 6px;
+    }
+  }
+
+  &.animate {
+    background-color: rgba(255, 255, 255, 0.58);
+    .modal {
+      opacity: 1;
+      transform: translateY(0) rotateX(0);
+    }
+  }
+}
+
+@media (-webkit-min-device-pixel-ratio: 2) {
+  .modal-close {
+    margin: 12px;
+  }
+}
+
+body.platform-win32 {
+  .modal {
+    border-radius: 0;
+  }
+}

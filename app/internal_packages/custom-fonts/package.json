@@ -1,0 +1,15 @@
+{
+  "name": "custom-fonts",
+  "version": "0.1.0",
+  "main": "./lib/main",
+  "description": "Custom Fonts",
+  "license": "Proprietary",
+  "private": true,
+  "syncInit": true,
+  "windowTypes": {
+    "all": true
+  },
+  "engines": {
+    "mailspring": "*"
+  }
+}

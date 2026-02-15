@@ -1,0 +1,78 @@
+##### Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+##### Arcanist / Phab
+**/.arcconfig
+**/.arclint
+**/arclib
+
+##### Client Private Plugins (symlinked)
+**/internal_packages/composer-mail-merge
+**/internal_packages/composer-scheduler
+
+##### Node modules
+node_modules
+!app/spec/fixtures/packages/package-with-incompatible-native-module/node_modules
+**/npm-debug.log*
+**/lerna-debug.log*
+
+##### Certs for building
+certs
+**/*.p12
+**/*.cer
+**/build/resources/certs
+
+##### Misc swap files
+**/*.swp
+**/*.swo
+**/*~
+**/*#
+**/.DS_Store
+**/Thumbs.db
+**/#emacs
+
+# Built cloud files
+n1_cloud_dist
+
+# Built client
+app/dist
+
+# Tests
+spec-saved-state.json
+
+# Symlinked Jasmine config files
+**/jasmine/config.json
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+# Sqlite amalgamation for scripts
+scripts/sqlite
+
+# Scripts for calculating statistics
+scripts/toolbox
+scripts/venv
+
+# Python
+*.pyc
+
+# OAuth client secret for talking to Google Sheets
+client_secret.json
+/app/mailsync
+/logfile.txt
+/app/dist-docs
+/app/mailsync.dSYM.zip
+/snap/snapcraft.yml
+/snap/.snapcraft/
+
+**.so*
+**.bin
+**.tar.gz
+**.dll
+/app/mailsync.exe
+/app/mailsync.dSYM
+.idea

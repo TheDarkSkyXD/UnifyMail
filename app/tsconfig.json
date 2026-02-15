@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "jsx": "react",
+    "target": "es2017",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "lib": ["es2017", "dom", "esnext.array"],
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "inlineSourceMap": true,
+    "outDir": "lib",
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "paths": {
+      "*": ["node_modules/*", "src/global/*"]
+    }
+  },
+  "include": ["src/**/*", "internal_packages/**/*"]
+}

@@ -1,0 +1,527 @@
+@import 'ui-variables';
+@import 'ui-mixins';
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: @font-family;
+  font-size: @font-size;
+  line-height: @line-height-base;
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+
+mailspring-workspace {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  font-family: @font-family;
+
+  // Important: This attribute is used in the theme-manager-specs to check that
+  // themes load and override each other correctly. Do not remove!
+  background-color: @background-primary;
+}
+
+.sheet-container {
+  height: 100%;
+}
+
+.sheet {
+  background-color: @background-primary;
+}
+
+.sheet-stack-enter {
+  left: 30px;
+  opacity: 0;
+  transition: all 0.125s ease-out;
+}
+
+.sheet-stack-enter.sheet-stack-enter-active {
+  left: 0;
+  opacity: 1;
+}
+
+.sheet-stack-leave {
+  left: 0;
+  opacity: 1;
+  transition: all 0.125s ease-in;
+}
+
+.sheet-stack-leave.sheet-stack-leave-active {
+  left: 30px;
+  opacity: 0;
+}
+
+.toolbar-menu-control {
+  display: none;
+}
+
+.toolbar-window-controls {
+  margin-top: 7px;
+  margin-left: @spacing-half /*rtl:ignore */;
+  order: -1000 /*rtl: 1000*/;
+  min-width: 72px;
+  width: 72px;
+  flex-grow: 0;
+  flex-shrink: 0;
+
+  &:hover {
+    button {
+      background-position: 0 -12px;
+    }
+  }
+
+  button {
+    -webkit-app-region: no-drag;
+    padding: 0;
+    width: 12px;
+    height: 12px;
+    margin: 4px;
+    float: left /*rtl:left */;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 12px 48px;
+    border: 0;
+    &:active {
+      background-position: 0 -24px;
+    }
+  }
+  .close {
+    background-image: url('images/application-frame/close@1x.png');
+  }
+  .minimize {
+    background-image: url('images/application-frame/minimize@1x.png');
+  }
+  .maximize {
+    background-image: url('images/application-frame/fullscreen@1x.png');
+  }
+  &.alt-true {
+    .maximize {
+      background-image: url('images/application-frame/maximize@1x.png');
+    }
+  }
+}
+
+@media (-webkit-min-device-pixel-ratio: 2) {
+  .toolbar-window-controls {
+    .close {
+      background-image: url('images/application-frame/close@2x.png');
+    }
+    .minimize {
+      background-image: url('images/application-frame/minimize@2x.png');
+    }
+    .maximize {
+      background-image: url('images/application-frame/fullscreen@2x.png');
+    }
+    &.alt-true {
+      .maximize {
+        background-image: url('images/application-frame/maximize@2x.png');
+      }
+    }
+  }
+}
+
+body.is-blurred {
+  .toolbar-window-controls {
+    button {
+      background-position: 0 -36px;
+    }
+  }
+  .sheet-toolbar-container {
+    background-image: linear-gradient(
+      to bottom,
+      lighten(@toolbar-background-color, 14%),
+      lighten(@toolbar-background-color, 14%)
+    );
+
+    .btn.btn-toolbar {
+      background: none;
+      box-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.15), 0 -0.5px 0 rgba(0, 0, 0, 0.15),
+        0.5px 0 0 rgba(0, 0, 0, 0.15), -0.5px 0 0 rgba(0, 0, 0, 0.15);
+      img {
+        opacity: 0.5;
+      }
+    }
+    .item-container {
+      .window-title {
+        opacity: 0.5;
+      }
+    }
+  }
+}
+
+.sheet-toolbar-container {
+  background-image: -webkit-linear-gradient(
+    lighten(@toolbar-background-color, 10%) 0%,
+    lighten(@toolbar-background-color, 10%) 1.9%,
+    lighten(@toolbar-background-color, 9%) 2%,
+    @toolbar-background-color 100%
+  );
+  color: @text-color-heading;
+}
+
+.sheet-toolbar {
+  position: relative;
+  -webkit-app-region: drag;
+  border-bottom: 1px solid darken(@toolbar-background-color, 9%);
+  width: 100%;
+  height: 34px;
+
+  // prevent flexbox from ever, ever resizing toolbars, no matter
+  // how much it thinks other content is being squished
+  min-height: 34px;
+  max-height: 34px;
+
+  // cover up the vertical resizing separators, so the toolbar appears
+  // to be one continuous bar.
+  z-index: 10;
+
+  .item-container > * {
+    -webkit-app-region: no-drag;
+  }
+  .item-spacer {
+    -webkit-app-region: drag;
+  }
+
+  .item-compose {
+    order: 101;
+  }
+
+  .item-container {
+    .window-title {
+      position: absolute;
+      text-align: center;
+      left: 50%;
+      transform: translateX(-50%);
+      -webkit-app-region: drag;
+      line-height: 34px;
+      &:hover {
+        cursor: default;
+      }
+    }
+  }
+
+  .item-back {
+    order: -999;
+    img.content-mask {
+      background-color: @text-color-heading;
+    }
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    .item-back-title {
+      cursor: default;
+      color: @text-color-heading;
+      margin: 0;
+      font-size: @font-size-h4;
+      font-weight: @font-weight-normal;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    &:active {
+      .item-back-title {
+        color: mix(@text-color-heading, @black, 30%);
+      }
+      img.content-mask {
+        background-color: mix(@text-color-heading, @black, 30%);
+      }
+    }
+  }
+
+  .btn-toolbar {
+    margin-top: 5px;
+    margin-left: @spacing-three-quarters;
+    margin-right: 0;
+    flex-shrink: 0;
+    line-height: 1.75em;
+    height: 1.75em;
+    box-shadow: 0 0.5px 0.05px rgba(0, 0, 0, 0.4), 0 -0.5px 0 rgba(0, 0, 0, 0.12);
+    img.content-mask {
+      background-color: fade(@text-color-heading, 80%);
+    }
+  }
+  .btn-toolbar:active {
+    img.content-mask {
+      background-color: fade(@text-color-heading, 90%);
+    }
+  }
+  .btn-toolbar:only-of-type {
+    margin-right: 6px;
+  }
+
+  .button-group {
+    display: flex;
+    margin-left: @spacing-three-quarters;
+    .btn.btn-toolbar {
+      margin-left: 0;
+      margin-right: 0;
+
+      // Using these (slower) selectors to avoid redeclaring any constants
+      // like default-case border radius that themes might be overriding.
+      &:not(:last-child) {
+        border-right: 0;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+      &:not(:first-child) {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+      &:last-child {
+        border-left: 0;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+    }
+  }
+}
+
+.opacity-125ms-enter {
+  opacity: 0;
+  transition: opacity 0.125s ease-out;
+}
+
+.opacity-125ms-enter.opacity-125ms-enter-active {
+  opacity: 1;
+}
+
+.opacity-125ms-leave {
+  opacity: 1;
+  transition: opacity 0.125s ease-in;
+}
+
+.opacity-125ms-leave.opacity-125ms-leave-active {
+  opacity: 0;
+}
+
+.flexbox-handle-horizontal {
+  width: 8px;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  position: absolute;
+  cursor: col-resize;
+  div {
+    height: 100%;
+    box-shadow: 0.5px 0 0 @border-color-divider;
+  }
+
+  &.flexbox-handle-right {
+    right: -4px;
+    padding-right: 4px;
+  }
+  &.flexbox-handle-left {
+    left: -4px;
+    padding-right: 4px;
+  }
+}
+
+.flexbox-handle-vertical {
+  width: 100%;
+  height: 6px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  position: absolute;
+  cursor: row-resize;
+  div {
+    width: 100%;
+  }
+  &.flexbox-handle-top {
+    top: -3px;
+    padding-right: 3px;
+  }
+  &.flexbox-handle-bottom {
+    bottom: 0;
+    padding-right: 2px;
+  }
+}
+
+.display-deferrable {
+  opacity: 1;
+  transition: opacity 220ms;
+  &.deferred {
+    opacity: 0;
+  }
+}
+
+.injected-region-visible {
+  border: 1px dashed rgba(255, 0, 0, 0.5);
+  margin: 2px;
+  position: relative;
+  min-height: 1.5em;
+  > .name {
+    background-color: rgba(255, 180, 180, 0.9);
+    position: absolute;
+    color: black;
+    font-size: 13px;
+    top: 50%;
+    left: 50%;
+    white-space: nowrap;
+    z-index: 100;
+    -webkit-transform: translate(-50%, -50%);
+    user-select: text;
+  }
+  &:hover {
+    border: 1px dashed rgba(255, 0, 0, 1);
+  }
+}
+
+// WINDOWS / LINUX
+// Toolbar Window Control
+
+body.platform-linux,
+body.platform-win32.window-type-default {
+  .toolbar-menu-control {
+    display: inherit;
+    order: 10000 /*rtl: -10000 */;
+    .btn-toolbar {
+      margin-left: 0;
+      padding: 0 17px;
+      line-height: 36px;
+      img.content-mask {
+        vertical-align: middle;
+      }
+    }
+  }
+}
+
+// LINUX
+
+body.platform-linux {
+  .item-compose {
+    order: -101;
+  }
+
+  .toolbar-menu-control {
+    .btn-toolbar {
+      padding: 0 12px;
+      line-height: 17px;
+    }
+  }
+
+  // make the toolbar white in the standard theme
+  .sheet-toolbar-container {
+    background-image: none;
+    background: @background-primary;
+  }
+
+  // linux gumdrops are bigger (15px) and hover states are per-button
+  // instead of for the entire set.
+  .toolbar-window-controls {
+    &:hover {
+      button {
+        background-position: 0 0;
+      }
+    }
+    button {
+      width: 15px;
+      height: 15px;
+      margin: 4px;
+      background-size: 15px 60px;
+      &:hover {
+        background-position: 0 -15px;
+      }
+      &:active {
+        background-position: 0 -30px;
+      }
+    }
+    .close {
+      background-image: url('images/application-frame/close-linux.png');
+    }
+    .minimize {
+      background-image: url('images/application-frame/minimize-linux.png');
+    }
+    .maximize {
+      background-image: url('images/application-frame/maximize-linux.png');
+    }
+    &.alt-true {
+      .maximize {
+        background-image: url('images/application-frame/maximize-linux.png');
+      }
+    }
+  }
+
+  &.is-blurred {
+    .toolbar-window-controls {
+      button {
+        background-position: 0 -45px;
+      }
+    }
+
+    .sheet-toolbar-container {
+      background-image: none;
+      background: @background-primary;
+      .btn-toolbar {
+        box-shadow: none;
+      }
+    }
+  }
+}
+
+// WINDOWS
+// Make things a bit more square
+
+body.platform-win32 {
+  .item-compose {
+    order: -101;
+  }
+
+  .toolbar-window-controls {
+    display: none;
+  }
+
+  .btn {
+    border-radius: 0;
+  }
+
+  .flexbox-handle-vertical {
+    cursor: ns-resize;
+  }
+  .flexbox-handle-horizontal {
+    cursor: ew-resize;
+  }
+
+  .sheet-toolbar-container {
+    background-image: none;
+    background: @background-primary;
+    .btn-toolbar {
+      transition: background 300ms;
+      margin: 0 0 0 1px;
+      height: 33px;
+      padding: 0 14px;
+      padding-bottom: 2px;
+      border: 0;
+      box-shadow: none;
+      background: none;
+      &:hover {
+        background: darken(@list-hover-bg, 5%);
+      }
+    }
+  }
+
+  &.is-blurred {
+    .sheet-toolbar-container {
+      background-image: none;
+      background: @background-primary;
+      .btn-toolbar {
+        box-shadow: none;
+      }
+    }
+  }
+}
+
+// WINDOWS
+// The custom font looks blurry, system-ui looks better
+
+body.platform-win32 {
+  font-family: system-ui;
+
+  mailspring-workspace {
+    font-family: system-ui;
+  }
+}

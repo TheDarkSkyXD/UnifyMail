@@ -1,0 +1,795 @@
+// The ui-variables file is provided by base themes provided by N1.
+@import 'ui-variables';
+@import 'ui-mixins';
+@import 'buttons';
+
+@compose-width: 800px;
+@compose-min-height: 70px;
+
+@blurred-primary-color: mix(@background-primary, #ffbb00, 96%);
+@blurred-off-primary-color: mix(@background-off-primary, #ffbb00, 96%);
+
+// Basic Rich Editor
+
+.composer-editor-plaintext {
+  textarea {
+    padding: 13px 22px;
+    box-sizing: border-box;
+    resize: none;
+    min-height: @compose-min-height;
+    color: @text-color;
+    outline: none;
+    font-family: @font-family-monospace;
+    &:focus {
+      border: none;
+      box-shadow: none;
+      outline: none;
+    }
+  }
+}
+
+.RichEditor-root {
+  padding: 0 22px 0 22px;
+  min-height: @compose-min-height;
+
+  .RichEditor-content {
+    padding-top: 12px;
+    position: relative; // needed for floating emoji picker
+    color: @text-color;
+
+    div[contenteditable] {
+      -webkit-user-modify: read-write !important;
+    }
+  }
+}
+
+.RichEditor-root blockquote {
+  border-left: 2px solid #eee;
+  color: mix(@text-color, purple, 50%);
+  margin: 0;
+  padding: 0 0 0 10px;
+  -webkit-margin-after: initial !important;
+  -webkit-margin-before: initial !important;
+  -webkit-margin-start: initial !important;
+  -webkit-margin-end: initial !important;
+}
+
+.RichEditor-root .link {
+  color: @text-color-link;
+  text-decoration: underline;
+}
+.RichEditor-root .custom-block,
+.RichEditor-root .uneditable.custom-block {
+  border: 1px dashed transparent;
+  &.focused {
+    border: 1px dashed @text-color;
+  }
+}
+
+.RichEditor-root .uneditable {
+  -webkit-user-modify: read-only;
+  display: inline-block;
+  border: 1px solid transparent;
+  position: relative;
+  white-space: normal;
+  min-width: 30px;
+  .uneditable-remove {
+    position: absolute;
+    display: none;
+    right: -5px;
+    top: -5px;
+    z-index: 2;
+    &:active {
+      filter: brightness(85%);
+    }
+  }
+  blockquote {
+    color: mix(@text-color, purple, 50%);
+  }
+  &:hover {
+    border: 1px dashed @border-color-divider;
+    .uneditable-remove {
+      display: initial;
+    }
+  }
+}
+
+.RichEditor-toolbar {
+  font-family: 'Helvetica', sans-serif;
+  font-size: 14px;
+  user-select: none;
+  position: relative;
+
+  .floating-container {
+    border-bottom: 1px solid @border-color-divider;
+    z-index: 2;
+    width: 100%;
+    min-height: 29px;
+  }
+
+  .inner {
+    background: @background-primary;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+  }
+
+  .divider {
+    width: 1px;
+    height: 22px;
+    border-right: 1px solid @border-color-divider;
+    margin-right: 1px;
+    padding-right: 1px;
+  }
+
+  button {
+    cursor: pointer;
+    color: fadeout(mix(@btn-default-text-color, @component-active-color, 88%), 30%);
+    padding: 4px 4.7px;
+    border: none;
+    background: none;
+    width: initial;
+    flex: 1;
+    flex-shrink: 0;
+    max-width: 32px;
+
+    &:hover {
+      color: fadeout(mix(@btn-default-text-color, @component-active-color, 88%), 5%);
+      background: none;
+    }
+    &.with-select {
+      max-width: 100px;
+      white-space: nowrap;
+      select {
+        border: none;
+        background: none;
+        margin: 0;
+        min-width: 72px;
+        max-width: 92px;
+        &:active,
+        &:focus {
+          background-color: @background-primary;
+        }
+      }
+    }
+  }
+
+  button.active {
+    color: @component-active-color;
+  }
+
+  .dropdown {
+    z-index: 4;
+    position: absolute;
+    background: @background-primary;
+    border-radius: @border-radius-base @border-radius-base 0 @border-radius-base;
+    box-shadow: 0 0.5px 0 @standard-shadow-color, 0 -0.5px 0 @standard-shadow-color,
+      0.5px 0 0 @standard-shadow-color, -0.5px 0 0 @standard-shadow-color,
+      0 -3px 12px @standard-shadow-color;
+  }
+
+  .color-picker {
+    display: inline-block;
+    position: relative;
+    & > button {
+      cursor: pointer;
+      width: 20px;
+      height: 14px;
+      margin-right: 4px;
+      margin-left: 4px;
+      margin-bottom: 2px;
+      vertical-align: middle;
+      box-shadow: @text-color 0 0.5px, @text-color 0 -0.5px, @text-color 0.5px 0,
+        @text-color -0.5px 0;
+    }
+  }
+
+  .link-picker {
+    flex: 1;
+    flex-shrink: 0;
+    max-width: 32px;
+    text-align: center;
+
+    .dropdown {
+      padding: 5px;
+      display: flex;
+      flex-direction: row;
+      button {
+        max-width: 50px;
+      }
+    }
+  }
+}
+
+// Composer-Specific
+
+body.platform-win32 {
+  .composer-inner-wrap {
+    .composer-drop-cover {
+      border-radius: 0;
+    }
+    .composer-action-bar-wrap {
+      border-radius: 0;
+    }
+    input,
+    input:focus {
+      box-shadow: none;
+    }
+  }
+}
+
+.action-bar-cover-gen() {
+  .action-bar-cover {
+    background-image: linear-gradient(to right, fade(@action-bar-bg, 0) 0%, @action-bar-bg 10%);
+  }
+}
+
+// Used to allow the click targets to extend into the margins
+.composer-field-bottom-border() {
+  width: calc(~'100% - 44px');
+  height: 1px;
+  position: absolute;
+  bottom: 0;
+  left: 23px;
+  content: ' ';
+  background: @border-color-divider;
+}
+
+.composer-inner-wrap {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  .composer-drop-cover {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: @border-radius-base;
+    border: 4px dashed lighten(@gray, 30%);
+    text-align: center;
+    line-height: 2.3em;
+    pointer-events: none;
+
+    .centered {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: lighten(@gray, 20%);
+      font-weight: 500;
+      font-size: 1.1em;
+      img {
+        margin: auto;
+        display: block;
+        margin-bottom: 20px;
+        background-color: lighten(@gray, 20%);
+      }
+    }
+  }
+
+  .nylas-attachment-item.image-attachment-item {
+    min-width: 0;
+  }
+
+  .composer-action-bar-wrap {
+    @action-bar-bg: @background-off-primary;
+    position: relative;
+    width: 100%;
+    background: @action-bar-bg;
+    border-top: 1px solid @border-color-divider;
+    box-shadow: inset 0 2px 1px rgba(0, 0, 0, 0.03);
+    border-bottom: 0;
+    border-radius: @border-radius-base;
+
+    .action-bar-cover-gen;
+
+    // Buttons in the composer footer
+    .btn.btn-toolbar:not(.btn-emphasis) {
+      background: transparent;
+      box-shadow: 0 0 0;
+      margin: 0;
+      padding: 0 8px;
+      white-space: nowrap;
+
+      img.content-mask {
+        background-color: fadeout(mix(@btn-default-text-color, @component-active-color, 88%), 30%);
+      }
+      &:hover {
+        img.content-mask {
+          background-color: fadeout(mix(@btn-default-text-color, @component-active-color, 88%), 5%);
+        }
+      }
+      &.btn-enabled {
+        color: @component-active-color;
+        img.content-mask {
+          background-color: @component-active-color;
+        }
+      }
+    }
+
+    .btn-send {
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+
+    .composer-action-bar-content {
+      display: flex;
+      margin: 0 auto;
+      flex-direction: row;
+      padding: 9px 22.5px;
+
+      &.restrict-width {
+        max-width: @compose-width;
+      }
+
+      .composer-action-bar-plugins {
+        flex-wrap: wrap;
+      }
+    }
+
+    .action-bar-animation-wrap {
+      position: relative;
+      overflow: hidden;
+
+      .composer-action-bar-plugins {
+        opacity: 0;
+        transition: opacity 30ms;
+      }
+
+      .action-bar-cover {
+        transition: left 200ms ease-out;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+      }
+
+      &.plugins-loaded {
+        .composer-action-bar-plugins {
+          opacity: 1;
+        }
+        .action-bar-cover {
+          left: 100%;
+        }
+      }
+    }
+  }
+
+  .composer-content-wrap {
+    padding: 0;
+    flex: 1;
+    display: flex;
+    position: relative;
+    flex-flow: column;
+  }
+
+  .composer-centered {
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    margin: 0 auto;
+    padding-top: @spacing-standard * 0.7;
+
+    &.restrict-width {
+      max-width: @compose-width;
+    }
+  }
+
+  .composer-body-wrap {
+    padding: 0 0 5px 0;
+  }
+  .composer-header {
+    .key-commands-region {
+      height: initial;
+    }
+  }
+  .composer-header-actions {
+    position: relative;
+    float: right;
+    z-index: 2;
+    cursor: default;
+    padding-right: @spacing-standard + @spacing-half;
+    padding-top: 12px;
+
+    .action {
+      color: @text-color-very-subtle;
+      img.content-mask {
+        background-color: @text-color-very-subtle;
+      }
+      font-size: @font-size-small;
+      padding: 10px 6px;
+      &:first-child {
+        padding-left: @spacing-standard;
+      }
+      &:last-child {
+        padding-right: 0;
+      }
+      &:hover {
+        color: @text-color-link;
+        img.content-mask {
+          background-color: @text-color-link;
+        }
+        cursor: default;
+      }
+    }
+  }
+
+  input,
+  textarea {
+    color: @text-color;
+    position: relative;
+    display: block;
+    background: inherit;
+    width: 100%;
+    resize: none;
+    border: none;
+  }
+
+  .composer-field-label {
+    color: @text-color-very-subtle;
+    float: left;
+    padding-top: 13px;
+    display: block;
+    &:hover {
+      cursor: default;
+    }
+  }
+
+  .composer-subject {
+    position: relative;
+    margin: 0;
+    flex-shrink: 0;
+
+    &:after {
+      .composer-field-bottom-border;
+    }
+
+    // for Mail Merge
+    div[contenteditable] {
+      padding-left: 22px;
+      padding-right: 22px;
+    }
+
+    input {
+      display: inline-block;
+      padding: 13px 22px 9px 22px;
+      min-width: 5em;
+      background-color: transparent;
+      border: none;
+      margin: 0;
+      &::-webkit-input-placeholder {
+        color: @text-color-very-subtle;
+      }
+      &:focus {
+        box-shadow: none;
+      }
+    }
+  }
+
+  .compose-body-scroll {
+    position: initial;
+    .scroll-region-content .scroll-region-content-inner {
+      min-height: 100%;
+      display: flex;
+    }
+  }
+
+  .compose-body {
+    flex: 1;
+    cursor: text;
+    position: relative;
+    margin: 0;
+
+    .RichEditor-toolbar {
+      .hide-in-composer {
+        display: none;
+      }
+    }
+
+    .hiding-quoted-text {
+      blockquote {
+        height: 0;
+        overflow: hidden;
+        padding: 0;
+      }
+      .gmail_quote_attribution {
+        height: 0;
+        overflow: hidden;
+        padding: 0;
+      }
+    }
+
+    .quoted-text-control {
+      position: relative;
+      // The quoted-text-control has no top margin since the
+      // div[contentedtiable] has 10px of bottom padding. It's better to
+      // put the padding on the contenteditable so the bottom looks nice
+      // in popout windows when there's no quoted text control.
+      margin: 0 @spacing-standard @spacing-standard 22px;
+
+      .remove-quoted-text {
+        display: none;
+        cursor: pointer;
+        position: absolute;
+        z-index: 2;
+        right: -6px;
+        top: -6px;
+        border-radius: 0 0 0 3px;
+        &:active {
+          background: none;
+          filter: brightness(95%);
+        }
+        img {
+          height: 24px;
+        }
+      }
+
+      &:hover .remove-quoted-text {
+        display: block;
+      }
+    }
+  }
+
+  .composer-footer-region {
+    padding: 0 22px;
+    cursor: default;
+    &:hover {
+      cursor: default;
+    }
+  }
+
+  // TODO FIXME DRY From stylesheets/message-list.less
+  .attachments-area {
+    padding: 0;
+    margin: 0 8px;
+  }
+}
+
+// Overrides for the full-window popout composer
+.composer-full-window {
+  width: 100%;
+  height: 100%;
+
+  .composer-outer-wrap {
+    width: 100%;
+    height: 100%;
+  }
+
+  .composer-inner-wrap {
+    .composer-action-bar-wrap {
+      @action-bar-bg: darken(@background-primary, 1%);
+      background: @action-bar-bg;
+      border-top: 1px solid @border-color-divider;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+      .action-bar-cover-gen;
+    }
+
+    .composer-action-bar-content {
+      padding: 9px 13.5px 9px 22.5px;
+    }
+
+    .compose-body {
+      margin-bottom: 0;
+      position: relative;
+    }
+  }
+
+  .RichEditor-root {
+    min-height: @line-height-computed;
+  }
+}
+
+// Overrides for the composer in a message-list
+#message-list {
+  .message-item-wrap {
+    .message-item-white-wrap.composer-outer-wrap {
+      background: @blurred-primary-color;
+
+      .btn.btn-toolbar.btn-trash {
+        padding-right: 0;
+      }
+      .show-more-fade {
+        background: linear-gradient(
+          to right,
+          fade(@blurred-primary-color, 0%) 0%,
+          fade(@blurred-primary-color, 100%) 40%
+        );
+      }
+      .composer-action-bar-wrap {
+        @action-bar-bg: @blurred-off-primary-color;
+        background: @action-bar-bg;
+        .action-bar-cover-gen;
+      }
+      .RichEditor-toolbar .inner {
+        background: @blurred-primary-color;
+      }
+    }
+    .message-item-white-wrap.composer-outer-wrap.focused {
+      box-shadow: 0 0 0.5px rgba(0, 0, 0, 0.28), 0 1px 1.5px rgba(0, 0, 0, 0.08),
+        0 0 3px @accent-primary;
+      background-color: @background-primary;
+      .show-more-fade {
+        background: linear-gradient(
+          to right,
+          fade(@background-primary, 0%) 0%,
+          fade(@background-primary, 100%) 40%
+        );
+      }
+      .composer-action-bar-wrap {
+        @action-bar-bg: @background-off-primary;
+        background: @action-bar-bg;
+        .action-bar-cover-gen;
+      }
+      .RichEditor-toolbar .inner {
+        background: @background-primary;
+      }
+    }
+  }
+}
+
+/////////////////////////////
+// participants-text-field //
+/////////////////////////////
+.composer-participant-field {
+  position: relative;
+  margin: 0;
+  flex-shrink: 0;
+  min-height: 46px;
+  color: @text-color;
+
+  .tokenizing-field-wrap {
+    padding: 0 22px;
+  }
+  .content-container {
+    margin-left: 22px;
+    width: calc(~'100% - 44px');
+  }
+  .button-dropdown {
+    .content-container {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+  &:after {
+    .composer-field-bottom-border;
+  }
+
+  &.from-field {
+    padding: 0 22px;
+  }
+
+  .from-single-name {
+    &:hover {
+      cursor: default;
+    }
+  }
+
+  .button-dropdown {
+    margin-left: 10px;
+    padding-top: 11px;
+    vertical-align: -webkit-baseline-middle;
+
+    .primary-item,
+    .only-item {
+      line-height: 2em;
+    }
+    &:hover {
+      .primary-item,
+      .only-item {
+        border-radius: @border-radius-base;
+      }
+    }
+    .secondary-items {
+      border-radius: @border-radius-base;
+    }
+    .item {
+      .contact.is-alias {
+        font-style: italic;
+        padding-left: @padding-small-horizontal;
+        border-left: 2px solid @border-color-divider;
+        margin-left: 2px;
+      }
+    }
+  }
+
+  .participant {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+
+    .participant-primary {
+      font-weight: @font-weight-semi-bold;
+    }
+    .participant-secondary {
+      color: @text-color-very-subtle;
+    }
+  }
+
+  .tokenizing-field-input {
+    margin-left: 2.8em;
+  }
+}
+
+// Emoji Picker
+
+.emoji-picker {
+  z-index: 3;
+  padding: 4px;
+  background: @background-primary;
+  box-shadow: @standard-shadow;
+  min-width: 140px;
+
+  .btn.btn-icon {
+    display: block;
+    font-size: 14px !important;
+    padding: 0 0.5em;
+    text-align: left;
+    word-break: break-all;
+    overflow: hidden;
+
+    &:first-child {
+      padding-left: 0.5em !important;
+    }
+    &.emoji-option,
+    &:hover {
+      background-color: @btn-emphasis-bg-color;
+      color: #ffffff;
+      border-radius: 5px;
+    }
+  }
+}
+
+.emoji-button-popover {
+  width: 210px;
+  height: 290px;
+  overflow: hidden;
+  .emoji-tabs {
+    display: flex;
+    flex-direction: row;
+    padding: 5px 5px 5px 10px;
+    border-bottom: 1px solid @border-color-primary;
+    transition: box-shadow 0.5s;
+    &.shadow {
+      box-shadow: @standard-shadow;
+    }
+    .emoji-tab {
+      background-color: @gray-light;
+      &.active {
+        background-color: @component-active-color;
+      }
+    }
+  }
+  .emoji-finder-container {
+    height: 232px;
+    .scrollbar-track {
+      background: transparent;
+      border-left: none;
+      width: 10px;
+    }
+    .emoji-search-container {
+      padding: @padding-base-vertical * 1.5 @padding-base-horizontal 0;
+    }
+  }
+  .emoji-name {
+    height: 25px;
+    width: 192px;
+    margin-top: 2px;
+    margin-left: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: @text-color-very-subtle;
+  }
+}

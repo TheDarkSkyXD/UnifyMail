@@ -1,0 +1,41 @@
+{
+  "application:new-message": ["c", "mod+n"],
+
+  "navigation:go-to-inbox": "i",
+  "multiselect-list:select-all": "shift+x",
+
+  "core:pop-sheet": "u",
+  "core:previous-item": "k",
+  "core:select-up": "shift+k",
+  "core:next-item": "j",
+  "core:select-down": "shift+j",
+  "core:focus-item": "o",
+
+  "message-list:previous-message": "p",
+  "message-list:next-message": "n",
+
+  "core:find-in-thread": "mod+f",
+  "core:find-in-thread-next": "mod+g",
+  "core:find-in-thread-previous": "mod+shift+g",
+
+  "core:mute-conversation": "m",
+  "core:focus-search": "/",
+  "core:change-category": ".",
+  "core:select-item": "x",
+  "core:gmail-remove-from-view": "y",
+  "core:archive-item": "e",
+  "core:report-as-spam": "!",
+  "core:delete-item": "#",
+  "core:snooze-item": "h",
+
+  "core:reply": ["r", "mod+r", "mod+alt+r"],
+  "core:reply-new-window": "shift+r",
+  "core:reply-all": ["a", "mod+shift+r", "mod+alt+shift+r"],
+  "core:reply-all-new-window": "shift+a",
+  "core:forward": ["f", "mod+shift+f", "mod+alt+shift+f"],
+  "core:forward-new-window": "shift+f",
+
+  "core:remove-and-previous": ["}", "]"],
+  "core:remove-and-next": ["{", "["],
+  "core:undo": "mod+z"
+}

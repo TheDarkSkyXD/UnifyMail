@@ -1,0 +1,73 @@
+#!/bin/bash
+# mkdeb version arch control-file-path desktop-file-path icon-file-path sources-file-path deb-file-path
+
+set -e
+
+SCRIPT=`readlink -f "$0"`
+ROOT=`readlink -f $(dirname $SCRIPT)/..`
+cd $ROOT
+
+VERSION="$1"
+ARCH="$2"
+ICON_FILE="$3"
+LINUX_ASSETS_DIRECTORY="$4"
+APP_CONTENTS_DIRECTORY="$5"
+OUTPUT_PATH="$6"
+
+FILE_MODE=755
+
+TARGET_ROOT="`mktemp -d`"
+chmod $FILE_MODE "$TARGET_ROOT"
+TARGET="$TARGET_ROOT/mailspring-$VERSION-$ARCH"
+
+mkdir -m $FILE_MODE -p "$TARGET/usr"
+mkdir -m $FILE_MODE -p "$TARGET/usr/share"
+cp -r "$APP_CONTENTS_DIRECTORY" "$TARGET/usr/share/mailspring"
+chmod +rx "$TARGET/usr/share/mailspring"
+
+mkdir -m $FILE_MODE -p "$TARGET/DEBIAN"
+cp "$OUTPUT_PATH/control" "$TARGET/DEBIAN/control"
+
+cp "$LINUX_ASSETS_DIRECTORY/debian/postinst" "$TARGET/DEBIAN/postinst"
+cp "$LINUX_ASSETS_DIRECTORY/debian/postrm" "$TARGET/DEBIAN/postrm"
+
+mkdir -m $FILE_MODE -p "$TARGET/usr/bin"
+ln -s "../share/mailspring/mailspring" "$TARGET/usr/bin/mailspring"
+chmod +x "$TARGET/usr/bin/mailspring"
+
+mkdir -m $FILE_MODE -p "$TARGET/usr/share/applications"
+cp "$OUTPUT_PATH/Mailspring.desktop" "$TARGET/usr/share/applications"
+mkdir -m $FILE_MODE -p "$TARGET/usr/share/appdata"
+cp "$OUTPUT_PATH/mailspring.appdata.xml" "$TARGET/usr/share/appdata"
+
+mkdir -m $FILE_MODE -p "$TARGET/usr/share/pixmaps"
+cp "$ICON_FILE" "$TARGET/usr/share/pixmaps/mailspring.png"
+
+mkdir -m $FILE_MODE -p "$TARGET/usr/share/icons/hicolor"
+for i in 256 128 64 32 16; do
+  mkdir -p "$TARGET/usr/share/icons/hicolor/${i}x${i}/apps"
+  cp "$LINUX_ASSETS_DIRECTORY/icons/${i}.png" "$TARGET/usr/share/icons/hicolor/${i}x${i}/apps/mailspring.png"
+done
+
+# Copy generated LICENSE.md to /usr/share/doc/mailspring/copyright
+mkdir -m $FILE_MODE -p "$TARGET/usr/share/doc/mailspring"
+cp "$TARGET/usr/share/mailspring/LICENSE" "$TARGET/usr/share/doc/mailspring/copyright"
+
+# Add lintian overrides
+mkdir -m $FILE_MODE -p "$TARGET/usr/share/lintian/overrides"
+cp "$ROOT/build/resources/linux/debian/lintian-overrides" "$TARGET/usr/share/lintian/overrides/mailspring"
+
+# Remove group write from all files
+chmod -R g-w "$TARGET";
+
+# Remove execstack bit from mailspring executable (execstack is x86-only, skip on other archs)
+if command -v execstack &> /dev/null; then
+  execstack --clear-execstack "$TARGET/usr/share/mailspring/mailspring"
+fi
+
+# Remove executable bit from .node files
+find "$TARGET" -type f -name "*.node" -exec chmod a-x {} \;
+
+fakeroot dpkg-deb -b "$TARGET"
+mv "$TARGET_ROOT/mailspring-$VERSION-$ARCH.deb" "$OUTPUT_PATH"
+rm -rf "$TARGET_ROOT"

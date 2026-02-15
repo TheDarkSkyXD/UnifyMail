@@ -1,0 +1,124 @@
+@import 'ui-variables';
+@import 'ui-mixins';
+
+.event-wrapper {
+  cursor: default;
+  position: relative;
+  font-size: @font-size-small;
+  margin-top: @spacing-standard;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  display: inline-block;
+  border-radius: @border-radius-base;
+  border: 1px solid @border-color-divider;
+
+  .event-header {
+    border-bottom: 1px solid @border-color-divider;
+    padding: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    img {
+      margin-right: 20px;
+    }
+
+    .event-title-text {
+      color: @text-color-very-subtle;
+    }
+
+    .event-title {
+      color: @text-color;
+    }
+    .event-download {
+      float: right;
+      border-radius: @border-radius-base;
+      border: 1px solid @border-color-divider;
+      padding: 0 4px;
+      img {
+        background: @text-color-very-subtle;
+        margin: 0;
+      }
+    }
+  }
+
+  .event-body {
+    padding: @padding-small-horizontal;
+    color: @text-color;
+
+    .event-location {
+      user-select: text;
+    }
+
+    .event-date {
+      display: inline-block;
+      width: 100%;
+
+      .event-day {
+        display: block;
+        font-size: @font-size-large;
+        color: #e64d65;
+      }
+
+      .event-time {
+        display: inline-block;
+        font-size: @font-size-h3;
+        font-weight: @font-weight-blond;
+      }
+    }
+
+    .event-actions {
+      display: flex;
+
+      .btn-rsvp {
+        margin-right: 10.5px;
+        margin-top: 5px;
+        min-width: 85px;
+        text-align: center;
+
+        &:hover {
+          background: mix(@background-primary, @text-color, 95%);
+        }
+        &:active {
+          background: mix(@background-primary, @text-color, 92%);
+        }
+
+        &.DECLINED {
+          background: @color-error;
+          color: @white;
+        }
+
+        &.ACCEPTED {
+          background: @color-success;
+          color: @white;
+        }
+
+        &.TENTATIVE {
+          background: @gray-light;
+          color: @white;
+        }
+      }
+
+      &.event-cancelled {
+        .cancelled-notice {
+          color: @color-error;
+          font-weight: @font-weight-semi-bold;
+          margin-top: 5px;
+        }
+      }
+    }
+  }
+}
+body.platform-win32 {
+  .event-wrapper {
+    border-radius: 0;
+    .event-body {
+      .event-actions {
+        .btn-rsvp {
+          border-radius: 0;
+        }
+      }
+    }
+  }
+}

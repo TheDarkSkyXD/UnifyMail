@@ -1,0 +1,21 @@
+{
+  "name": "phishing-detection",
+  "version": "0.2.1",
+  "main": "./lib/main",
+  "isHiddenOnPluginsPage": true,
+  "license": "GPL-3.0",
+
+  "title": "Phishing Detection",
+  "description": "Get warnings when an email specifies a reply-to address which is not the from address.",
+  "icon": "./icon.png",
+  "isOptional": true,
+
+  "engines": {
+    "mailspring": "*"
+  },
+  "windowTypes": {
+    "default": true,
+    "composer": true,
+    "thread-popout": true
+  }
+}

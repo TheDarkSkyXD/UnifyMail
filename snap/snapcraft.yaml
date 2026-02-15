@@ -1,0 +1,76 @@
+name: mailspring
+license: GPL-3.0
+adopt-info: mailspring
+
+confinement: strict
+base: core24
+compression: lzo
+
+platforms:
+  amd64:
+  arm64:
+
+parts:
+  mailspring:
+    plugin: nil
+    override-pull: |
+      deb="$(ls $CRAFT_PROJECT_DIR/app/dist/mailspring-*.deb)"
+      craftctl set version="$(basename "$deb" | grep -Eo "[0-9]+.[0-9]+.[0-9]+")"
+      dpkg -x "$deb" "$CRAFT_PART_SRC"
+    override-build: |
+      cp -a "$CRAFT_PART_SRC"/* "$CRAFT_PART_INSTALL"
+      craftctl default
+      sed -i 's|Icon=mailspring|Icon=/usr/share/pixmaps/mailspring\.png|' \
+        $CRAFT_PART_INSTALL/usr/share/applications/Mailspring.desktop
+    prime:
+      - -usr/share/mailspring/chrome-sandbox
+    parse-info: [usr/share/appdata/mailspring.appdata.xml]
+    stage-packages:
+      - libxkbfile1
+      - libsasl2-2
+      - libssl3
+      - libcurl4
+      - libtidy5deb1
+      - ca-certificates
+    stage:
+      - -usr/lib/*/libsecret-*
+
+  libsecret:
+    source: https://gitlab.gnome.org/GNOME/libsecret.git
+    source-depth: 1
+    source-tag: '0.20.5'
+    plugin: meson
+    meson-parameters:
+      - --prefix=/usr
+      - -Dgtk_doc=false
+      - -Dmanpage=false
+      - -Dgcrypt=false
+    stage:
+      - usr/lib/*/libsecret-*
+
+apps:
+  mailspring:
+    command: usr/bin/mailspring --no-sandbox
+    common-id: mailspring
+    desktop: usr/share/applications/Mailspring.desktop
+    extensions: [gnome]
+    environment:
+      HOME: $SNAP_USER_COMMON
+      # Correct the TMPDIR path for Chromium Framework/Electron to
+      # ensure libappindicator has readable resources.
+      TMPDIR: $XDG_RUNTIME_DIR
+    plugs:
+      - avahi-observe
+      - browser-support
+      - cups-control
+      - opengl
+      - home
+      - desktop
+      - desktop-legacy
+      - network
+      - network-bind
+      - password-manager-service
+      - pulseaudio
+      - unity7
+      - x11
+      - wayland

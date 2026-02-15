@@ -1,0 +1,66 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./app/tsconfig.json"
+  },
+  "globals": {
+    "AppEnv": false,
+    "$m": false,
+    "waitsForPromise": false,
+    "advanceClock": false,
+    "TEST_ACCOUNT_ID": false,
+    "TEST_ACCOUNT_NAME": false,
+    "TEST_ACCOUNT_EMAIL": false,
+    "TEST_ACCOUNT_ALIAS_EMAIL": false
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "jasmine": true
+  },
+  "plugins": ["react", "import", "jsx-a11y"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/eslint-recommended",
+    "plugin:@typescript-eslint/recommended", 
+    "prettier",
+    "prettier/@typescript-eslint"],
+  "rules": {
+    "no-cond-assign": 0,
+    "no-console": 0,
+    "no-constant-condition": "warn",
+    "no-async-promise-executor": "warn",
+    "import/first": 0,
+    "import/no-dynamic-require": 0,
+    "import/no-mutable-exports": 0,
+    "jsx-a11y/tabindex-no-positive": 0,
+    "jsx-a11y/label-has-for": 0,
+    "@typescript-eslint/explicit-member-accessibility": 0,
+    "@typescript-eslint/no-explicit-any": 0,
+    "@typescript-eslint/explicit-function-return-type": 0,
+    "@typescript-eslint/prefer-interface": 0,
+    "@typescript-eslint/no-unused-vars": 0,
+    "@typescript-eslint/camelcase": 0,
+    "@typescript-eslint/no-namespace": 0,
+    "@typescript-eslint/no-use-before-define": 0,
+    "@typescript-eslint/interface-name-prefix": 0,
+    "@typescript-eslint/no-var-requires": 0,
+    "@typescript-eslint/no-empty-interface": 0,
+    "@typescript-eslint/class-name-casing": 0,
+    "@typescript-eslint/prefer-namespace-keyword": 0,
+    "@typescript-eslint/no-object-literal-type-assertion": 0,
+    "@typescript-eslint/array-type": 0,
+    "@typescript-eslint/explicit-module-boundary-types": 0,
+    "@typescript-eslint/no-empty-function": 0,
+    "@typescript-eslint/ban-types": "warn"
+  },
+  "settings": {
+    "import/core-modules": [
+      "mailspring-exports",
+      "mailspring-component-kit",
+      "electron",
+      "mailspring-store",
+      "mailspring-observables"
+    ]
+  }
+}

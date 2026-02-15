@@ -1,0 +1,96 @@
+name: Build for Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Fail if branch is not main
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/master'
+        run: |
+          echo "This workflow should not be triggered with workflow_dispatch on a branch other than main"
+          exit 1
+
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Cache NodeJS modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./node_modules
+            ./app/node_modules
+          key: windows-2022-deps-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/package-lock.json') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          DEBUG: electron-packager
+
+      - name: Sign Application Files with Azure Trusted Signing
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_TRUSTED_SIGNING_CERT_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}\app\dist\mailspring-win32-x64
+          files-folder-filter: exe,dll,node
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Create Windows Installer
+        run: node app/build/create-signed-windows-installer.js
+
+      - name: Sign Windows Installer with Azure Trusted Signing
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_TRUSTED_SIGNING_CERT_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}\app\dist
+          files-folder-filter: exe
+          files-folder-recurse: false
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Sync Artifacts to S3
+        shell: pwsh
+        run: |
+          $commit = git rev-parse --short=8 HEAD
+          aws s3 sync app/dist/ "s3://mailspring-builds/client/$commit/win-x64" `
+            --acl public-read `
+            --exclude "*" `
+            --include "MailspringSetup.exe" `
+            --include "*.nupkg" `
+            --include "RELEASES"

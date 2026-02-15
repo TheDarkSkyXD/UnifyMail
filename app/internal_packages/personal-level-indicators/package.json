@@ -1,0 +1,21 @@
+{
+  "name": "personal-level-indicators",
+  "main": "./lib/main",
+  "version": "0.1.0",
+
+  "title": "Personal Level Indicators",
+  "description": "Display chevrons beside threads that indicate whether you're a direct recipient or the only recipient on a thread.",
+  "icon": "./icon.png",
+
+  "isOptional": true,
+  "isHiddenOnPluginsPage": true,
+
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "engines": {
+    "mailspring": "*"
+  },
+  "license": "GPL-3.0"
+}

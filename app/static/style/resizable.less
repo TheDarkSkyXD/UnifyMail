@@ -1,0 +1,45 @@
+@resizableborder: 1px solid #bbb;
+
+.resizable {
+  position: relative;
+}
+
+.resizable .resizeBar {
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+
+  &.top,
+  &.bottom {
+    height: 5px;
+    width: 100%;
+    cursor: ns-resize;
+  }
+
+  &.left,
+  &.right {
+    width: 5px;
+    height: 100%;
+    cursor: ew-resize;
+  }
+
+  &.top {
+    border-top: @resizableborder;
+    top: 0;
+  }
+
+  &.bottom {
+    border-bottom: @resizableborder;
+    bottom: 0;
+  }
+
+  &.left {
+    border-left: @resizableborder;
+    left: 0;
+  }
+
+  &.right {
+    border-right: @resizableborder;
+    right: 0;
+  }
+}
