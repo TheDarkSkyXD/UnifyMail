@@ -22,7 +22,7 @@ export const GMAIL_CLIENT_SECRET =
   crypto
     .createDecipheriv(
       'aes-256-ctr',
-      "don't-be-ev1l-thanks--UnifyMail",
+      "don't-be-ev1l-thanks--Mailspring",
       Buffer.from('wgvAx+N05nHqhFxJ9I07jw==', 'base64')
     )
     .update(Buffer.from('1EyEGYVh3NBNIbYEdpdMvOzCH7+vrSciGeYZ1F+W6W+yShk=', 'base64'))

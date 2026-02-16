@@ -44,68 +44,7 @@ function npm(cmd, options) {
   });
 }
 
-function getMailsyncURL(callback) {
-  const distKey = `${process.platform}-${process.arch}`;
-  const distDir = {
-    'darwin-x64': 'osx',
-    'darwin-arm64': 'osx',
-    'win32-x64': 'win-ia32', // At this time, Mailsync is still 32-bit
-    'win32-ia32': 'win-ia32',
-    'linux-x64': 'linux',
-    'linux-arm64': 'linux-arm64',
-    'linux-ia32': null,
-  }[distKey];
 
-  if (!distDir) {
-    console.error(
-      `\nSorry, a UnifyMail Mailsync build for your machine (${distKey}) is not yet available.`
-    );
-    return;
-  }
-
-  const out = execSync('git submodule status ./mailsync');
-  const [_, hash] = /[\+-]([A-Za-z0-9]{8})/.exec(out.toString());
-  callback(
-    `https://mailspring-builds.s3.amazonaws.com/mailsync/${hash}/${distDir}/mailsync.tar.gz`
-  );
-}
-
-function downloadMailsync() {
-  getMailsyncURL(distS3URL => {
-    https.get(distS3URL, response => {
-      if (response.statusCode === 200) {
-        response.pipe(fs.createWriteStream(`app/mailsync.tar.gz`));
-        response.on('end', () => {
-          console.log(
-            `\nDownloaded Mailsync prebuilt binary from ${distS3URL} to ./app/mailsync.tar.gz.`
-          );
-          targz.decompress(
-            {
-              src: `app/mailsync.tar.gz`,
-              dest: 'app/',
-            },
-            err => {
-              if (!err) {
-                console.log(`\nUnpackaged Mailsync into ./app.`);
-              } else {
-                console.error(`\nEncountered an error unpacking: ${err}`);
-              }
-            }
-          );
-        });
-      } else {
-        console.error(
-          `Sorry, an error occurred while fetching the UnifyMail Mailsync build for your machine\n(${distS3URL})\n`
-        );
-        if (process.env.CI) {
-          throw new Error('Mailsync build not available.');
-        }
-        response.pipe(process.stderr);
-        response.on('end', () => console.error('\n'));
-      }
-    });
-  });
-}
 
 // For speed, we cache app/node_modules. However, we need to
 // be sure to do a full rebuild of native node modules when the
@@ -165,16 +104,27 @@ async function run() {
   // write the marker with the electron version
   fs.writeFileSync(cacheVersionPath, npmElectronTarget);
 
-  // if the user hasn't cloned the mailsync module, download
-  // the binary for their operating system that was shipped to S3.
-  if (!fs.existsSync('./mailsync/build.sh')) {
-    console.log(`\n-- Downloading the last released version of UnifyMail mailsync --`);
-    downloadMailsync();
+  // if the user hasn't cloned the mailsync module, alert them!
+  const mailsyncParams = process.platform === 'win32'
+    ? { exe: 'mailsync.exe', cmd: 'Open mailsync/Windows/mailsync.sln in Visual Studio, build Release configuration, and copy the output exe to app/mailsync.exe' }
+    : { exe: 'mailsync', cmd: 'cd mailsync && make && cp mailsync ../app/' };
+
+  if (!fs.existsSync(path.join(appPath, mailsyncParams.exe))) {
+    console.error(
+      `\n---------------------------------------------------------------\n` +
+      `⚠️  ACTION REQUIRED: BUILD MAILSYNC ⚠️\n` +
+      `---------------------------------------------------------------\n` +
+      `We no longer distribute pre-built binaries via S3.\n` +
+      `You must build 'mailsync' from source and place it in the 'app' folder.\n\n` +
+      `INSTRUCTIONS:\n` +
+      `1. Initialize submodule: git submodule update --init --recursive\n` +
+      `2. Build it:\n` +
+      `   ${mailsyncParams.cmd}\n` +
+      `---------------------------------------------------------------\n`
+    );
   } else {
     console.log(
-      `\n-- You have the UnifyMail mailsync submodule. If you'd prefer ` +
-      `to develop with a pre-built binary, remove the submodule and re-run ` +
-      `'npm run postinstall' to download the latest binary for your machine. --`
+      `\n-- Mailsync binary detected in ./app. Good to go! --`
     );
   }
 }

@@ -9,6 +9,10 @@
   "commitHash": "COMMIT_INSERTED_DURING_PACKAGING",
   "description": "The best email app for people and teams at work",
   "license": "GPL-3.0",
+  "scripts": {
+    "tailwind:dev": "tailwindcss -i ./static/style/tailwind.src.css -o ./static/style/tailwind.css --watch",
+    "tailwind:build": "tailwindcss -i ./static/style/tailwind.src.css -o ./static/style/tailwind.css --minify"
+  },
   "main": "./src/browser/main.js",
   "dependencies": {
     "@bengotow/slate-edit-list": "github:bengotow/slate-edit-list#b868e108",
@@ -90,6 +94,10 @@
     "macos-notification-state": "github:bengotow/macos-notification-state#77e9e825"
   },
   "devDependencies": {
-    "js-yaml": "^4.1.1"
+    "@tailwindcss/cli": "^4.1.18",
+    "autoprefixer": "^10.4.24",
+    "js-yaml": "^4.1.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18"
   }
 }

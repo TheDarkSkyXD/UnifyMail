@@ -34,7 +34,7 @@ export default class WindowManager {
     if (isWaylandSession() && initializeInBackground) {
       console.warn(
         `The --background flag has no effect under Wayland, where an activation context` +
-          ` is required and windows must be shown immediately.`
+        ` is required and windows must be shown immediately.`
       );
       this.initializeInBackground = false;
     } else {
@@ -267,7 +267,7 @@ export default class WindowManager {
       windowType: WindowManager.ONBOARDING_WINDOW,
       title: localized('Set up Account'),
       hidden: true, // Displayed by PageRouter::_initializeWindowSize
-      frame: false, // Always false on Mac, explicitly set for Win & Linux
+      frame: true, // Always false on Mac, explicitly set for Win & Linux
       toolbar: false,
       resizable: false,
       width: 900,

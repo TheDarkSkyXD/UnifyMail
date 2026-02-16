@@ -197,6 +197,9 @@ export default class UnifyMailWindow extends EventEmitter {
     }
 
     this.browserWindow.loadURL(this.getURL(loadSettings));
+    if (this.devMode) {
+      this.browserWindow.webContents.openDevTools({ mode: 'right' });
+    }
     if (this.isSpec) {
       this.browserWindow.focusOnWebView();
     }

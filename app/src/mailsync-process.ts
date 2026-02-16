@@ -170,7 +170,16 @@ export class MailsyncProcess extends EventEmitter {
     if (this.account) {
       args.push('--info', this.account.emailAddress);
     }
-    this._proc = spawn(this.binaryPath, args, { env });
+
+    const mockPath = path.resolve(this.resourcePath, '..', 'scripts', 'mock-mailsync.js');
+    if (fs.existsSync(mockPath)) {
+      console.log(`[Dev] Using Mock Mailsync at: ${mockPath}`);
+      // Unshift mock script path so it runs: node mock-mailsync.js --mode ...
+      const nodeArgs = [mockPath, ...args];
+      this._proc = spawn(process.execPath, nodeArgs, { env });
+    } else {
+      this._proc = spawn(this.binaryPath, args, { env });
+    }
 
     /* Allow us to buffer up to 1MB on stdin instead of 16k. This is necessary
     because some tasks (creating replies to drafts, etc.) can be gigantic amounts
@@ -232,10 +241,11 @@ export class MailsyncProcess extends EventEmitter {
         };
 
         try {
-          const lastLine = buffer
+          const lines = buffer
             .toString('utf-8')
             .split('\n')
-            .pop();
+            .filter(l => l.trim().length > 0);
+          const lastLine = lines.pop();
 
           let response: any;
           try {
