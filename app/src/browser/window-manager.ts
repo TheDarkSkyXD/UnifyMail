@@ -269,7 +269,7 @@ export default class WindowManager {
       hidden: true, // Displayed by PageRouter::_initializeWindowSize
       frame: true, // Always false on Mac, explicitly set for Win & Linux
       toolbar: false,
-      resizable: false,
+      resizable: true,
       width: 900,
       height: 600,
     };
