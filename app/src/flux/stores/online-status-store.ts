@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import _ from 'underscore';
 
 const MTC_CHECK_INTERVAL = 1000 * 60 * 5;
@@ -7,7 +7,7 @@ const MTC_LATE_THRESHOLD = 1000 * 60;
 // maybe more in the future. We currently store most sync /progress/ on
 // the individual folders in the account (FolderSyncProgressStore)
 
-class OnlineStatusStore extends MailspringStore {
+class OnlineStatusStore extends UnifyMailStore {
   _interval = null;
   _offlineProcesses: { [accountId: string]: boolean } = {};
   _timeoutTargetTime = null;

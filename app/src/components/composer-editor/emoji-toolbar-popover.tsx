@@ -1,6 +1,6 @@
 import React from 'react';
-import { RetinaImg, ScrollRegion } from 'mailspring-component-kit';
-import { localized } from 'mailspring-exports';
+import { RetinaImg, ScrollRegion } from 'unifymail-component-kit';
+import { localized } from 'unifymail-exports';
 
 import categorizedEmojiList from './categorized-emoji';
 import { getEmojiImagePath } from './emoji-plugins';
@@ -268,7 +268,7 @@ export default class EmojiToolbarPopover extends React.Component<
     const keys = Object.keys(this.state.categoryPositions);
     this._canvasEl.height = this.state.categoryPositions[keys[keys.length - 1]].bottom * 2;
     const ctx = this._canvasEl.getContext('2d');
-    ctx.font = '24px Mailspring-Pro';
+    ctx.font = '24px UnifyMail-Pro';
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.clearRect(0, 0, this._canvasEl.width, this._canvasEl.height);
     const position = {

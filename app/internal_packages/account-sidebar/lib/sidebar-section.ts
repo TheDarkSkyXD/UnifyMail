@@ -14,7 +14,7 @@ import {
   ExtensionRegistry,
   RegExpUtils,
   localized,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import SidebarItem from './sidebar-item';
 import * as SidebarActions from './sidebar-actions';

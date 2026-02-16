@@ -8,7 +8,7 @@ import {
   Thread,
   DatabaseStore,
   SearchQueryParser,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 function emailFor(contact: Contact | undefined) {
   return (contact || { email: '' }).email;

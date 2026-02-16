@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { localized, Actions, DateUtils } from 'mailspring-exports';
+import { localized, Actions, DateUtils } from 'unifymail-exports';
 import DateInput from './date-input';
 import { Menu } from './menu';
 import { Moment } from 'moment';

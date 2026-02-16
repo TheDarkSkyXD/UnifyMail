@@ -7,9 +7,9 @@ import {
   SyncbackContactTask,
   AccountStore,
   ContactGroup,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { isEqual } from 'underscore';
-import { FocusContainer, ListensToFluxStore, ScrollRegion } from 'mailspring-component-kit';
+import { FocusContainer, ListensToFluxStore, ScrollRegion } from 'unifymail-component-kit';
 import { parse, ContactBase, ContactInteractorMetadata, apply } from './ContactInfoMapping';
 import { ContactDetailRead } from './ContactDetailRead';
 import { ContactDetailEdit } from './ContactDetailEdit';

@@ -1,5 +1,5 @@
 import ReactTestUtils from 'react-dom/test-utils';
-import { TaskQueue } from 'mailspring-exports';
+import { TaskQueue } from 'unifymail-exports';
 
 class MasterAfterEach {
   setup(loadSettings, afterEach) {

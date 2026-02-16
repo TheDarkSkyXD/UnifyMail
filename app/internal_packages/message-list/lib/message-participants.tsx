@@ -1,7 +1,7 @@
 import _ from 'underscore';
 import classnames from 'classnames';
 import React from 'react';
-import { localized, Actions, Contact } from 'mailspring-exports';
+import { localized, Actions, Contact } from 'unifymail-exports';
 
 const { Menu, MenuItem } = require('@electron/remote');
 const MAX_COLLAPSED = 5;

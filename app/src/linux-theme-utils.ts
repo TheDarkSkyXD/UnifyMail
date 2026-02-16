@@ -282,7 +282,7 @@ function getIconPath(iconName: string, size: number, context: string | string[],
 /**
  * Return an icon from the current icon theme
  *
- * @param {string} iconName name of the icon you want to search for (i.e. mailspring)
+ * @param {string} iconName name of the icon you want to search for (i.e. UnifyMail)
  * @param {number} [size=22] size of the icon, if no exact size is found, the next possible one will be chosen
  * @param {array|string} [context=Context.APPLICATIONS] icon context to search in, defaults to APPLICATIONS
  * @param {number} [scale=2] icon scale, defaults to HiDPI version

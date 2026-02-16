@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized, Actions, ReactDOM, Thread } from 'mailspring-exports';
-import { RetinaImg, BindGlobalCommands } from 'mailspring-component-kit';
+import { localized, Actions, ReactDOM, Thread } from 'unifymail-exports';
+import { RetinaImg, BindGlobalCommands } from 'unifymail-component-kit';
 import ThreadSharingPopover from './thread-sharing-popover';
 import { isShared } from './main';
 

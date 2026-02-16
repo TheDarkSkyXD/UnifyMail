@@ -6,7 +6,7 @@ import {
   Thread,
   ChangeFolderTask,
   ChangeLabelsTask,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 describe('TaskFactory', function taskFactory() {
   beforeEach(() => {

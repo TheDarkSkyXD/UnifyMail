@@ -5,7 +5,7 @@ import React from 'react';
 let stubIsRegistered = null;
 let stubRegister = () => {};
 const patched = proxyquire('../lib/items/default-client-notif', {
-  'mailspring-exports': {
+  'unifymail-exports': {
     DefaultClientHelper: class {
       constructor() {
         this.isRegisteredForURLScheme = (urlScheme, callback) => {
@@ -22,7 +22,7 @@ const DefaultClientNotification = patched.default;
 const SETTINGS_KEY = 'mailto.prompted-about-default';
 
 describe('DefaultClientNotif', function DefaultClientNotifTests() {
-  describe("when Mailspring isn't the default mail client", () => {
+  describe("when UnifyMail isn't the default mail client", () => {
     beforeEach(() => {
       stubIsRegistered = false;
     });
@@ -47,12 +47,12 @@ describe('DefaultClientNotif', function DefaultClientNotifTests() {
         expect(this.notif.find('.notification').exists()).toEqual(true);
       });
 
-      it('allows the user to set Mailspring as the default client', () => {
+      it('allows the user to set UnifyMail as the default client', () => {
         let scheme = null;
         stubRegister = urlScheme => {
           scheme = urlScheme;
         };
-        this.notif.find('#action-0').simulate('click'); // Expects first action to set Mailspring as default
+        this.notif.find('#action-0').simulate('click'); // Expects first action to set UnifyMail as default
         expect(scheme).toEqual('mailto');
       });
 
@@ -64,7 +64,7 @@ describe('DefaultClientNotif', function DefaultClientNotifTests() {
     });
   });
 
-  describe('when Mailspring is the default mail client', () => {
+  describe('when UnifyMail is the default mail client', () => {
     beforeEach(() => {
       stubIsRegistered = true;
       this.notif = mount(<DefaultClientNotification />);

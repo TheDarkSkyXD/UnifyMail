@@ -1,9 +1,9 @@
 <!-- Generated: 2026-02-15 | Updated: 2026-02-15 -->
 
-# UnifyMail (Mailspring)
+# UnifyMail (UnifyMail)
 
 ## Purpose
-UnifyMail is a fork of [Mailspring](https://github.com/Foundry376/Mailspring), a desktop email client built with Electron, React, and TypeScript. It features a plugin-based architecture, a C++ sync engine (mailsync via Mailcore2), and supports IMAP/SMTP providers. The app is cross-platform (Windows, macOS, Linux) and includes features like unified inbox, snooze, send-later, mail rules, templates, link/open tracking, CalDAV/CardDAV calendar and contacts integration, and theming.
+UnifyMail is a fork of [UnifyMail](https://github.com/TheDarkSkyXD/UnifyMail), a desktop email client built with Electron, React, and TypeScript. It features a plugin-based architecture, a C++ sync engine (mailsync via Mailcore2), and supports IMAP/SMTP providers. The app is cross-platform (Windows, macOS, Linux) and includes features like unified inbox, snooze, send-later, mail rules, templates, link/open tracking, CalDAV/CardDAV calendar and contacts integration, and theming.
 
 ## Key Files
 

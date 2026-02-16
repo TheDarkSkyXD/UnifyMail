@@ -1,7 +1,7 @@
 import Rx from 'rx-lite';
 import React from 'react';
-import MailspringStore from 'mailspring-store';
-import { FeatureUsedUpModal } from 'mailspring-component-kit';
+import UnifyMailStore from 'unifymail-store';
+import { FeatureUsedUpModal } from 'unifymail-component-kit';
 import * as Actions from '../actions';
 import { IdentityStore, EMPTY_FEATURE_USAGE, IIdentity } from './identity-store';
 import { SendFeatureUsageEventTask } from '../tasks/send-feature-usage-event-task';
@@ -26,7 +26,7 @@ export interface FeatureLexicon {
  *
  * The final schema looks like (Feb 7, 2017):
  *
- * MailspringID = {
+ * UnifyMailID = {
  *   ...
  *   "featureUsage": {
  *     "snooze": {
@@ -54,7 +54,7 @@ export interface FeatureLexicon {
  * Valid periods are:
  * 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'unlimited'
  */
-class _FeatureUsageStore extends MailspringStore {
+class _FeatureUsageStore extends UnifyMailStore {
   _waitForModalClose = [];
   NoProAccessError = NoProAccessError;
   _disp: Rx.Disposable;

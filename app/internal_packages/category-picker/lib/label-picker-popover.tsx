@@ -1,7 +1,7 @@
 /* eslint jsx-a11y/tabindex-no-positive: 0 */
 import React, { Component, CSSProperties } from 'react';
 import PropTypes from 'prop-types';
-import { Menu, RetinaImg, LabelColorizer, BoldedSearchResult } from 'mailspring-component-kit';
+import { Menu, RetinaImg, LabelColorizer, BoldedSearchResult } from 'unifymail-component-kit';
 import {
   Utils,
   localized,
@@ -12,8 +12,8 @@ import {
   SyncbackCategoryTask,
   ChangeLabelsTask,
   Thread,
-} from 'mailspring-exports';
-import { Categories } from 'mailspring-observables';
+} from 'unifymail-exports';
+import { Categories } from 'unifymail-observables';
 import { CategoryData } from './types';
 
 interface LabelPickerPopoverProps {

@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized, OnlineStatusStore, PropTypes } from 'mailspring-exports';
-import { Notification, ListensToFluxStore } from 'mailspring-component-kit';
+import { localized, OnlineStatusStore, PropTypes } from 'unifymail-exports';
+import { Notification, ListensToFluxStore } from 'unifymail-component-kit';
 
 function OfflineNotification({ isOnline }) {
   if (isOnline) {

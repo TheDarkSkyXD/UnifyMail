@@ -2,7 +2,7 @@ import { Task } from './task';
 import * as Attributes from '../attributes';
 import { Contact } from '../models/contact';
 import { AttributeValues } from '../models/model';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 
 export class DestroyContactTask extends Task {
   static attributes = {

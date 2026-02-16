@@ -9,11 +9,11 @@
 
 ## Overview
 
-Implement a functional event search feature for the calendar that allows users to search for events by title, description, location, or participants. The implementation will follow the same patterns used by email/thread search in Mailspring.
+Implement a functional event search feature for the calendar that allows users to search for events by title, description, location, or participants. The implementation will follow the same patterns used by email/thread search in UnifyMail.
 
 ---
 
-## How Email Search Works in Mailspring (Reference)
+## How Email Search Works in UnifyMail (Reference)
 
 The email search system provides a good template:
 
@@ -69,7 +69,7 @@ Replace the stubbed component with a functional search bar using existing compon
 
 ```typescript
 // Use Menu component for dropdown suggestions
-import { Menu, KeyCommandsRegion } from 'mailspring-component-kit';
+import { Menu, KeyCommandsRegion } from 'UnifyMail-component-kit';
 ```
 
 **Required UI Elements:**
@@ -160,7 +160,7 @@ onSelectEvent = event => {
 
 #### Step 3.2: Calendar Integration
 
-The `MailspringCalendar` component already has the handler:
+The `UnifyMailCalendar` component already has the handler:
 ```typescript
 _focusEvent = (event: EventOccurrence) => {
   this.setState({
@@ -184,7 +184,7 @@ Add styles for:
 - `.event-search-item-location` - Location text
 - `.event-search-calendar-dot` - Calendar color indicator
 
-Follow existing Mailspring design patterns:
+Follow existing UnifyMail design patterns:
 - Use `@import 'ui-variables'` for consistent colors
 - Use `@font-size-small`, `@text-color-subtle`, etc.
 - Match the ThreadSearchBar styling where appropriate

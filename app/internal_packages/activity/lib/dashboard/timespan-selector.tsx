@@ -1,8 +1,8 @@
 import moment from 'moment';
 import React from 'react';
 import PropTypes from 'prop-types';
-import { localized } from 'mailspring-exports';
-import { DropdownMenu, Menu } from 'mailspring-component-kit';
+import { localized } from 'unifymail-exports';
+import { DropdownMenu, Menu } from 'unifymail-component-kit';
 import { getTimespanOptions } from './timespan';
 import { Timespan } from './root';
 

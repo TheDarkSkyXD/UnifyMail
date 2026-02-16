@@ -8,7 +8,7 @@ import { isWaylandSession } from './is-wayland';
 let WindowIconPath = null;
 let idNum = 0;
 
-export interface MailspringWindowSettings {
+export interface UnifyMailWindowSettings {
   frame?: boolean;
   title?: string;
   width?: number;
@@ -36,12 +36,12 @@ export interface MailspringWindowSettings {
   [key: string]: unknown;
 }
 
-export default class MailspringWindow extends EventEmitter {
+export default class UnifyMailWindow extends EventEmitter {
   static includeShellLoadTime = true;
 
   public windowType: string;
   public browserWindow: BrowserWindow & {
-    loadSettings?: MailspringWindowSettings;
+    loadSettings?: UnifyMailWindowSettings;
     loadSettingsChangedSinceGetURL?: boolean;
   } = null;
   public devMode: boolean;
@@ -58,7 +58,7 @@ export default class MailspringWindow extends EventEmitter {
 
   private isWindowClosing: boolean;
 
-  constructor(settings: MailspringWindowSettings = {}) {
+  constructor(settings: UnifyMailWindowSettings = {}) {
     super();
 
     let frame, height, pathToOpen, resizable, title, width, autoHideMenuBar, titleBarStyle;
@@ -98,7 +98,7 @@ export default class MailspringWindow extends EventEmitter {
     type GetConstructorArgs<T> = T extends new (options: infer U) => any ? U : never;
     const browserWindowOptions: GetConstructorArgs<typeof BrowserWindow> = {
       show: false,
-      title: title || 'Mailspring',
+      title: title || 'UnifyMail',
       frame,
       width,
       height,
@@ -123,9 +123,9 @@ export default class MailspringWindow extends EventEmitter {
     // taskbar's icon. See https://github.com/atom/atom/issues/4811 for more.
     if (process.platform === 'linux') {
       if (!WindowIconPath) {
-        WindowIconPath = path.resolve('/usr', 'share', 'pixmaps', 'mailspring.png');
+        WindowIconPath = path.resolve('/usr', 'share', 'pixmaps', 'UnifyMail.png');
         if (!fs.existsSync(WindowIconPath)) {
-          WindowIconPath = path.resolve(this.resourcePath, 'static', 'images', 'mailspring.png');
+          WindowIconPath = path.resolve(this.resourcePath, 'static', 'images', 'UnifyMail.png');
         }
       }
       browserWindowOptions.icon = WindowIconPath;
@@ -154,8 +154,8 @@ export default class MailspringWindow extends EventEmitter {
     }
 
     // Only send to the first non-spec window created
-    if (MailspringWindow.includeShellLoadTime && !this.isSpec) {
-      MailspringWindow.includeShellLoadTime = false;
+    if (UnifyMailWindow.includeShellLoadTime && !this.isSpec) {
+      UnifyMailWindow.includeShellLoadTime = false;
       if (loadSettings.shellLoadTime == null) {
         loadSettings.shellLoadTime = Date.now() - global.shellStartTime;
       }
@@ -207,7 +207,7 @@ export default class MailspringWindow extends EventEmitter {
     this.setLoadSettings({ ...this.browserWindow.loadSettings, ...newSettings });
   };
 
-  loadSettings(): MailspringWindowSettings {
+  loadSettings(): UnifyMailWindowSettings {
     return this.browserWindow.loadSettings;
   }
 
@@ -247,7 +247,7 @@ export default class MailspringWindow extends EventEmitter {
 
       const isLastWindow = global.application.windowManager.getVisibleWindowCount() === 1;
       // The configuration value may be `undefined` when it has not been manually set to true in the preferences
-      // This check against false prevents that Mailspring is closed when configuring the first mail account
+      // This check against false prevents that UnifyMail is closed when configuring the first mail account
       const isTrayEnabled = global.application.config.get('core.workspace.systemTray') !== false;
       const runWithoutWindowsOpen = isTrayEnabled || process.platform === 'darwin';
 
@@ -316,7 +316,7 @@ export default class MailspringWindow extends EventEmitter {
       const chosen = dialog.showMessageBoxSync(this.browserWindow, {
         type: 'warning',
         buttons: ['Close', 'Keep Waiting'],
-        message: 'Mailspring is not responding',
+        message: 'UnifyMail is not responding',
         detail: 'Would you like to force close it or keep waiting?',
       });
       if (chosen === 0) {
@@ -343,8 +343,8 @@ export default class MailspringWindow extends EventEmitter {
         const chosen = dialog.showMessageBoxSync({
           type: 'warning',
           buttons: ['Close Window', 'Reload', 'Keep It Open'],
-          message: 'Mailspring has crashed',
-          detail: 'Please report this issue to us at support@getmailspring.com.',
+          message: 'UnifyMail has crashed',
+          detail: 'Please report this issue to us at support@unifymail.local.',
         });
         if (chosen === 0) {
           this.browserWindow.destroy();

@@ -11,16 +11,16 @@ import {
   Utils,
   localized,
   IdentityStore,
-  MailspringAPIRequest,
+  UnifyMailAPIRequest,
   SearchableComponentStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import IFrameSearcher from '../searchable-components/iframe-searcher';
 import url from 'url';
 import _ from 'underscore';
 import path from 'path';
 import fs from 'fs';
 
-const { rootURLForServer } = MailspringAPIRequest;
+const { rootURLForServer } = UnifyMailAPIRequest;
 
 type EventedIFrameProps = {
   searchable?: boolean;

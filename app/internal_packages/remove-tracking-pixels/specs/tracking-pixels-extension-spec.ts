@@ -1,7 +1,7 @@
 /* eslint no-irregular-whitespace: 0 */
 import fs from 'fs';
 import { removeTrackingPixels } from '../lib/main';
-import { Message } from 'mailspring-exports';
+import { Message } from 'unifymail-exports';
 
 const readFixture = name => {
   return fs
@@ -24,7 +24,7 @@ describe('TrackingPixelsExtension', function trackingPixelsExtension() {
     expect(message.body).toEqual(expected);
   });
 
-  it('should always splice Mailspring read receipts for the current account id ', () => {
+  it('should always splice UnifyMail read receipts for the current account id ', () => {
     const before = readFixture('b-before.txt');
     const expected = readFixture('b-after.txt');
 

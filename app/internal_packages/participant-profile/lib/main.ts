@@ -1,4 +1,4 @@
-import { ComponentRegistry } from 'mailspring-exports';
+import { ComponentRegistry } from 'unifymail-exports';
 import SidebarParticipantProfile from './sidebar-participant-profile';
 import SidebarRelatedThreads from './sidebar-related-threads';
 

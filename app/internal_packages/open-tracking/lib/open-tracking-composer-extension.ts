@@ -1,4 +1,4 @@
-import { ComposerExtension, FeatureUsageStore, Message, Contact } from 'mailspring-exports';
+import { ComposerExtension, FeatureUsageStore, Message, Contact } from 'unifymail-exports';
 import qs from 'querystring';
 
 import { PLUGIN_ID, PLUGIN_URL } from './open-tracking-constants';
@@ -37,7 +37,7 @@ export default class OpenTrackingComposerExtension extends ComposerExtension {
     const imgFragment = document
       .createRange()
       .createContextualFragment(
-        `<img class="mailspring-open" alt="Sent from Mailspring" width="0" height="0" style="border:0; width:0; height:0;" src="${serverUrl}">`
+        `<img class="UnifyMail-open" alt="Sent from UnifyMail" width="0" height="0" style="border:0; width:0; height:0;" src="${serverUrl}">`
       );
     const beforeEl = draftBodyRootNode.querySelector('.gmail_quote');
     if (beforeEl) {

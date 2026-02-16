@@ -10,6 +10,6 @@
     "all": true
   },
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   }
 }

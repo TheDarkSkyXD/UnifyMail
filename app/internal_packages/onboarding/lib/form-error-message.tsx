@@ -2,7 +2,7 @@ import fs from 'fs';
 import temp from 'temp';
 import { shell } from 'electron';
 import React from 'react';
-import { PropTypes, RegExpUtils } from 'mailspring-exports';
+import { PropTypes, RegExpUtils } from 'unifymail-exports';
 
 interface FormErrorProps {
   message: string;

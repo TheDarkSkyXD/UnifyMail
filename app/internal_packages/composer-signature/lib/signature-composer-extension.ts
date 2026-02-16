@@ -1,4 +1,4 @@
-import { ComposerExtension, SignatureStore } from 'mailspring-exports';
+import { ComposerExtension, SignatureStore } from 'unifymail-exports';
 import { applySignature } from './signature-utils';
 
 export default class SignatureComposerExtension extends ComposerExtension {

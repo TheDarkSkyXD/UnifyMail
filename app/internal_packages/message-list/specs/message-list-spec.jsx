@@ -8,8 +8,8 @@ import {
   Folder,
   Message,
   MessageStore,
-  MailspringTestUtils,
-} from 'mailspring-exports';
+  UnifyMailTestUtils,
+} from 'unifymail-exports';
 
 import MessageParticipants from '../lib/message-participants';
 import MessageItemContainer from '../lib/message-item-container';
@@ -185,7 +185,7 @@ describe('MessageList', function() {
       MessageStore._expandItemsToDefault();
       MessageStore.trigger(MessageStore);
       this.messageList.setState({ currentThread: testThread });
-      MailspringTestUtils.loadKeymap('keymaps/base');
+      UnifyMailTestUtils.loadKeymap('keymaps/base');
     });
 
     it('renders all the correct number of messages', function() {

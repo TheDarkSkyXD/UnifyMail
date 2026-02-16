@@ -10,6 +10,6 @@ window.AppEnv = new AppEnvClass();
 const loadSettings = AppEnv.getLoadSettings();
 
 // This must be `required` instead of imported because
-// AppEnv.initialize() must complete before `mailspring-exports` and other
+// AppEnv.initialize() must complete before `UnifyMail-exports` and other
 // globals are available for import via es6 modules.
 require('./spec-runner').default.runSpecs(loadSettings);

@@ -82,7 +82,7 @@ export default class Package {
   }
 
   isEngineSet() {
-    return !!this.json.engines.mailspring;
+    return !!this.json.engines.UnifyMail;
   }
 
   isIdentityRequired() {

@@ -6,8 +6,8 @@ import {
   SendActionsStore,
   SoundRegistry,
   Message,
-} from 'mailspring-exports';
-import { Menu, RetinaImg, ButtonDropdown } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { Menu, RetinaImg, ButtonDropdown } from 'unifymail-component-kit';
 
 interface SendActionButtonProps {
   tabIndex: number;

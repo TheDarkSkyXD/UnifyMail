@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { localized, getAvailableLanguages } from 'mailspring-exports';
+import { localized, getAvailableLanguages } from 'unifymail-exports';
 
 const LanguageSection = ({ config }) => {
   const { automatic, current, verified, experimental } = getAvailableLanguages();

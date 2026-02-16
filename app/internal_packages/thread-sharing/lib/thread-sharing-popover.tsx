@@ -8,8 +8,8 @@ import {
   DatabaseStore,
   localized,
   FeatureUsageStore,
-} from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 
 import CopyButton from './copy-button';
 import { sharingURLForThread, syncThreadToWeb, unsyncThread } from './main';
@@ -69,9 +69,9 @@ export default class ThreadSharingPopover extends React.Component<
           await FeatureUsageStore.markUsedOrUpgrade('thread-sharing', {
             headerText: localized('All Sharing Links Used'),
             rechargeText: `${localized(
-              `You can share %1$@ emails each %2$@ with Mailspring Basic.`
+              `You can share %1$@ emails each %2$@ with UnifyMail Basic.`
             )} ${localized('Upgrade to Pro today!')}`,
-            iconUrl: 'mailspring://thread-sharing/assets/ic-modal-image@2x.png',
+            iconUrl: 'UnifyMail://thread-sharing/assets/ic-modal-image@2x.png',
           });
         } catch (error) {
           if (error instanceof FeatureUsageStore.NoProAccessError) {
@@ -90,7 +90,7 @@ export default class ThreadSharingPopover extends React.Component<
       AppEnv.reportError(error);
       AppEnv.showErrorDialog(
         localized(
-          `Sorry, we were unable to contact the Mailspring servers to share this thread.\n\n%@`,
+          `Sorry, we were unable to contact the UnifyMail servers to share this thread.\n\n%@`,
           error.message
         )
       );
@@ -123,7 +123,7 @@ export default class ThreadSharingPopover extends React.Component<
               {localized('Syncing') + '...'}
               <div className="meta">
                 {localized(
-                  `Mailspring is syncing this thread and its attachments to the cloud. For long threads, this may take a moment.`
+                  `UnifyMail is syncing this thread and its attachments to the cloud. For long threads, this may take a moment.`
                 )}
               </div>
             </label>
@@ -144,7 +144,7 @@ export default class ThreadSharingPopover extends React.Component<
             </label>
           )}
           <div className="meta">
-            <a href="https://community.getmailspring.com/t/share-email-conversations-with-shareable-links/165">
+            <a href="https://github.com/TheDarkSkyXD/UnifyMail/discussions">
               {localized('Learn More')}
             </a>
           </div>

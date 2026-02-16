@@ -1,7 +1,7 @@
 import { shell, clipboard } from 'electron';
 import React from 'react';
-import { localized, localizedReactFragment, PropTypes, Account } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized, localizedReactFragment, PropTypes, Account } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 import http from 'http';
 import url from 'url';
 
@@ -35,7 +35,7 @@ export default class OAuthSignInPage extends React.Component<
     /**
      * Step 1: Open a webpage in the user's browser letting them login on
      * the native provider's website. We pass along a key and a redirect
-     * url to a Mailspring-owned server
+     * url to a UnifyMail-owned server
      */
     providerAuthPageUrl: PropTypes.string,
     buildAccountFromAuthResponse: PropTypes.func,
@@ -74,7 +74,7 @@ export default class OAuthSignInPage extends React.Component<
       const { query } = url.parse(request.url, true);
       if (query.code) {
         this._onReceivedCode(query.code);
-        response.writeHead(302, { Location: 'https://id.getmailspring.com/oauth/finished' });
+        response.writeHead(302, { Location: 'http://localhost:5101/oauth/finished' });
         response.end();
       } else {
         response.end('Unknown Request');
@@ -84,7 +84,7 @@ export default class OAuthSignInPage extends React.Component<
       AppEnv.showErrorDialog({
         title: localized('Unable to Start Local Server'),
         message: localized(
-          `To listen for the Gmail Oauth response, Mailspring needs to start a webserver on port ${LOCAL_SERVER_PORT}. Please go back and try linking your account again. If this error persists, use the IMAP/SMTP option with a Gmail App Password.\n\n%@`,
+          `To listen for the Gmail Oauth response, UnifyMail needs to start a webserver on port ${LOCAL_SERVER_PORT}. Please go back and try linking your account again. If this error persists, use the IMAP/SMTP option with a Gmail App Password.\n\n%@`,
           err
         ),
       });
@@ -144,7 +144,7 @@ export default class OAuthSignInPage extends React.Component<
       return (
         <div>
           <h2>{localized('Successfully connected to %@!', this.props.serviceName)}</h2>
-          <h3>{localized('Adding your account to Mailspring…')}</h3>
+          <h3>{localized('Adding your account to UnifyMail…')}</h3>
         </div>
       );
     }

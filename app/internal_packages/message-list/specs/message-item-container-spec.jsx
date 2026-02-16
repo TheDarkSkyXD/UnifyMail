@@ -2,7 +2,7 @@ import React from 'react';
 const proxyquire = require('proxyquire').noPreserveCache();
 import ReactTestUtils from 'react-dom/test-utils';
 
-import { Thread, Message, ComponentRegistry, DraftStore } from 'mailspring-exports';;
+import { Thread, Message, ComponentRegistry, DraftStore } from 'unifymail-exports';;
 
 class StubMessageItem extends React.Component {
   static displayName = 'StubMessageItem';

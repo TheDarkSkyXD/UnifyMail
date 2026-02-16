@@ -5,7 +5,7 @@ import {
   SearchQueryParser,
   Thread,
   ContactStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import _ from 'underscore';
 
 // start of string or preceding whitespace
@@ -18,7 +18,7 @@ export const TokenAndTermRegexp = () =>
   /(^|\s)(i[ns]?|s[iu]?[nb]?[cj]?e?c?t?|fr?o?m?|to?|ha?s?|be?f?o?r?e?|af?t?e?r?)(?::? ?$|: ?("[^"]*"?|[^\s]+))/gi;
 
 export const LearnMoreURL =
-  'https://community.getmailspring.com/t/search-with-advanced-gmail-style-queries/153';
+  'https://github.com/TheDarkSkyXD/UnifyMail/discussions';
 
 export const rankOfRole = role => {
   const rank = ['inbox', 'important', 'snoozed', 'sent', 'all', 'spam', 'trash'].indexOf(role);

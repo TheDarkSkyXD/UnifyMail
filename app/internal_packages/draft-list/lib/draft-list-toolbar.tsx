@@ -3,11 +3,11 @@ import {
   ListensToObservable,
   MultiselectToolbar,
   InjectedComponentSet,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import PropTypes from 'prop-types';
 
 import DraftListStore from './draft-list-store';
-import { Message } from 'mailspring-exports';
+import { Message } from 'unifymail-exports';
 
 function getObservable() {
   return DraftListStore.selectionObservable();

@@ -1,0 +1,60 @@
+Windows Registry Editor Version 5.00
+
+[{{HKEY_ROOT}}\SOFTWARE\Classes\UnifyMail.Url.mailto]
+"FriendlyTypeName"="UnifyMail Url"
+
+[{{HKEY_ROOT}}\SOFTWARE\Classes\UnifyMail.Url.mailto\shell]
+
+[{{HKEY_ROOT}}\SOFTWARE\Classes\UnifyMail.Url.mailto\shell\open]
+
+[{{HKEY_ROOT}}\SOFTWARE\Classes\UnifyMail.Url.mailto\shell\open\command]
+@="\"{{PATH_TO_ROOT_FOLDER}}\\Update.exe\" --processStart UnifyMail.exe --process-start-args %1"
+
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail]
+@="UnifyMail"
+"LocalizedString"="@{{PATH_TO_ROOT_FOLDER}}\\Update.exe,-123"
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\DefaultIcon]
+@="{{PATH_TO_APP_FOLDER}}\\UnifyMail.exe,1"
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Capabilities]
+"ApplicationName"="UnifyMail"
+"ApplicationDescription"="A fast, modern mail client designed to help you boost your productivity."
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Capabilities\StartMenu]
+"Mail"="UnifyMail"
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Capabilities\URLAssociations]
+"mailto"="UnifyMail.Url.mailto"
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Protocols]
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Protocols\mailto]
+@="URL:MailTo Protocol"
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Protocols\mailto\DefaultIcon]
+@="{{PATH_TO_APP_FOLDER}}\\UnifyMail.exe,1"
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Protocols\mailto\shell]
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Protocols\mailto\shell\open]
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\Protocols\mailto\shell\open\command]
+@="\"{{PATH_TO_ROOT_FOLDER}}\\Update.exe\" --processStart UnifyMail.exe --process-start-args %1"
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\shell]
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\shell\open]
+
+[{{HKEY_ROOT}}\SOFTWARE\Clients\Mail\UnifyMail\shell\open\command]
+@="\"{{PATH_TO_ROOT_FOLDER}}\\Update.exe\" --processStart UnifyMail.exe"
+
+[{{HKEY_ROOT}}\SOFTWARE\RegisteredApplications]
+"UnifyMail"="Software\\Clients\\Mail\\UnifyMail\\Capabilities"
+
+
+[HKEY_CURRENT_USER\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache]
+"{{PATH_TO_ROOT_FOLDER}}\\Update.exe"="UnifyMail"
+"{{PATH_TO_ROOT_FOLDER}}\\Update.exe.FriendlyAppName"="UnifyMail"
+"{{PATH_TO_ROOT_FOLDER}}\\Update.exe.ApplicationCompany"="UnifyMail"

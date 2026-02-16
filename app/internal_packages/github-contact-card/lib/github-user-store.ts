@@ -1,12 +1,12 @@
 import _ from 'underscore';
-import MailspringStore from 'mailspring-store';
-import { FocusedContactsStore } from 'mailspring-exports';
+import UnifyMailStore from 'unifymail-store';
+import { FocusedContactsStore } from 'unifymail-exports';
 
 // This package uses the Flux pattern - our Store is a small singleton that
 // observes other parts of the application and vends data to our React
 // component. If the user could interact with the GithubSidebar, this store
 // would also listen for `Actions` emitted by our React components.
-class GithubUserStore extends MailspringStore {
+class GithubUserStore extends UnifyMailStore {
   _profile = null;
   _cache = {};
   _loading = false;

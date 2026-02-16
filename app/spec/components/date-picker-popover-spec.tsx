@@ -1,7 +1,7 @@
 import React from 'react';
 import { mount } from 'enzyme';
-import { DateUtils } from 'mailspring-exports';
-import { DatePickerPopover } from 'mailspring-component-kit';
+import { DateUtils } from 'unifymail-exports';
+import { DatePickerPopover } from 'unifymail-component-kit';
 
 const makePopover = (props = {}) => {
   return mount(

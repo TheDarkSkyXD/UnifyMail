@@ -1,4 +1,4 @@
-# Mailspring Changelog
+# UnifyMail Changelog
 
 ## 1.17.4 (2/11/2026)
 
@@ -74,7 +74,7 @@ Features:
 
 - Calendar events can now be edited and synced back to the server. Drag events to reschedule them, or double-click to edit details. (#2574)
 
-- Mailspring now supports one-click unsubscribe using email headers (RFC 2369/8058). When an email includes unsubscribe headers, a link appears to quickly unsubscribe. (#2576)
+- UnifyMail now supports one-click unsubscribe using email headers (RFC 2369/8058). When an email includes unsubscribe headers, a link appears to quickly unsubscribe. (#2576)
 
 Bug Fixes:
 
@@ -116,7 +116,7 @@ Developer:
 
 Bug Fixes:
 
-- Keyboard navigation in Mailspring's thread list has been fixed!
+- Keyboard navigation in UnifyMail's thread list has been fixed!
 
 - On Fedora, the libtidy dependency is more broadly specified to support both soname versions (libtidy.so.5 or libtidy.so.58)
 
@@ -124,17 +124,17 @@ We're aware of issues with Wayland support for some Linux users and are investig
 
 ## 1.17.0 (1/14/2025)
 
-This is Mailspring's biggest update in a while!
+This is UnifyMail's biggest update in a while!
 
 The "infinite sync bug" that impacted iCloud accounts has been fixed, and we reviewed and applied many other patches to Mailcore and libetpan to improve mail sync.
 
-This release includes significant security updates - Mailspring now uses the system-bundled sasl2, ssl, crypto and curl libraries on all Linux platforms, and the UI has moved to the latest version of Electron. (On Linux, Electron 39 also brings native support for Wayland!)
+This release includes significant security updates - UnifyMail now uses the system-bundled sasl2, ssl, crypto and curl libraries on all Linux platforms, and the UI has moved to the latest version of Electron. (On Linux, Electron 39 also brings native support for Wayland!)
 
 This release resolves issues with spellcheck on Windows, and also adds support for Windows toast notifications with inline actions.
 
 Bug Fixes:
 
-- On Windows, the Start Menu integration has been updated for Windows 11 and the "default mail client" option now links directly to Mailspring's page in Windows Settings.
+- On Windows, the Start Menu integration has been updated for Windows 11 and the "default mail client" option now links directly to UnifyMail's page in Windows Settings.
 
 - On Windows, `mailto:` link handling no longer breaks due to a launch argument parsing issue.
 
@@ -142,7 +142,7 @@ Bug Fixes:
 
 - On macOS, notifications now correctly respect Do Not Disturb settings. (#2525)
 
-- On macOS, Mailspring can now correctly create and delete the LaunchAgent file for launch on startup. (#2509)
+- On macOS, UnifyMail can now correctly create and delete the LaunchAgent file for launch on startup. (#2509)
 
 - On Linux, the tray icon no longer shares an ID with other Electron apps. (#2529)
 
@@ -162,7 +162,7 @@ Localization:
 
 Developer:
 
-- Mailspring now uses Electron 39, Chromium 140, and Node.js 22 for improved performance and security.
+- UnifyMail now uses Electron 39, Chromium 140, and Node.js 22 for improved performance and security.
 
 - Mac, Windows, and Linux builds are now managed entirely with Github Actions, and new Github Actions for mailsync verify that the Linux binary is portable and runs on Ubuntu, Fedora, and Arch Linux.
 
@@ -234,7 +234,7 @@ This is a patch release that resolves several user-reported issues. Thank
 
 ## 1.15.0
 
-Happy 2025! This version of Mailspring upgraedes the app to Electron 33 and Chromium 130, ensuring the latest upstream bug fixes, security patches and improvements are available in the app.
+Happy 2025! This version of UnifyMail upgraedes the app to Electron 33 and Chromium 130, ensuring the latest upstream bug fixes, security patches and improvements are available in the app.
 
 - macOS 10.15 (Catalina) is no longer supported. macOS 11 (Big Sur) or later is required.
 
@@ -242,45 +242,45 @@ Happy 2025! This version of Mailspring upgraedes the app to Electron 33 and Chro
 
 Fixes:
 
-- Mailspring now conforms to the AppStream metainfo standard. Thanks @mischkl!
+- UnifyMail now conforms to the AppStream metainfo standard. Thanks @mischkl!
 
 ## 1.14.0
 
-This version of Mailspring includes several improvements:
+This version of UnifyMail includes several improvements:
 
-- Mailspring now connects to Outlook accounts using OAuth.
+- UnifyMail now connects to Outlook accounts using OAuth.
 
 - The `autoconfig` database used to identify your IMAP and SMTP settings automatically has been upgraded to reflect changes in provider settings.
 
 - On Windows and Linux, previewing attachments is more robust and works with a wider variety of files. These attachments also have rendered previews in the message view.
 
-- Mailspring allows you to add Medium, GitHub and YouTube links to email signatures created in the app. (#2484) Thanks @sudeephazra!
+- UnifyMail allows you to add Medium, GitHub and YouTube links to email signatures created in the app. (#2484) Thanks @sudeephazra!
 
 - Subject lines no longer overflow if they contain single long words (#2485) Thanks @probablykasper!
 
 Developer:
 
-- Mailspring now uses Electron 30, a recent supported release based on Chromium M124 - thanks to @Phylu for lots of PRs and manual testing that helped us move up three years of versions (v17 => v30) in the last 12 months!
+- UnifyMail now uses Electron 30, a recent supported release based on Chromium M124 - thanks to @Phylu for lots of PRs and manual testing that helped us move up three years of versions (v17 => v30) in the last 12 months!
 
 - The Changelog now mentions security contributions by Positive Technologies, Payatu, and Sonar in v1.13.3.
 
 ## 1.13.3
 
-Happy new year! This is a small update to Mailspring with a few important changes:
+Happy new year! This is a small update to UnifyMail with a few important changes:
 
 - On macOS, long-pressing a key to show it's available subtitutions (eg: `e` to see `é, ê, etc.`) now works properly in the email composer. Sorry for the delay fixing this issue, for many non-english speakers on macOS we know it's a core part of your email workflow.
 
 - We now escape subject and participant names in the print modal, ensuring that they render properly for printing. Thanks to Andrialdy R for identifying and documenting a related vulnerability.
 
-- We now use DOMPurify to sanitize the content of HTML emails for display. DOMPurify is maintained by a team of security-oriented web engineers and will ensure Mailspring protects you from the widest possible range of XSS attacks and exploits. Thanks to Yaniv Nizry of [Sonar](https://sonarsource.com) for identifying and reporting weaknesses in our old sanitizer.
+- We now use DOMPurify to sanitize the content of HTML emails for display. DOMPurify is maintained by a team of security-oriented web engineers and will ensure UnifyMail protects you from the widest possible range of XSS attacks and exploits. Thanks to Yaniv Nizry of [Sonar](https://sonarsource.com) for identifying and reporting weaknesses in our old sanitizer.
 
-- As part of the DOMPurify change, Mailspring now supports a smaller range of links in emails (https://, tel://, mailto:// etc). Thanks to Vaibhav Rajput and Prajyot Chemburkar of [Payatu](https://payatu.com/) for reporting that smb:// links were previously allowed and useful in triggering exploits.
+- As part of the DOMPurify change, UnifyMail now supports a smaller range of links in emails (https://, tel://, mailto:// etc). Thanks to Vaibhav Rajput and Prajyot Chemburkar of [Payatu](https://payatu.com/) for reporting that smb:// links were previously allowed and useful in triggering exploits.
 
 ## 1.13.2
 
 This is a patch release that fixes several issues:
 
-- Composition events in Mailspring's composer should work as expected. (Typing modifier keys, such as Option-E followed by E to create É)
+- Composition events in UnifyMail's composer should work as expected. (Typing modifier keys, such as Option-E followed by E to create É)
 
 - The composer warn about several more invalid recipient errors correctly (thanks @Phylu!)
 
@@ -290,13 +290,13 @@ This is a patch release that fixes several issues:
 
 ## 1.13.1
 
-Mailspring 1.13 now runs on Electron 22, completing a migration process we started in 1.12.0!
+UnifyMail 1.13 now runs on Electron 22, completing a migration process we started in 1.12.0!
 
-If you are upgrading from an old version of Mailspring, download and run 1.12.0 first before installing this version. We've moved from keytar to Electron's safeStorage API for securely storing your email passwords, and version 1.12.0 will perform a migration ensuring your passwords are transitioned.
+If you are upgrading from an old version of UnifyMail, download and run 1.12.0 first before installing this version. We've moved from keytar to Electron's safeStorage API for securely storing your email passwords, and version 1.12.0 will perform a migration ensuring your passwords are transitioned.
 
-If you're using the snap version of Mailspring, you may find that Mailspring forgets your passwords when you upgrade. I'm very sorry for the hassle this causes - issues with snap containment in version 1.12.0 caused Mailspring to lose many user's passwords during the upgrade process. If this applies to you, you may see password errors and need to:
+If you're using the snap version of UnifyMail, you may find that UnifyMail forgets your passwords when you upgrade. I'm very sorry for the hassle this causes - issues with snap containment in version 1.12.0 caused UnifyMail to lose many user's passwords during the upgrade process. If this applies to you, you may see password errors and need to:
 
-    Visit Preferences > Subscription and click Setup Mailspring ID and sign back in to your Mailspring account. (You should see an alert at launch that will remind you which email address you'd used for your Mailspring ID)
+    Visit Preferences > Subscription and click Setup UnifyMail ID and sign back in to your UnifyMail account. (You should see an alert at launch that will remind you which email address you'd used for your UnifyMail ID)
 
     Visit Preferences > Accounts and re-authenticate any accounts shown in red that are having connection difficulty.
 
@@ -322,7 +322,7 @@ Localization:
 
 Developer:
 
-- Mailspring now stores your mail secrets using Electron SafeStorage instead of the deprecated Keytar library thanks to updates by @Phylu. This will allow us to move to a newer version of Electron soon!
+- UnifyMail now stores your mail secrets using Electron SafeStorage instead of the deprecated Keytar library thanks to updates by @Phylu. This will allow us to move to a newer version of Electron soon!
 
 - The Snap package now uses core22 and the `gnome` extension. (Thanks @soumyaDghosh)
 
@@ -332,11 +332,11 @@ Features:
 
 - The "Move to Folder" menu action allows you to press Tab or the "→" key to complete the name of the highlighted folder, which makes it easier to complete a path in long folder hierarchies.
 
-- Mailspring now properly identifies and formats quoted text from Yahoo and AOL email. (Thanks @nzayatz14)
+- UnifyMail now properly identifies and formats quoted text from Yahoo and AOL email. (Thanks @nzayatz14)
 
-- On MacOS, the Mailspring icon in the dock now allows you to compose a new message from the context menu. (thanks @Naroh091)
+- On MacOS, the UnifyMail icon in the dock now allows you to compose a new message from the context menu. (thanks @Naroh091)
 
-- Mailspring's menu bar icon is now red for new mail and blue for unread mail, which makes it easier to spot a new message that needs attention. (#2433, thanks @marivaldojr)
+- UnifyMail's menu bar icon is now red for new mail and blue for unread mail, which makes it easier to spot a new message that needs attention. (#2433, thanks @marivaldojr)
 
 Bug Fixes:
 
@@ -344,7 +344,7 @@ Bug Fixes:
 
 - The help menu now offers the standard MacOS "menu search" feature (Thanks @probablykasper)
 
-- Colons are allowed in URLs and no longer break Mailspring's link highlighting. (thanks @choptastic!)
+- Colons are allowed in URLs and no longer break UnifyMail's link highlighting. (thanks @choptastic!)
 
 - The email preview is no longer in some cases in vertical layout (thanks @glenn2223!)
 
@@ -352,11 +352,11 @@ Bug Fixes:
 
 Developer:
 
-- Mailspring now uses a more restrictive Content-Security-Policy that includes `object-src none; media-src mailspring:; manifest-src none;`. If your plugin packaged media such as sounds, you may need to reference them via the mailspring:// URL syntax (ala 2b75347c) (Thanks to Igor Sak-Sakovskiy of [Positive Technologies](https://www.ptsecurity.com/ww-en/) for a related vulnerability report.)
+- UnifyMail now uses a more restrictive Content-Security-Policy that includes `object-src none; media-src UnifyMail:; manifest-src none;`. If your plugin packaged media such as sounds, you may need to reference them via the UnifyMail:// URL syntax (ala 2b75347c) (Thanks to Igor Sak-Sakovskiy of [Positive Technologies](https://www.ptsecurity.com/ww-en/) for a related vulnerability report.)
 
 ## 1.10.8 (12/29/2022)
 
-_Happy new year! Thanks for your continued support - we're celebrating five years of open-source and the 60th Mailspring release!_
+_Happy new year! Thanks for your continued support - we're celebrating five years of open-source and the 60th UnifyMail release!_
 
 Features:
 
@@ -364,17 +364,17 @@ Features:
 
 Bug Fixes:
 
-- Launching Mailspring after a long time no longer causes the app to crash trying to show the vacuum UI. (Thankfully these changes do complete, so this error is recoverable.)
+- Launching UnifyMail after a long time no longer causes the app to crash trying to show the vacuum UI. (Thankfully these changes do complete, so this error is recoverable.)
 
-- Mailspring no longer shows "0pm" at 12pm / noon in some scenarios. (Thanks @glenn2223!)
+- UnifyMail no longer shows "0pm" at 12pm / noon in some scenarios. (Thanks @glenn2223!)
 
 - Updated Italian translations (thanks @andy00087!)
 
 ## 1.10.7 (11/21/2022)
 
-- When creating a new IMAP + SMTP account, Mailspring sends a test message through the SMTP gateway to yourself, instead of attempting to send the message to an invalid address.
+- When creating a new IMAP + SMTP account, UnifyMail sends a test message through the SMTP gateway to yourself, instead of attempting to send the message to an invalid address.
 
-- When clicking "Unsubscribe", Mailspring verifies that the unsubscribe URL in the email will open in your default web browser.
+- When clicking "Unsubscribe", UnifyMail verifies that the unsubscribe URL in the email will open in your default web browser.
 
 - Composer recipient warnings are now optional. (Thanks @arhanjain!)
 
@@ -392,11 +392,11 @@ Changes:
 
 - Inline image "cid:" references may appear only in `<img src=“”>`, and may not appear elsewhere in message bodies. (Thanks to Igor Sak-Sakovskiy of [Positive Technologies](https://www.ptsecurity.com/ww-en/) for this vulnerability report.)
 
-- Mailspring uses iframe sandboxing to disallow interactivity in message bodies, in addition to santizing loaded HTML down to a strict list of tags and attributes.
+- UnifyMail uses iframe sandboxing to disallow interactivity in message bodies, in addition to santizing loaded HTML down to a strict list of tags and attributes.
 
 - Fixes a rare ResizeObserver error loop caused by messages resizing as they're unmounted.
 
-- Mailspring's Flatpak version number has been updated.
+- UnifyMail's Flatpak version number has been updated.
 
 - The Brazilian Portuguese translation has been reviewed and refined by @matheusreich (#2429)
 
@@ -404,9 +404,9 @@ Changes:
 
 - Fix `[Message Clipped - Show All]` link (Thanks @glenn2223! #2426)
 
-- The message participant list is easier to interact with, thanks to several adjustments by @glenn2223! See https://github.com/Foundry376/Mailspring/pull/2425 for more details.
+- The message participant list is easier to interact with, thanks to several adjustments by @glenn2223! See https://github.com/TheDarkSkyXD/UnifyMail/pull/2425 for more details.
 
-- The "Recent Emails" content in Mailspring's sidebar now displays the weekday and time (eg: "Mon, 10:15") and shows 5 days of emails rather than 2.
+- The "Recent Emails" content in UnifyMail's sidebar now displays the weekday and time (eg: "Mon, 10:15") and shows 5 days of emails rather than 2.
 
 ## 1.10.5 (8/10/2022)
 
@@ -420,7 +420,7 @@ Changes:
 
 ## 1.10.4 (8/9/2022)
 
-This release updates Mailspring to address a recent Google policy change and fixes email sync with Gmail accounts. This release also moves Mailspring to 64-bit on Windows (Thanks @ronymesquita), and adds an Apple Silicon build for M1 and M2 Macs, dramatically improving performance on those machines. (It's super noticeable!)
+This release updates UnifyMail to address a recent Google policy change and fixes email sync with Gmail accounts. This release also moves UnifyMail to 64-bit on Windows (Thanks @ronymesquita), and adds an Apple Silicon build for M1 and M2 Macs, dramatically improving performance on those machines. (It's super noticeable!)
 
 Changes:
 
@@ -428,13 +428,13 @@ Changes:
 
 - When connecting an Office365 account, you're now prompted to choose an email account on the web. (Thanks @fanrenng!)
 
-- Mailspring now uses longer-lived Office365 credentials, eliminating the need to sign back in to your account periodically. (Thanks @fanrenng)
+- UnifyMail now uses longer-lived Office365 credentials, eliminating the need to sign back in to your account periodically. (Thanks @fanrenng)
 
 - Linux sendto functionality has been fixed to correctly handle electron internal options (#2409) (Thanks @Phylu!)
 
 ## 1.10.3 (4/14/2022)
 
-This release fixes several important issues and moves Mailspring to Electron 18:
+This release fixes several important issues and moves UnifyMail to Electron 18:
 
 - Fix the show original functionality by correctly electron/remote (Thanks @Phylu!)
 
@@ -450,9 +450,9 @@ This release fixes several important issues and moves Mailspring to Electron 18:
 
 ## 1.10.2 (3/29/2022)
 
-This release fixes an issue with Mailspring's quicklook implementation that surfaced yesterday and could allow for remote code execution using specially crafted attachments. Thanks to `posix` for reporting the issue and @Phylu for the fix.
+This release fixes an issue with UnifyMail's quicklook implementation that surfaced yesterday and could allow for remote code execution using specially crafted attachments. Thanks to `posix` for reporting the issue and @Phylu for the fix.
 
-- This release also improves Mailspring's Turkish localization (Thanks @emintufan!)
+- This release also improves UnifyMail's Turkish localization (Thanks @emintufan!)
 
 ## 1.10.1 (3/12/2022)
 
@@ -460,25 +460,25 @@ This release fixes a critical issue in 1.10.0 that caused the app to fail to lau
 
 - Fixes the "View License" menu item on Windows (Thanks @Phylu!)
 
-- References to "You" in Mailspring now include the label of the relevant account anytime more than one account is present. (Thanks @Phylu!)
+- References to "You" in UnifyMail now include the label of the relevant account anytime more than one account is present. (Thanks @Phylu!)
 
 ## 1.10.0 (2/28/2022)
 
-This release moves Mailspring from Electron 8 to Electron 14 thanks to the hard work of @Phylu and other community members! 🎉 This brings Wayland support on Linux and many performance and security improvements.
+This release moves UnifyMail from Electron 8 to Electron 14 thanks to the hard work of @Phylu and other community members! 🎉 This brings Wayland support on Linux and many performance and security improvements.
 
-- This will allow Mailspring to ship Universal builds for MacOS ARM machines!
+- This will allow UnifyMail to ship Universal builds for MacOS ARM machines!
 
-- Mailspring now uses the system spellchecker more directly - on MacOS, the spellcheck language is auto-determined as you type.
+- UnifyMail now uses the system spellchecker more directly - on MacOS, the spellcheck language is auto-determined as you type.
 
 - We have temporarily removed the ability to reply directly from notification toasts on MacOS, pending futher support for it in Electron.
 
 **Features:**
 
-- The Mailspring snapcraft distribution now loads using LZO, which significantly improves launch performance. (Thanks to @kz6fittycent)
+- The UnifyMail snapcraft distribution now loads using LZO, which significantly improves launch performance. (Thanks to @kz6fittycent)
 
-- Mailspring now skips "All Mail" when syncing Protonmail accounts which prevents messages from thrashing between folders and consuming significant CPU. (Thanks to @bl00mber and others!)
+- UnifyMail now skips "All Mail" when syncing Protonmail accounts which prevents messages from thrashing between folders and consuming significant CPU. (Thanks to @bl00mber and others!)
 
-- Mailspring now defaults to SSL / TLS on port 465 for SMTP, per RFC 8314 (Thanks to @slokhorst)
+- UnifyMail now defaults to SSL / TLS on port 465 for SMTP, per RFC 8314 (Thanks to @slokhorst)
 
 - We now go back to inbox after "Remove and show next/previous" for last email (Thanks to @nino)
 
@@ -494,7 +494,7 @@ This release moves Mailspring from Electron 8 to Electron 14 thanks to the hard 
 
 **Fixes:**
 
-- Signature image upload is correctly disabled if you are signed out of Mailspring ID since we can't store your assets in a GDPR-compliant way without authentication.
+- Signature image upload is correctly disabled if you are signed out of UnifyMail ID since we can't store your assets in a GDPR-compliant way without authentication.
 
 - Mailbox permalinks continue to work outside of the thread-sharing plugin
 
@@ -502,7 +502,7 @@ This release moves Mailspring from Electron 8 to Electron 14 thanks to the hard 
 
 - The "Mark as spam" keyboard shortcut is now configurable from Preferences > Shortcuts
 
-- Launching Mailspring in the background on startup now works correctly on macOS.
+- Launching UnifyMail in the background on startup now works correctly on macOS.
 
 **Localization:**
 
@@ -512,9 +512,9 @@ This release moves Mailspring from Electron 8 to Electron 14 thanks to the hard 
 
 **Fixes:**
 
-- Mailspring no longer closes after you link your first account if the system tray has not been configured.
+- UnifyMail no longer closes after you link your first account if the system tray has not been configured.
 
-- Mailspring's connections to its database no longer time out (causing the red account warning) while syncing more than ~4 accounts, thanks to an updated build of SQLite.
+- UnifyMail's connections to its database no longer time out (causing the red account warning) while syncing more than ~4 accounts, thanks to an updated build of SQLite.
 
 Thanks to everyone for reporting these issues and contributing the information we needed to track them down!
 
@@ -522,9 +522,9 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 **Features:**
 
-- Mailspring no longer requires a Mailspring ID! You can opt-out in the app's setup flow and connect your email accounts without first creating a Mailspring ID. Doing so disables features that require paid APIs and cloud data storage (send later, read receipts, etc.), but you can opt in and create an account at any time from Preferences > Subscription.
+- UnifyMail no longer requires a UnifyMail ID! You can opt-out in the app's setup flow and connect your email accounts without first creating a UnifyMail ID. Doing so disables features that require paid APIs and cloud data storage (send later, read receipts, etc.), but you can opt in and create an account at any time from Preferences > Subscription.
 
-- Mailspring has moved to Discourse for bug, feature, and issue management, and the app now links to resources in the community instead of Zendesk! (#2263)
+- UnifyMail has moved to Discourse for bug, feature, and issue management, and the app now links to resources in the community instead of Zendesk! (#2263)
 
 - A third display mode allows you to vertically stack the inbox and message panes! (#2243)
 
@@ -536,7 +536,7 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 - Emails with an unsubscribe link now display an unsubscribe option above the message body (#2275)
 
-- Closing the main window when the system tray / background notifications are disabled quits Mailspring (#2279)
+- Closing the main window when the system tray / background notifications are disabled quits UnifyMail (#2279)
 
 - Portguese, Korean, and Czech are now verified localizations, thanks to @smarquespt, @Indosaram and @BlueManCZ!
 
@@ -562,7 +562,7 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 **Developer:**
 
-- Mailspring now uses Electron 8.5.5 which includes performance improvements and security patches.
+- UnifyMail now uses Electron 8.5.5 which includes performance improvements and security patches.
 
 - "Toggle Localizer Tools" has been removed, please use PRs to submit localizations!
 
@@ -588,11 +588,11 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 - The event header that appears when an email contains an ICS attachment now shows the correct timezone. #2093, #2255
 
-- On Linux, Mailspring no longer specifies `python` or `git` as package dependencies unnecessarily.
+- On Linux, UnifyMail no longer specifies `python` or `git` as package dependencies unnecessarily.
 
 **Developer:**
 
-- Mailspring now uses Electron 4.2.12 in preparation for a jump to Electron 8+.
+- UnifyMail now uses Electron 4.2.12 in preparation for a jump to Electron 8+.
 
 ### 1.7.8 (5/24/2020)
 
@@ -606,19 +606,19 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 **Developer:**
 
-- Mailspring now uses CSS properties on `mailspring-workspace` to set the height of the thread list and other key components so themes can customize them! See #2004 for details and thanks to @sergeystoma for this improvement!
+- UnifyMail now uses CSS properties on `UnifyMail-workspace` to set the height of the thread list and other key components so themes can customize them! See #2004 for details and thanks to @sergeystoma for this improvement!
 
 ### 1.7.7 (5/20/2020)
 
 **Fixes:**
 
-- Mailspring now ships with OpenSSL-1.1.0f on Windows and Linux, which resolves connection issues with Yahoo and other IMAP providers that recently began requiring newer SSL / TLS features. #1974
+- UnifyMail now ships with OpenSSL-1.1.0f on Windows and Linux, which resolves connection issues with Yahoo and other IMAP providers that recently began requiring newer SSL / TLS features. #1974
 
 - When testing IMAP auth, mailcore and libetpan debug logs are included in the "Detailed Log" output, which will make the above easier to track down in the future. #1974
 
 - On Windows, pasting CRLF delimited plain text does not result in newlines being lost. #1756
 
-- Mailspring no longer fails to connect to SMTP servers on older Linux distros (Ubuntu 14, etc.) that do not have `realpath` installed. #1974
+- UnifyMail no longer fails to connect to SMTP servers on older Linux distros (Ubuntu 14, etc.) that do not have `realpath` installed. #1974
 
 - Groups of more than 999 contacts no longer cause “sqlite too many variables” errors during contact sync. #1951
 
@@ -636,19 +636,19 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 **Fixes:**
 
-- When re-authenticating existing from Preferences > Accounts, Mailspring no longer gets stuck displaying the settings window in some scenarios.
+- When re-authenticating existing from Preferences > Accounts, UnifyMail no longer gets stuck displaying the settings window in some scenarios.
 
-- When applying templates in the composer, Mailspring correctly clears the styling of the first line of your draft.
+- When applying templates in the composer, UnifyMail correctly clears the styling of the first line of your draft.
 
-- When switching signatures in the composer, Mailspring no longer mangles your draft content in some scenarios.
+- When switching signatures in the composer, UnifyMail no longer mangles your draft content in some scenarios.
 
 - In the composer, `Select-all` + `Delete` no longer fails to delete your text if the very last block of your message is your signature.
 
 - In the composer, undoing past the end of your "undo history" no longer removes focus from the editor.
 
-- Mailspring now autolinks URLs that contain multiple `?` in the query string correctly.
+- UnifyMail now autolinks URLs that contain multiple `?` in the query string correctly.
 
-- Mailspring uses relative URLs for it's own assets, so the filesystem path to the application can safely contain characters like `#` and `?` safely. #1366
+- UnifyMail uses relative URLs for it's own assets, so the filesystem path to the application can safely contain characters like `#` and `?` safely. #1366
 
 - When messages must scroll horizontally, we add 20px to the computed height to account for the scrollbar and avoid clipping the last line of text. #1762
 
@@ -668,19 +668,19 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 - Disabling image autoloading now works consistently and also prevents requests for external stylesheets and web fonts that could be used for tracking.
 
-- Mailspring no longer gets "stuck" creating all drafts and replies in plaintext in some cases. #1894
+- UnifyMail no longer gets "stuck" creating all drafts and replies in plaintext in some cases. #1894
 
 - Localizations have been improved for Simplified Chinese and Russian (Thanks @anthonywong, @raven-kg), and @dvomaks added a Ukranian translation! All three have been added to the "verified localizations" list so they're easier to find in the language dropdown.
 
-- If your machine's hostname contains spaces, Mailspring will strip them when identifying itself to SMTP servers to avoid being rejected in some cases. If it cannot determine your hostname it will fall back to your IP address similar to how Thunderbird works. #1808
+- If your machine's hostname contains spaces, UnifyMail will strip them when identifying itself to SMTP servers to avoid being rejected in some cases. If it cannot determine your hostname it will fall back to your IP address similar to how Thunderbird works. #1808
 
 - Deleting a "Found in Mail" contact from a CardDAV account (Fastmail, etc.) no longer causes sync to crash. #1722
 
-- On Linux, Mailspring now depends on python2 for Ubuntu 20.
+- On Linux, UnifyMail now depends on python2 for Ubuntu 20.
 
-- On Linux, Mailspring's lists itself as a "Mail Client" rather than saying "Mailspring Mailspring" (Thanks @@SaeedBaig)
+- On Linux, UnifyMail's lists itself as a "Mail Client" rather than saying "UnifyMail UnifyMail" (Thanks @@SaeedBaig)
 
-- When downloading attachments, Mailspring will not overwrite files in the selected folder and will choose unique names for attachments with the same name. #1901
+- When downloading attachments, UnifyMail will not overwrite files in the selected folder and will choose unique names for attachments with the same name. #1901
 
 - The LinkedIn URLs in the contact sidebar no longer contain duplicate `in/in/` fragments in some cases. #1875
 
@@ -692,17 +692,17 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 **Features:**
 
-- Mailspring has been approved for read-write access to the Google People API and you can now manage contacts in Google accounts! Mailspring will ask you to go to Preferences > Accounts and click "Re-authorize" to grant access to this additional permission before editing contacts.
+- UnifyMail has been approved for read-write access to the Google People API and you can now manage contacts in Google accounts! UnifyMail will ask you to go to Preferences > Accounts and click "Re-authorize" to grant access to this additional permission before editing contacts.
 
-- We no longer use `is-online` and DNS checks to verify that the app is online. Instead, Mailspring checks that it can reach your actual IMAP / SMTP mail servers. #1357, #1731, #1123
+- We no longer use `is-online` and DNS checks to verify that the app is online. Instead, UnifyMail checks that it can reach your actual IMAP / SMTP mail servers. #1357, #1731, #1123
 
-- Mailspring now supports plaintext mail display and composition! It can be enabled via a new setting, or for a single draft by holding Alt/Option when creating it. Most composer features are disabled in ths mode - for more information, check out https://github.com/Foundry376/Mailspring/issues/52#issuecomment-588627578.
+- UnifyMail now supports plaintext mail display and composition! It can be enabled via a new setting, or for a single draft by holding Alt/Option when creating it. Most composer features are disabled in ths mode - for more information, check out https://github.com/TheDarkSkyXD/UnifyMail/issues/52#issuecomment-588627578.
 
 **Fixes:**
 
-- Mailspring now prompts you to confirm that you'd like to delete folders and labels. #1785
+- UnifyMail now prompts you to confirm that you'd like to delete folders and labels. #1785
 
-- When pasting a table from Excel or other forms of HTML that use `<style>` tags, Mailspring inlines the CSS and preserves it better in your message. #1773
+- When pasting a table from Excel or other forms of HTML that use `<style>` tags, UnifyMail inlines the CSS and preserves it better in your message. #1773
 
 - Adding and removing accounts no longer dismisses the app's preferences. #1684
 
@@ -714,13 +714,13 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 - The Russian, Chinese, Latin American Spanish and French translations have been improved (thanks @araven, @keyduq, @laichiaheng, and @raven-kg), and the entire app has been localized into Galician thanks to @markoshorro!
 
-- Mailspring no longer crashes with a concurrency issue in some scenarios trying to launch sync on Linux.
+- UnifyMail no longer crashes with a concurrency issue in some scenarios trying to launch sync on Linux.
 
 - Scheduling reminders, etc. across the DST boundary now works properly in Brazil, which stopped using DST in 2019. #1767
 
 - The default shortcut for deleting an empty draft is now Ctrl/Cmd + Escape, which works within the text editor. #1776
 
-- Mailspring's email address autolinking no longer includes some UTF-8 control characters (most notably &nbsp;) in the email address link. #1796
+- UnifyMail's email address autolinking no longer includes some UTF-8 control characters (most notably &nbsp;) in the email address link. #1796
 
 **Misc:**
 
@@ -730,7 +730,7 @@ Thanks to everyone for reporting these issues and contributing the information w
 
 - Preferences > Shortcuts is now split into two columns on wide displays.
 
-- Mailspring is now automatically notorized for macOS Catalina
+- UnifyMail is now automatically notorized for macOS Catalina
 
 ### 1.7.3 (2/24/2020)
 
@@ -744,7 +744,7 @@ The 1.7.3 release was broken because of Apple's February 2020 changes to macOS c
 
 - You can now add Instagram handles to your email signatures (Thanks @piotrzarycki!)
 
-- When switching layout modes, Mailspring clears the selection to avoid an immediate mark-as-read #1679
+- When switching layout modes, UnifyMail clears the selection to avoid an immediate mark-as-read #1679
 
 - On macOS, you can now use the Ctrl key as a modifier for shortcuts defined from the Preferences > Shortcuts screen. (#1678)
 
@@ -758,25 +758,25 @@ This is small patch release addressing #1659 (conversation list gets stuck in th
 
 Features:
 
-**Incoming Message Translation**: Mailspring now offers to translate emails you receive in other languages. When you choose to translate an email, Mailspring sends the text of the message to a translation service (currently Yandex) and displays the result. Free users can translate up to 50 messages a week - Mailspring Pro removes the limit and allows you to "Automatically Translate" all messages in particular languages.
+**Incoming Message Translation**: UnifyMail now offers to translate emails you receive in other languages. When you choose to translate an email, UnifyMail sends the text of the message to a translation service (currently Yandex) and displays the result. Free users can translate up to 50 messages a week - UnifyMail Pro removes the limit and allows you to "Automatically Translate" all messages in particular languages.
 
-- Note: We're waiting on Google to approve Mailspring for access to the "Read-write Contacts" Oauth scope, so Gmail accounts will be read-only until ~December 2019.
+- Note: We're waiting on Google to approve UnifyMail for access to the "Read-write Contacts" Oauth scope, so Gmail accounts will be read-only until ~December 2019.
 
-**Contact Management**: Mailspring now includes a full-featured address book available from the `Window` menu! You can create, update, and delete contacts and contact groups in connected Google and CardDAV-compatible accounts (iCloud, FastMail and others.) Mailspring also allows you to turn off automatic suggestions based on your sent mail, and delete individual contact suggestions. When composing an email, you can now type the name of a group to insert all of the contacts in that group as recipients.
+**Contact Management**: UnifyMail now includes a full-featured address book available from the `Window` menu! You can create, update, and delete contacts and contact groups in connected Google and CardDAV-compatible accounts (iCloud, FastMail and others.) UnifyMail also allows you to turn off automatic suggestions based on your sent mail, and delete individual contact suggestions. When composing an email, you can now type the name of a group to insert all of the contacts in that group as recipients.
 
 Fixes:
 
-- Mailspring now displays unread mail notifications reliably, fixing a race-condition that occurred when new messages were synced too fast. #1467
+- UnifyMail now displays unread mail notifications reliably, fixing a race-condition that occurred when new messages were synced too fast. #1467
 
 - You can now re-order your email acccounts via drag and drop in Preferences > Accounts. #1577
 
-- Mailspring always displays non-inline image attachments as files in the composer. Previously they looked identical to inline images. #1653
+- UnifyMail always displays non-inline image attachments as files in the composer. Previously they looked identical to inline images. #1653
 
 - The French, Slovenian, Portuguese, German, Tamil, and Chinese translations have been improved. (Thanks struk3lj, @matheusreich, @danopz, @Cortys , @mpetitjean, @singer233, and @lizzards!)
 
-- Mailspring does a better job removing quoted text formatted by very old versions of Outlook.
+- UnifyMail does a better job removing quoted text formatted by very old versions of Outlook.
 
-- Mailspring no longer freezes when you type a link with a "#" (hash character) and then press return.
+- UnifyMail no longer freezes when you type a link with a "#" (hash character) and then press return.
 
 - On Linux and Windows, the system tray no longer turns blue whenever the app's window is hidden. #1467, #1017
 
@@ -784,11 +784,11 @@ Fixes:
 
 - A new option in Preferences > General allows you to expand message headers by default. #1521 #1525
 
-- Mailspring's icon now appears square in the Windows Start menu.
+- UnifyMail's icon now appears square in the Windows Start menu.
 
-- You can now dismiss Mailspring's upgrade prompt on Linux. #1514, #913
+- You can now dismiss UnifyMail's upgrade prompt on Linux. #1514, #913
 
-- Social links in Mailspring's sidebar now properly contain the www. prefix when required. #1559
+- Social links in UnifyMail's sidebar now properly contain the www. prefix when required. #1559
 
 - You can now type date shorthands (eg: "2d" or "2w") into the snooze date picker. #1621
 
@@ -796,7 +796,7 @@ Developer:
 
 - On Debian Linux, we suggest rather than require gnomekeyring #998
 
-- The (broken) plugin template has been removed - the starter for a Mailspring plugin is now located at https://github.com/Foundry376/Mailspring-Plugin-Starter #1645
+- The (broken) plugin template has been removed - the starter for a UnifyMail plugin is now located at https://github.com/TheDarkSkyXD/UnifyMail-Plugin-Starter #1645
 
 ### 1.6.3 (7/1/2019)
 
@@ -814,15 +814,15 @@ Fixes:
 
 - You can no longer select a Label as your Gmail "Trash" folder. This was the root cause of several crashes and is not really conceptually supported by Gmail.
 
-- Mailspring now warns when loading plugins that have not been compiled to JavaScript ahead of time. (We no longer ship TypeScript + Babel because relying on a specific verison is problematic and they are 30+ MB)
+- UnifyMail now warns when loading plugins that have not been compiled to JavaScript ahead of time. (We no longer ship TypeScript + Babel because relying on a specific verison is problematic and they are 30+ MB)
 
 ### 1.6.2 (6/18/2019)
 
 Highlights:
 
-- Mailspring now allows you to RSVP to calendar events directly from your inbox. Messages with .ics attachments or text/calendar mime-parts are displayed in a nice expanded format. The Calendar preview is back and more features are coming soon!
+- UnifyMail now allows you to RSVP to calendar events directly from your inbox. Messages with .ics attachments or text/calendar mime-parts are displayed in a nice expanded format. The Calendar preview is back and more features are coming soon!
 
-- A new menu option, "Copy Mailbox Permalink", allows you to generate a `mailspring://` URL for a thread. Clicking this link from another application opens the thread in Mailspring. Note: this is separate from thread sharing (public links) and only works on computers with the account synced.
+- A new menu option, "Copy Mailbox Permalink", allows you to generate a `UnifyMail://` URL for a thread. Clicking this link from another application opens the thread in UnifyMail. Note: this is separate from thread sharing (public links) and only works on computers with the account synced.
 
 - The composer is faster, more reliable, and uses significantly less RAM over time thanks to a new version of the SlateJS text editor. You can also drag and drop selected text and drag/copy/paste inline images. #1446, #578, #727, #773, #950, #1211, #1437
 
@@ -830,7 +830,7 @@ Improvements:
 
 - The message viewer and the composer now stretch the full width of their panels by default. To get the old behavior back, enable "Restrict width of messages to maximize readability." in Preferences > General. #251
 
-- Mailspring now supports snapcraft on Wayland properly. #1517 - thanks @e3b0c442!
+- UnifyMail now supports snapcraft on Wayland properly. #1517 - thanks @e3b0c442!
 
 - In dark themes, copy-pasting text out of an email into the composer will no longer transfer the text color if it's the theme default. #1053, #1309, #641, #1290
 
@@ -842,17 +842,17 @@ Improvements:
 
 - Sender name validation ("Are you sure you want to send addressed to 'Ben'?") now supports hyphenated names correctly. #1445
 
-- On Linux, Mailspring handles icon themes without context keys properly. #1467
+- On Linux, UnifyMail handles icon themes without context keys properly. #1467
 
 - The Dutch and Czech translations have been improved - thanks @mathiasbosman and @stepa0648!
 
-- Mailspring displays a confirmation dialog before resetting accounts and settings. #1486 - thanks @joaolongo!
+- UnifyMail displays a confirmation dialog before resetting accounts and settings. #1486 - thanks @joaolongo!
 
-- Mailspring now warns if a permission error prevents it from updating it's macOS launch-on-start settings. #1493
+- UnifyMail now warns if a permission error prevents it from updating it's macOS launch-on-start settings. #1493
 
 - Incoming attachments without names are now given default names with file extensions inferred from their content type. #1487
 
-- Mailspring no longer displays some HTML messages with specific styles at a height of 0px. #1496
+- UnifyMail no longer displays some HTML messages with specific styles at a height of 0px. #1496
 
 - The color picker in the composer now includes a thin border so it's easier to see in all themes. #645
 
@@ -866,9 +866,9 @@ Improvements:
 
 Development:
 
-- Mailspring now uses Electron 4.2.4, which includes several security patches and minor bug fixes.
+- UnifyMail now uses Electron 4.2.4, which includes several security patches and minor bug fixes.
 
-- Resizing Mailspring's main window is considerably faster thanks to better use of ResizeObserver.
+- Resizing UnifyMail's main window is considerably faster thanks to better use of ResizeObserver.
 
 ### 1.6.1 (4/4/2019)
 
@@ -894,17 +894,17 @@ Fixes:
 
 - The Russian translation has been improved. Thanks @ivan-nginx!
 
-- Mailspring now uses Electron 4.1.4, which fixes several crashes and an issue on KDE where tray icons would be displayed incorrectly as a 22x22 square cropped from the center.
+- UnifyMail now uses Electron 4.1.4, which fixes several crashes and an issue on KDE where tray icons would be displayed incorrectly as a 22x22 square cropped from the center.
 
 ### 1.6.0 (3/18/2019)
 
-**Mailspring now uses the TypeScript compiler instead of Babel, and the entire project (92,000 LOC!) has been converted to TypeScript. 🎉** This took an enormous amount of effort - 9,800 TypeScript errors were resolved by hand - but will make the project more stable, easier to maintain, and easier to contribute to in the future.
+**UnifyMail now uses the TypeScript compiler instead of Babel, and the entire project (92,000 LOC!) has been converted to TypeScript. 🎉** This took an enormous amount of effort - 9,800 TypeScript errors were resolved by hand - but will make the project more stable, easier to maintain, and easier to contribute to in the future.
 
 - The German translation has been improved (Thanks @ahahn94!) and Japanese is now listed as a fully reviewed language!
 
 - The Linux system tray icon is now larger and brighter when unread, which looks better on most Linux distros. (#1386)
 
-- Mailspring now shows it's icon in notifications and correctly resolves the icon from your current theme is only supported for Gnome, Mate and Budgie. (Thanks @arkraft!)
+- UnifyMail now shows it's icon in notifications and correctly resolves the icon from your current theme is only supported for Gnome, Mate and Budgie. (Thanks @arkraft!)
 
 - When clicking the track of a scrollbar, the view is scrolled by one page up or down rather than scrolling to the clicked position.
 
@@ -912,7 +912,7 @@ Fixes:
 
 - Preferences styling has been slightly improved.
 
-- Mailspring now uses Electron 4.0.8 which includes a recent security patch and is recommended for all users.
+- UnifyMail now uses Electron 4.0.8 which includes a recent security patch and is recommended for all users.
 
 - Window controls are no longer “squished” in the darkside theme on Linux #1104
 
@@ -920,7 +920,7 @@ Fixes:
 
 - When using the Outlook keybindings, Ctrl-F is no longer tied to both "Forward" and "Find in thread". "Find in thread" has been changed to Ctrl-Shift-F for consistency with Outlook.
 
-- Mailspring strips surrounding quotes from displayed contact namess. #1397
+- UnifyMail strips surrounding quotes from displayed contact namess. #1397
 
 ### 1.5.7 (2/25/2019)
 
@@ -930,48 +930,48 @@ Fixes:
 
 - Duplicate sent emails (your copy + the recipient's copy) no longer appear in Gmail when open/link tracking are enabled. Gmail IMAP changed handling of IMAP Delete + Expunge in Sent Mail earlier this month causing this bug. This also resolves issues where viewing a message you sent would trigger read receipts. #1279 #1086 #937 #1162 #1049
 
-- Mailspring no longer erases all your account passwords when signing out of your Mailspring ID on macOS due to a race condition.
+- UnifyMail no longer erases all your account passwords when signing out of your UnifyMail ID on macOS due to a race condition.
 
-- Cut/copy/paste and undo/redo now work in the "Create a Mailspring ID" and "Upgrade to Pro" webviews within the app. #15219
+- Cut/copy/paste and undo/redo now work in the "Create a UnifyMail ID" and "Upgrade to Pro" webviews within the app. #15219
 
-- Mailspring now requests the "internal / received" date of emails to handle providers (including home.pl) which do not return message dates when asked for mailbox headers. This fixes an important issue where all emails could appear to be from 1969.
+- UnifyMail now requests the "internal / received" date of emails to handle providers (including home.pl) which do not return message dates when asked for mailbox headers. This fixes an important issue where all emails could appear to be from 1969.
 
-- Mailspring now renders inline images attachments within the body of the email even if they're missing an "inline" content-disposition. Previously these images would appear as attachments at the bottom of the message.
+- UnifyMail now renders inline images attachments within the body of the email even if they're missing an "inline" content-disposition. Previously these images would appear as attachments at the bottom of the message.
 
-- Mailspring now supports home.pl accounts which advertised support for the IMAP XLIST extension but did not appear to implement it properly.
+- UnifyMail now supports home.pl accounts which advertised support for the IMAP XLIST extension but did not appear to implement it properly.
 
 - The contact sidebar now opens LinkedIn person profiles correctly - the "/in/" segment of the URL was previously missing.
 
 - The signature editor now allows you to add a link to your LinkedIn profile.
 
-- Mailspring shows the "Snoozed" folder name correctly in cases where it's called "Mailspring.Snoozed".
+- UnifyMail shows the "Snoozed" folder name correctly in cases where it's called "UnifyMail.Snoozed".
 
-- Mailspring is now less aggressive about wrapping wide emails and prefers horizontal scrolling
+- UnifyMail is now less aggressive about wrapping wide emails and prefers horizontal scrolling
   for large tables, etc.
 
 - French translations have been improved (thanks to @Gaspacchio!)
 
 Performance:
 
-- Mailspring now uses DOM ResizeObservers to implement scroll bars and properly size emails as they render which is a huge performance win, especially on slower machines.
+- UnifyMail now uses DOM ResizeObservers to implement scroll bars and properly size emails as they render which is a huge performance win, especially on slower machines.
 
-- Mailspring refreshes the data backing the conversation view asynchronously when threads are removed, eliminating jank that was especially noticable if you'd scrolled down in the list and were viewing a unified mailbox.
+- UnifyMail refreshes the data backing the conversation view asynchronously when threads are removed, eliminating jank that was especially noticable if you'd scrolled down in the list and were viewing a unified mailbox.
 
 Development:
 
-- Mailspring now uses Electron 4.0.5.
+- UnifyMail now uses Electron 4.0.5.
 
 ### 1.5.6 (2/8/2019)
 
 Features:
 
-- Mailspring now generates quick attachment previews of common "code" file types using Prism, including .html, .json, .txt, .log.
+- UnifyMail now generates quick attachment previews of common "code" file types using Prism, including .html, .json, .txt, .log.
 
 - Italian, Japanese and French translations have been improved (Thanks to @kometchtech, @ecavicc and @gooodmorningopenstack!)
 
 Fixes:
 
-- Mailspring now configures Yandex email accounts on custom domains correctly. #1337
+- UnifyMail now configures Yandex email accounts on custom domains correctly. #1337
 
 - Emails that use `<style>` tags and `class` attributes without any inline styles are now rendered correctly.
 
@@ -981,19 +981,19 @@ Fixes:
 
 Development:
 
-- Mailspring now uses Electron 4.0.4 which fixes several memory leaks.
+- UnifyMail now uses Electron 4.0.4 which fixes several memory leaks.
 
-- A preview of Mailspring's upcoming Calendar feature is available under the Developer menu. Right now, it only supports Google Calendar and the data shown on the calendar is read-only. Stay tuned! The UI was originally developed for Nylas Mail before it was shuttered and we'll be re-launching it this summer.
+- A preview of UnifyMail's upcoming Calendar feature is available under the Developer menu. Right now, it only supports Google Calendar and the data shown on the calendar is read-only. Stay tuned! The UI was originally developed for Nylas Mail before it was shuttered and we'll be re-launching it this summer.
 
 ### 1.5.5 (1/3/2019)
 
 Features:
 
-- Mailspring now shows visual previews of PDF, DOCX, XLSX, XLS, CSV, and Markdown attachments on Windows and Linux as well as macOS. Selecting an attachment in the message view and pressing the space bar or clicking the small "eye" icon shows a preview of the contents in a new window.
+- UnifyMail now shows visual previews of PDF, DOCX, XLSX, XLS, CSV, and Markdown attachments on Windows and Linux as well as macOS. Selecting an attachment in the message view and pressing the space bar or clicking the small "eye" icon shows a preview of the contents in a new window.
 
 Fixes:
 
-- Mailspring no longer crashes with a fatal error on CentOS, Red Hat Enterprise Linux (RHEL) 7.6 with a "CXXABI_1.3.9" message. When we upgraded to Electron 4, using GCC++5 to build parts of Mailspring resulted in libraries too new for some linux platforms.
+- UnifyMail no longer crashes with a fatal error on CentOS, Red Hat Enterprise Linux (RHEL) 7.6 with a "CXXABI_1.3.9" message. When we upgraded to Electron 4, using GCC++5 to build parts of UnifyMail resulted in libraries too new for some linux platforms.
 
 - In dark mode, text in message bodies is no longer black.
 
@@ -1001,43 +1001,43 @@ Fixes:
 
 - The Brazillian Portuguese translation has been improved (Thanks @leoescarpellin!)
 
-- You can now view Mailspring's open source license and all of it's dependencies' licenses and copyright notices from the menu.
+- You can now view UnifyMail's open source license and all of it's dependencies' licenses and copyright notices from the menu.
 
 ### 1.5.4 (12/29/2018)
 
 Improvements:
 
-- An important bug that caused Mailspring to occasionally send blank or incomplete drafts (especially long relies or messages with significant quoted text) has been resolved! #948
+- An important bug that caused UnifyMail to occasionally send blank or incomplete drafts (especially long relies or messages with significant quoted text) has been resolved! #948
 
 - Printing email messages now works reliably and a new "Save as PDF" option in the print window makes it easy to export an email thread. #1236 #1027
 
-- Extremely long messages now clip in the message panel and a "popout" option allows you to view their entire text in a separate window, similar to Gmail. This allows Mailspring to more reliably maintain good performance as you browse your email.
+- Extremely long messages now clip in the message panel and a "popout" option allows you to view their entire text in a separate window, similar to Gmail. This allows UnifyMail to more reliably maintain good performance as you browse your email.
 
 - A Brazillian Portuguese translation has been added (Thanks @leoescarpellin!)
 
 - Russian and Japanese translations have been improved (Thanks @kometchtech, @TiiRiiX)
 
-- Mailspring now runs on **Electron 4**. This should fix the menu bar not appearing in Ubuntu 18.10 (#1258, #1158) and comes with a long list of bug fixes and improvements (Mailspring was previously on Electron 2.0.14.) _As of this release, Mailspring and Electron no longer support macOS 10.9._
+- UnifyMail now runs on **Electron 4**. This should fix the menu bar not appearing in Ubuntu 18.10 (#1258, #1158) and comes with a long list of bug fixes and improvements (UnifyMail was previously on Electron 2.0.14.) _As of this release, UnifyMail and Electron no longer support macOS 10.9._
 
-- The `has:attachment` search filter has been added. Note that this clause only returns messages Mailspring has downloaded and has "seen" the attachments for. (Currently the last three months of mail.) #1260
+- The `has:attachment` search filter has been added. Note that this clause only returns messages UnifyMail has downloaded and has "seen" the attachments for. (Currently the last three months of mail.) #1260
 
 Fixes:
 
 - Sending emails with consecutive whitespaces now works as expected. #1270
 
-- Mailspring now adds itself to the Dock in macOS Mavericks properly. #1256
+- UnifyMail now adds itself to the Dock in macOS Mavericks properly. #1256
 
 - The `Send and Archive` option is no longer shown when you're composing a new message. #980
 
-- Mailspring no longer hangs when trying to sync a mailbox containing a message with an unidentified MIME part. #1266
+- UnifyMail no longer hangs when trying to sync a mailbox containing a message with an unidentified MIME part. #1266
 
-- Mailspring no longer inserts an extra whitespace when you compose a reply with a default signature. #1264
+- UnifyMail no longer inserts an extra whitespace when you compose a reply with a default signature. #1264
 
 - The tool tip displayed when scrolling in the message panel is now localized correctly.
 
 - Copy / paste and the Terms / Privacy links in billing and registration windows now work properly. #1280
 
-- Open tracking pixels now display as `Sent from Mailspring` when the recipient's email client shows image alt text. It's important we have alt text identifying the image in some way for highest deliverability, but the previous `open tracking` alt text was a bit too revealing for many users.
+- Open tracking pixels now display as `Sent from UnifyMail` when the recipient's email client shows image alt text. It's important we have alt text identifying the image in some way for highest deliverability, but the previous `open tracking` alt text was a bit too revealing for many users.
 
 ### 1.5.3 (11/25/2018)
 
@@ -1045,45 +1045,45 @@ Improvements:
 
 - French and Japanese localizations have been improved. (Thanks @kometchtech, @shyne99!)
 
-- Mailspring now honors "Do Not Disturb" on macOS and "Quiet Time" on Windows. Notifications do not appear and the "new mail" sound does not play.
+- UnifyMail now honors "Do Not Disturb" on macOS and "Quiet Time" on Windows. Notifications do not appear and the "new mail" sound does not play.
 
-- Mailspring is more stable and handles a variety of edge cases better thanks to crash reports from Sentry.
+- UnifyMail is more stable and handles a variety of edge cases better thanks to crash reports from Sentry.
 
 - Right-clicking an image and choosing "Copy Image" now works correctly on Linux.
 
-- Mailspring's Outlook keyboard shortcut preset now includes Ctrl-Q for "mark as read" and many other shortcuts. On Windows, Alt-F4 quits the program rather than the non-standard Ctrl-Q.
+- UnifyMail's Outlook keyboard shortcut preset now includes Ctrl-Q for "mark as read" and many other shortcuts. On Windows, Alt-F4 quits the program rather than the non-standard Ctrl-Q.
 
 Development:
 
-- Mailspring now uses it's own logo API rather than Clearbit's, since we cannot provide appropriate Clearbit attribution when the logo images are used in email signatures.
+- UnifyMail now uses it's own logo API rather than Clearbit's, since we cannot provide appropriate Clearbit attribution when the logo images are used in email signatures.
 
-- Mailspring now ships with Electron 2.0.14, which fixes a variety of small issues. We will move to Electron 4.x as soon as electron/electron#14260 is resolved.
+- UnifyMail now ships with Electron 2.0.14, which fixes a variety of small issues. We will move to Electron 4.x as soon as electron/electron#14260 is resolved.
 
 ### 1.5.2 (11/6/2018)
 
 Improvements:
 
-- Mailspring now defaults to English for languages whose translations have not been manually reviewed by a contributor. You can customize the interface language via a new setting in Preferences > General.
+- UnifyMail now defaults to English for languages whose translations have not been manually reviewed by a contributor. You can customize the interface language via a new setting in Preferences > General.
 
 - Hundreds of translations have been manually reviewed and refined in German, Chinese, French and Korean. (Thanks to @pandanonyme @jungin500 @qitar888 @DarkSmile92!)
 
-- When connecting a Yahoo Mail account, Mailspring notes that Yahoo requires an App Password. Provider-specific notes are also included in the "View Log" text for easier debugging.
+- When connecting a Yahoo Mail account, UnifyMail notes that Yahoo requires an App Password. Provider-specific notes are also included in the "View Log" text for easier debugging.
 
 - You can now change the "Sender Identity" (the name that is sent in the From field with your email address) for each account in Preferences > Accounts. #1169
 
 Fixes:
 
-- Mailspring no longer aggressively autocompletes :10 to the :100 emoji, or :12 to the :1234 emoji, to avoid conflicts with typing times. #1148
+- UnifyMail no longer aggressively autocompletes :10 to the :100 emoji, or :12 to the :1234 emoji, to avoid conflicts with typing times. #1148
 
-- On macOS, Mailspring's spellchecker correctly transitions to the language you're typing in consistent with Linux and Windows.
+- On macOS, UnifyMail's spellchecker correctly transitions to the language you're typing in consistent with Linux and Windows.
 
-- The Emoji picker now works correctly when using Mailspring in a language other than English. #1189
+- The Emoji picker now works correctly when using UnifyMail in a language other than English. #1189
 
-- Shrinking Mailspring's UI using the "inteface zoom" setting no longer causes spellchecking "squiggles" to become invisible.
+- Shrinking UnifyMail's UI using the "inteface zoom" setting no longer causes spellchecking "squiggles" to become invisible.
 
 - The "Does Not Contain" mail rule now requires that every item in the field not contain the text as expected, rather than just requiring that any one of the items (senders, recipients, etc.) not contain the text. #1110
 
-- Mailspring's "Upgrade to Pro" modal no longer appears badly clipped when using a custom interface zoom level.
+- UnifyMail's "Upgrade to Pro" modal no longer appears badly clipped when using a custom interface zoom level.
 
 - The fixed size "Add an Account" window now ignores custom zoom levels so that fields and forms are not clipped.
 
@@ -1093,7 +1093,7 @@ Improvements:
 
 - Thousands of translations have been improved or manually reviewed. Thanks to @odie2 @pamo @SimonVanacco @louim @DarkSmile92 @phylophyl and @renfliu for help in 6 languages!
 
-- Mailspring now ships Linux appdata files (Thanks @kirbyfan64!)
+- UnifyMail now ships Linux appdata files (Thanks @kirbyfan64!)
 
 Fixes:
 
@@ -1104,23 +1104,23 @@ Fixes:
 
 Features:
 
-- Mailspring now supports localization! The app detects your system locale and all text, menus, buttons, etc. in the app appear in your language. Mailspring's core strings has been manually localized in 38 languages and the rest (mostly error messages and text describing features) have been automatically translated.
+- UnifyMail now supports localization! The app detects your system locale and all text, menus, buttons, etc. in the app appear in your language. UnifyMail's core strings has been manually localized in 38 languages and the rest (mostly error messages and text describing features) have been automatically translated.
 
-  - We'd love your help improving these localizations! A new "Developer > Toggle Localizer Tools" menu option in Mailspring allows you to submit better translations right within the app. You can also edit the translation files directly and submit a pull request. See the new [localizer guide here](https://github.com/Foundry376/Mailspring/blob/master/LOCALIZATION.md).
+  - We'd love your help improving these localizations! A new "Developer > Toggle Localizer Tools" menu option in UnifyMail allows you to submit better translations right within the app. You can also edit the translation files directly and submit a pull request. See the new [localizer guide here](https://github.com/TheDarkSkyXD/UnifyMail/blob/master/LOCALIZATION.md).
 
-  - If you use a RTL language, Mailspring's entire UI now appears right-justified, including the sidebar, preference panels, scrollbars, and more. If you use Mailspring in Arabic or Hebrew and notice issues in the right-to-left presentation, please file issues or submit pull requests.
+  - If you use a RTL language, UnifyMail's entire UI now appears right-justified, including the sidebar, preference panels, scrollbars, and more. If you use UnifyMail in Arabic or Hebrew and notice issues in the right-to-left presentation, please file issues or submit pull requests.
 
 Fixes:
 
-- The "contact profiles" feature of Mailspring Pro is much more robust and reliable thanks to a new profile discovery mechanism.
+- The "contact profiles" feature of UnifyMail Pro is much more robust and reliable thanks to a new profile discovery mechanism.
 
 - The "contact profile" sidebar shows the Gravatar associated with the email address before falling back to the "empty box with initials".
 
-- Mailspring now uses the latest version of libetpan, which improves stability and fixes several parsing bugs. It also more flexibly parses IMAP responses that include unquoted text fragments. #429
+- UnifyMail now uses the latest version of libetpan, which improves stability and fixes several parsing bugs. It also more flexibly parses IMAP responses that include unquoted text fragments. #429
 
-- On Linux, Mailspring now uses the pixmaps dir to show an icon in the corner of each window. #1135
+- On Linux, UnifyMail now uses the pixmaps dir to show an icon in the corner of each window. #1135
 
-- On Linux, Mailspring uses circular icons rather than square ones. #1098
+- On Linux, UnifyMail uses circular icons rather than square ones. #1098
 
 - The padding of the search bar in the Darkside theme has been fixed. #1048
 
@@ -1128,13 +1128,13 @@ Developer:
 
 - Trying to open a package that does not define `engines` in it's package.json no longer crashes the app.
 
-- Mailspring now uses Electron 2.0.11 which resolves #1108.
+- UnifyMail now uses Electron 2.0.11 which resolves #1108.
 
 ### 1.4.2 (8/15/2018)
 
 Fixes:
 
-- Mailspring no longer attempts CRAM-MD5 SMTP auth instead of PLAIN or LOGIN when both are supported.
+- UnifyMail no longer attempts CRAM-MD5 SMTP auth instead of PLAIN or LOGIN when both are supported.
   CRAM-MD5 and DIGEST-MD5 require you've exchanged a shared secret with the SMTP server which is almost
   never the case. #620
 
@@ -1142,16 +1142,16 @@ Fixes:
 
 - The IMAP/SMTP port dropdowns no longer "stick" the first time you change them during setup.
 
-- Mailspring now lets you know if your SMTP server refused to relay a test message during setup.
+- UnifyMail now lets you know if your SMTP server refused to relay a test message during setup.
 
-- Mailspring now correctly supports SMTP accounts that do not require a username or password. #469
+- UnifyMail now correctly supports SMTP accounts that do not require a username or password. #469
 
 - Open and link tracking now work correctly for accounts using Courier IMAP, (where sent messages
   do not appear until re-selecting the folder via IMAP.)
 
 Debugging:
 
-- Mailspring now prints descriptive SMTP error strings instead of SMTP error codes in logs.
+- UnifyMail now prints descriptive SMTP error strings instead of SMTP error codes in logs.
 
 ### 1.4.1 (8/10/2018)
 
@@ -1162,26 +1162,26 @@ Fixes:
 
 ### 1.4.0 (8/5/2018)
 
-Mailspring 1.4 adds macOS Touch Bar support and expands the `Thread` and `View` menus to include a
+UnifyMail 1.4 adds macOS Touch Bar support and expands the `Thread` and `View` menus to include a
 wider range of functionality previously tied to keybindings but missing from the apps menus.
 
-Mailspring 1.4 also brings a revised welcome screen that separates Office 365 and Outlook and
+UnifyMail 1.4 also brings a revised welcome screen that separates Office 365 and Outlook and
 adds presets for Yandex and GMX. The new welcome screens display tips specific to each provider,
 ensuring that you follow any required steps (like creating an App Password or enabling IMAP.)
 
 Fixes:
 
-- Mailspring now connects to SMTP servers that only support GSSAPI or Kerberos and PLAIN using the PLAIN method rather than trying to use Kerberos and failing. #341
+- UnifyMail now connects to SMTP servers that only support GSSAPI or Kerberos and PLAIN using the PLAIN method rather than trying to use Kerberos and failing. #341
 
-- The "undo send" toast in Mailspring now has a countdown timer, and the undo button has been visually differentiated from the background. #872
+- The "undo send" toast in UnifyMail now has a countdown timer, and the undo button has been visually differentiated from the background. #872
 
 - Emails no longer get "stuck" when using undo send in some scenarios. #336
 
 - Undoing a send of an inline reply during the undo-send time window no longer leaves the composer "locked" or re-sends the original draft. #596, #390
 
-- Mailspring no longer throws an exception when parsing quoted text for some emails.
+- UnifyMail no longer throws an exception when parsing quoted text for some emails.
 
-- Removing the last account from Mailspring no longer causes it to return to the "Connect an Account" screen with errors that prevent you from moving forward without restarting the app.
+- Removing the last account from UnifyMail no longer causes it to return to the "Connect an Account" screen with errors that prevent you from moving forward without restarting the app.
 
 - The print window now warns you if one or more messages were omitted because they were collapsed, and renders properly in the dark theme.
 
@@ -1189,15 +1189,15 @@ Fixes:
 
 ### 1.3.0 (7/14/2018)
 
-- Mailspring 1.3 brings an overhauled search bar with powerful autocomplete that makes it easier to create advanced search queries.
+- UnifyMail 1.3 brings an overhauled search bar with powerful autocomplete that makes it easier to create advanced search queries.
 
-  - In addition to searching for freeform text and using the Gmail query language (`subject:`, `in:`, `is:`, `from:`, `to:`), Mailspring now allows you to search by date using natural language terms like `since: "last week"` and `before: "february 5th"`. Try combining them with other terms to search a specific time window!
+  - In addition to searching for freeform text and using the Gmail query language (`subject:`, `in:`, `is:`, `from:`, `to:`), UnifyMail now allows you to search by date using natural language terms like `since: "last week"` and `before: "february 5th"`. Try combining them with other terms to search a specific time window!
 
   - You can now right-click a thread to search for other threads from that sender or with that subject.
 
   - You can now focus the search bar and conduct searches entirely with keyboard shortcuts (use Escape to exit the search bar!) #960
 
-- Mailspring now uses Electron 2.0.2, which delivers some [great bug fixes and new features](https://github.com/electron/electron/releases/tag/v2.0.0):
+- UnifyMail now uses Electron 2.0.2, which delivers some [great bug fixes and new features](https://github.com/electron/electron/releases/tag/v2.0.0):
 
   - Chrome 61, Node 8.9.3, V8 6.1.534.41 with improved performance and lower memory footprints
   - Better GTK+ theme support, including support for menu styling
@@ -1206,19 +1206,19 @@ Fixes:
 
 Fixes:
 
-- Mailspring no longer clips some messages containing images incorrectly. #569
+- UnifyMail no longer clips some messages containing images incorrectly. #569
 
 - The Reply-To header is now shown when you expand the message headers. #973
 
 - Dropping images onto the composer now reliably inserts them as inline attachments. #822
 
-- Mailspring now correctly opens attachments with filenames containing emoji on Windows.
+- UnifyMail now correctly opens attachments with filenames containing emoji on Windows.
 
-- You can now drag and attachment out of Mailspring by it's quicklook preview as well as it's title.
+- You can now drag and attachment out of UnifyMail by it's quicklook preview as well as it's title.
 
-- Using Mailspring on Windows in a user account containing accent characters or other special characters no longer prevents attachments from being cached. #810
+- Using UnifyMail on Windows in a user account containing accent characters or other special characters no longer prevents attachments from being cached. #810
 
-- Mailspring no longer throws an exception when trying to display a message with attachments but no downloaded body. #804
+- UnifyMail no longer throws an exception when trying to display a message with attachments but no downloaded body. #804
 
 - The "hamburger" icon in the top right of the main window no longer appears gray-on-gray in the "Ubuntu" theme. #801
 
@@ -1230,7 +1230,7 @@ Fixes:
 
 - Signatures with Facebook and Twitter profiles now display the service favicons reliably when viewed in Gmail and Outlook. #968
 
-- Invalid themes no longer "brick" the app - Mailspring will present an alert with the error and offer to revert to the basic theme. (Mailspring-Theme-Starter/issues/1)
+- Invalid themes no longer "brick" the app - UnifyMail will present an alert with the error and offer to revert to the basic theme. (UnifyMail-Theme-Starter/issues/1)
 
 ### 1.2.2 (5/30/2018)
 
@@ -1240,17 +1240,17 @@ Fixes:
 
 - In the Linux Snapcraft release, app indicator compatibility has been improved by coercing XDG_CURRENT_DESKTOP to Unity (Thanks Martin Wimpress at Canonical!)
 
-- On Linux, clicking on the system tray toggles the visibility of Mailspring's windows instead of always showing them. #650
+- On Linux, clicking on the system tray toggles the visibility of UnifyMail's windows instead of always showing them. #650
 
-- On macOS, Mailspring asks if it can move itself to Applications and handles the new app translocation rules in High Sierra correctly.
+- On macOS, UnifyMail asks if it can move itself to Applications and handles the new app translocation rules in High Sierra correctly.
 
 - Drafts now allow file attachments up to 25MB in size, and the error message has been corrected. #854
 
 - When linking email accounts, the IMAP/SMTP host fields correctly ignore whitespace to avoid connection errors. #876
 
-- Mailspring's sync process no longer crashes when the snooze / reminder actions of more than 200 threads need to be processed at once.
+- UnifyMail's sync process no longer crashes when the snooze / reminder actions of more than 200 threads need to be processed at once.
 
-- Mailspring now correctly auto-links email addresses in the composer into mailto: links #814
+- UnifyMail now correctly auto-links email addresses in the composer into mailto: links #814
 
 - Searching by `subject:xxx` now works, thanks to fixes to the mailsync indexer. #860
 
@@ -1282,7 +1282,7 @@ Fixes:
 
 Features:
 
-- **Thread Sharing** allows you to easily sync an email thread to the cloud and share it using a link. Mailspring automatically syncs new emails that arrive on the thread and anyone with the link can view the thread or download attachments.
+- **Thread Sharing** allows you to easily sync an email thread to the cloud and share it using a link. UnifyMail automatically syncs new emails that arrive on the thread and anyone with the link can view the thread or download attachments.
 
 Fixes:
 
@@ -1294,45 +1294,45 @@ Fixes:
 
 - The thread toolbar buttons now have a grouped appearance which makes the UI more compact and usable. #283
 
-- Mailspring now uses the correct presets for Fastmail and Startmail accounts. #759, #756
+- UnifyMail now uses the correct presets for Fastmail and Startmail accounts. #759, #756
 
 - Clicking to collapse a message with expanded headers now works as expected. #636
 
-- Mailspring never shows images by default when you're viewing your spam folder. #784
+- UnifyMail never shows images by default when you're viewing your spam folder. #784
 
 Development:
 
 - The "Download attachments when..." option, which was never implemented in the new sync engine, has been removed from Preferences > General.
 
-- When resetting an account, Mailspring correctly re-fetches open/read receipt and snoozing metadata
+- When resetting an account, UnifyMail correctly re-fetches open/read receipt and snoozing metadata
 
-- Mailspring now uses Electron 1.8.4.
+- UnifyMail now uses Electron 1.8.4.
 
 ### 1.1.5 (3/6/2018)
 
 Fixes:
 
-- Mailspring no longer crashes when trying to connect some IMAP accounts that it cannot resolve to a preset configuration. #739
+- UnifyMail no longer crashes when trying to connect some IMAP accounts that it cannot resolve to a preset configuration. #739
 
-- Mailspring no longer requires you to manually provide information for IMAP accounts that are aliases of other proivders, like hotmail.it. #736
+- UnifyMail no longer requires you to manually provide information for IMAP accounts that are aliases of other proivders, like hotmail.it. #736
 
 - An error no longer replaces the composer when an "emoji mark" cannot be found. #685
 
-- When you click a mis-spelled word, Mailspring no longer selects the entire word. #677
+- When you click a mis-spelled word, UnifyMail no longer selects the entire word. #677
 
-- When you send mail, Mailspring no longer puts your hostname in the MIME Message-ID.
+- When you send mail, UnifyMail no longer puts your hostname in the MIME Message-ID.
 
 - In the composer you can now edit existing links and links don't open by default unless you control-click them. #702, #704, #639
 
 - The colon character (:) no longer breaks automatic link detection. #695
 
-- When you remove an account, Mailspring resets its local cache for that account, removing stored data on disk. #724
+- When you remove an account, UnifyMail resets its local cache for that account, removing stored data on disk. #724
 
 - Images with width and height values containing decimals no longer break logic designed to autosize them for display.
 
 Improvements:
 
-- Mailspring now uses Electron 1.8.3, which includes two security improvements.
+- UnifyMail now uses Electron 1.8.3, which includes two security improvements.
 
 ### 1.1.4 (2/14/2018)
 
@@ -1344,9 +1344,9 @@ Fixes:
 
 - Connecting accounts no longer fails when the email provider returns non-UTF8 characters in IMAP responses.
 
-- The open tracking pixel now has an `alt` tag that self-identifies it as a tracking pixel, which prevents messages from Mailspring from being flagged as spam by some providers. #668
+- The open tracking pixel now has an `alt` tag that self-identifies it as a tracking pixel, which prevents messages from UnifyMail from being flagged as spam by some providers. #668
 
-- Mailspring no longer registers for the Utility and Development application categories and appears in the `mail` package category on Debian systems. #673, #678
+- UnifyMail no longer registers for the Utility and Development application categories and appears in the `mail` package category on Debian systems. #673, #678
 
 - On Linux, the tray assets are larger again (48x48px) in an attempt to make them render properly in more distros.
 
@@ -1356,11 +1356,11 @@ Fixes:
 
 Improvements:
 
-- When adding an IMAP account, Mailspring now uses the domain's MX records to identify if it can use settings for a common email service to skip the full, complicated IMAP settings screen.
+- When adding an IMAP account, UnifyMail now uses the domain's MX records to identify if it can use settings for a common email service to skip the full, complicated IMAP settings screen.
 
-- When adding a Gmail account, Mailspring now uses two-legged OAuth instead of three-legged OAuth which allows it to renew it's access token more rapidly. (Re-authenticate Gmail accounts for this to take effect.)
+- When adding a Gmail account, UnifyMail now uses two-legged OAuth instead of three-legged OAuth which allows it to renew it's access token more rapidly. (Re-authenticate Gmail accounts for this to take effect.)
 
-- Mailspring `VACUUM`'s the SQLite database every two weeks to prevent fragmentation that can eventually ruin performance. Unfortunately, data cannot be read or written during this process and it can take ~2 minutes for a 3GB database, so it is performed at launch with a new progress screen.
+- UnifyMail `VACUUM`'s the SQLite database every two weeks to prevent fragmentation that can eventually ruin performance. Unfortunately, data cannot be read or written during this process and it can take ~2 minutes for a 3GB database, so it is performed at launch with a new progress screen.
 
 Fixes:
 
@@ -1368,7 +1368,7 @@ Fixes:
 
 - In dark themes, quoted text no longer appears a dark purple that is difficult to read.
 
-- Mailspring no longer becomes "blocked" when ingesting a large number of deletions in a mailbox and will no longer attempt to retrieve many, many new messages all at once.
+- UnifyMail no longer becomes "blocked" when ingesting a large number of deletions in a mailbox and will no longer attempt to retrieve many, many new messages all at once.
 
 - When changing accounts in the composer the signature correctly updates to the new account's default. #570
 
@@ -1380,33 +1380,33 @@ Fixes:
 
 - The "Local Time" shown in the company sidebar is now correct and updates in realtime.
 
-- On Linux, `mailspring.desktop` no longer reports that the app is an editor for `text/plain` #602
+- On Linux, `UnifyMail.desktop` no longer reports that the app is an editor for `text/plain` #602
 
 - Undo no longer triggers in both the email body and other recently edited text fields at the same time. #613
 
 - Creating a draft no longer clears the conversations's "snippet" in the thread list.
 
-- When printing a thread, Mailspring no longer prints `undefined` beside particicpants with no name.
+- When printing a thread, UnifyMail no longer prints `undefined` beside particicpants with no name.
 
-- When pasting HTML, Mailspring now correctly preserves links that have other styling. #592
+- When pasting HTML, UnifyMail now correctly preserves links that have other styling. #592
 
 - When using "two pane mode", viewing the same conversation repeatedly will mark any new messages as read. #617
 
 - When sending an email, the word "attachments" in your signature will no longer cause the app to complain about missing attachments. #610
 
-- Mailspring no longer attempts to create the folder `Mailspring..Snoozed` on providers that include the path delimiter in the IMAP namespace prefix. #634
+- UnifyMail no longer attempts to create the folder `UnifyMail..Snoozed` on providers that include the path delimiter in the IMAP namespace prefix. #634
 
-- When composing an email, Mailspring will display an alert if you need to choose a Drafts folder to send mail. #634
+- When composing an email, UnifyMail will display an alert if you need to choose a Drafts folder to send mail. #634
 
-- Mailspring now uses Electron 1.8.2-beta5, which includes stability and security fixes.
+- UnifyMail now uses Electron 1.8.2-beta5, which includes stability and security fixes.
 
 - Exporting raw data from the Activity Dashboard now waits for the filesystem buffer to flush, preventing it from writing only some of the email data on slower hard drives.
 
-- Mailspring no longer briefly spawns duplicate sync processes in some scenarios when you have many accounts linked.
+- UnifyMail no longer briefly spawns duplicate sync processes in some scenarios when you have many accounts linked.
 
-- When your mailbox contains emails with the same subject and participants and no `Date` header, Mailspring now syncs them all instead of syncing them as a single message, which should prevent thrashing
+- When your mailbox contains emails with the same subject and participants and no `Date` header, UnifyMail now syncs them all instead of syncing them as a single message, which should prevent thrashing
 
-- A subtle multithreading issue has been fixed which could cause your folders to become corrupted and prevent Mailspring from launching.
+- A subtle multithreading issue has been fixed which could cause your folders to become corrupted and prevent UnifyMail from launching.
 
 Memory and Performance:
 
@@ -1420,7 +1420,7 @@ Memory and Performance:
 
 Fixes:
 
-- Mailspring creates the folder "Mailspring/Snoozed" on your email provider with the intermediate folder. [#588]
+- UnifyMail creates the folder "UnifyMail/Snoozed" on your email provider with the intermediate folder. [#588]
 
 - Switching to drafts, away from drafts, and back to drafts no longer causes a crash. [#590]
 
@@ -1436,9 +1436,9 @@ Features:
 
 - The new composer now supports additional Gmail shortcuts, which you can view from Preferences > Shortcuts, including Cmd-K (make link), Cmd-Shift-8 (make bulleted list), etc. (#555)
 
-- Mailspring now supports indicators in Ubuntu Gnome Session (Ubuntu 17+)
+- UnifyMail now supports indicators in Ubuntu Gnome Session (Ubuntu 17+)
 
-- Mailspring now supports Secureserver (GoDaddy), Roundcube, 163.com, and several other providers that did not allow folder names to contain the `[` character.
+- UnifyMail now supports Secureserver (GoDaddy), Roundcube, 163.com, and several other providers that did not allow folder names to contain the `[` character.
 
 Fixes:
 
@@ -1456,10 +1456,10 @@ Fixes:
 
 - Undo/redo within the composer or any text field no longer trigger both text undo/redo and mail action undo/redo. (#577)
 
-- Mailspring now creates a "Mailspring" folder instead of a "[Mailspring]" folder because some providers do not allow the `[` character. (#551)
+- UnifyMail now creates a "UnifyMail" folder instead of a "[UnifyMail]" folder because some providers do not allow the `[` character. (#551)
   Development:
 
-- Mailspring no longer contains or supports Coffeescript or CJSX!
+- UnifyMail no longer contains or supports Coffeescript or CJSX!
 
 - Moved to Electron 1.8.2-beta4
 
@@ -1477,19 +1477,19 @@ Features:
 
 Improvements:
 
-- On Linux, Mailspring now lets you choose to auto-hide the menubar, or use the sleek, Windows-style unified window frame with the menu behind a hamburger button.
+- On Linux, UnifyMail now lets you choose to auto-hide the menubar, or use the sleek, Windows-style unified window frame with the menu behind a hamburger button.
 
 Fixes:
 
-- Mailspring no longer cleans up messages you've downloaded recently.
+- UnifyMail no longer cleans up messages you've downloaded recently.
 
 - When you edit an existing account, it's credentials are prepopulated for editing. (#496)
 
 - The signature editor now supports Twitter profile pictures and autoformats your handle. (#493)
 
-- On Windows, Mailspring supports installation in user directories with special characters. (#113)
+- On Windows, UnifyMail supports installation in user directories with special characters. (#113)
 
-- Generation of IDs in Mailspring is no longer timezone-sensitive on some machines.
+- Generation of IDs in UnifyMail is no longer timezone-sensitive on some machines.
 
 - Drafts no longer fail to sze when you exit the app in some scenarios.
 
@@ -1505,15 +1505,15 @@ Improvements:
 
 Fixes:
 
-- A regression from 1.0.11 has been fixed - Mailspring no longer fails to sync new mail for some accounts that do not support CONDSTORE. Mailspring will no longer give these messages timestamps from "1970". (#475)
+- A regression from 1.0.11 has been fixed - UnifyMail no longer fails to sync new mail for some accounts that do not support CONDSTORE. UnifyMail will no longer give these messages timestamps from "1970". (#475)
 
 - Panel widths are now saved correctly on exit. (#41)
 
-- When waking from sleep, Mailspring checks for new mail immediately. (#468)
+- When waking from sleep, UnifyMail checks for new mail immediately. (#468)
 
 - When linking an account, you can now omit the SMTP username for SMTP without authentication. (#469)
 
-- Mailspring allows all deprecated HTML attributes like `<strike>`, improving the rendering of emails. (#260)
+- UnifyMail allows all deprecated HTML attributes like `<strike>`, improving the rendering of emails. (#260)
 
 - The `View` links in the contact sidebar now open the browser correctly.
 
@@ -1533,17 +1533,17 @@ Improvements:
 
 - You can now reset the cache for an individual account from Preferences > Accounts
 
-- Mailspring now creates its config directory with more appropriate unix permissions (thanks @agurz!)
+- UnifyMail now creates its config directory with more appropriate unix permissions (thanks @agurz!)
 
 Fixes:
 
-- On Windows, Mailspring now sends attachments with non-latin characters correctly.
+- On Windows, UnifyMail now sends attachments with non-latin characters correctly.
 
-- Mailspring now moves mail correctly (via archiving, deleting, etc.), even if the provider does not support the IMAP MOVE extension.
+- UnifyMail now moves mail correctly (via archiving, deleting, etc.), even if the provider does not support the IMAP MOVE extension.
 
-- Mailspring now fetches incoming messages correctly (and immediately) for providers that support both CONDSTORE and QRESYNC.
+- UnifyMail now fetches incoming messages correctly (and immediately) for providers that support both CONDSTORE and QRESYNC.
 
-- On Linux, the Mailspring snap no longer complains about missing typefaces on some machines.
+- On Linux, the UnifyMail snap no longer complains about missing typefaces on some machines.
 
 - Drang and drop from search results into folders/labels has been fixed.
 
@@ -1557,13 +1557,13 @@ Features:
 
 Performance:
 
-- SQLite schema changes significantly improve Mailspring's sync performance on very large mailboxes.
+- SQLite schema changes significantly improve UnifyMail's sync performance on very large mailboxes.
 
 Fixes:
 
-- A major memory leak on Windows has been fixed which caused Mailspring to slow down your computer, especially when waking from sleep.
+- A major memory leak on Windows has been fixed which caused UnifyMail to slow down your computer, especially when waking from sleep.
 
-- Mailspring no longer reports that it is still "looking for messages" in some cases after sync has completed.
+- UnifyMail no longer reports that it is still "looking for messages" in some cases after sync has completed.
 
 - Search now correctly supports the "in:" syntax for all arbitrary folders and labels as well as built-in ones like "in:inbox".
 
@@ -1575,19 +1575,19 @@ Improvements:
 
 - Sync progress reporting and status messages have been improved.
 
-- Mailspring only attempts to passively fetch message contents once for each message, so bad messages no longer cause the app to "hang" in an "Syncing your Mailbox" state.
+- UnifyMail only attempts to passively fetch message contents once for each message, so bad messages no longer cause the app to "hang" in an "Syncing your Mailbox" state.
 
 - A new setting allows you to choose the default spellcheck language. (Thanks @oserban!)
 
-- A new setting allows you to choose whether Mailspring opens containing folders after downloading attachments. (Thanks @mattlyons0!)
+- A new setting allows you to choose whether UnifyMail opens containing folders after downloading attachments. (Thanks @mattlyons0!)
 
 - You can now copy-paste a file from the Finder or Windows Explorer into the composer.
 
-- Mailspring now correctly sends mail with inline image attachments on all providers.
+- UnifyMail now correctly sends mail with inline image attachments on all providers.
 
 - Many issues that caused search to "hang" have been resolved.
 
-- Mailspring now correctly linkifies URLs in more scenarios. (Thanks @agurz!)
+- UnifyMail now correctly linkifies URLs in more scenarios. (Thanks @agurz!)
 
 - Many small email rendering issues have been resolved thanks to a new message sanitizer.
 
@@ -1623,7 +1623,7 @@ Fixes:
 
 - Undo send now works correctly!
 
-- Mailspring no longer pre-processes HTML through `tidy`, which was too strict and causing emails to display incorrectly and links to break.
+- UnifyMail no longer pre-processes HTML through `tidy`, which was too strict and causing emails to display incorrectly and links to break.
 
 - The thread list no longer "flickers" when archiving / deleting unread email.
 
@@ -1643,13 +1643,13 @@ Fixes:
 
 - Screenshot mode has been fixed. (Thanks @agurz)
 
-- Mailspring now corrects inconsistencies in it's data as you perform mail actions, so threads can't get "stuck" in the trash, snoozed folder, etc.
+- UnifyMail now corrects inconsistencies in it's data as you perform mail actions, so threads can't get "stuck" in the trash, snoozed folder, etc.
 
 - Drag and drop to the `starred` or `unread` views now works properly.
 
-- Snooze dates are properly synced to the Mailspring backend, so they're persisted when you clear your cache or re-install Mailspring.
+- Snooze dates are properly synced to the UnifyMail backend, so they're persisted when you clear your cache or re-install UnifyMail.
 
-- On Windows, Mailspring no longer has problems saving attachments with extended UTF-16 characters, (eg Japanese or Polish.)
+- On Windows, UnifyMail no longer has problems saving attachments with extended UTF-16 characters, (eg Japanese or Polish.)
 
 - Mailsync no longer crashes when messages have more than ~150 references to other messages in their headers.
 
@@ -1661,16 +1661,16 @@ Fixes:
 
 - The folder and label shortcuts are now separate and work properly for Gmail accounts. (#259 - thanks @casuallancelot)
 
-- Mailspring no longer segfaults when it's unable to connect to your SMTP server during onboarding,
+- UnifyMail no longer segfaults when it's unable to connect to your SMTP server during onboarding,
   and error messages no longer "destroy" the layout of the window.
 
-- Mailspring no longer uses all memory on the computer in a rare scenario where your mail provider return an infinite range of message IDs. (#91)
+- UnifyMail no longer uses all memory on the computer in a rare scenario where your mail provider return an infinite range of message IDs. (#91)
 
-- Mailspring can now be put in a verbose logging mode using `AppEnv.mailsyncBridge.toggleVerboseLogging()`, in which all IMAP and SMTP traffic is logged.
+- UnifyMail can now be put in a verbose logging mode using `AppEnv.mailsyncBridge.toggleVerboseLogging()`, in which all IMAP and SMTP traffic is logged.
 
-- You can now dismiss the "Please pay for Mailspring Pro!" prompt in the bottom left when more than four accounts are syncing. (Thanks @mattlyons0)
+- You can now dismiss the "Please pay for UnifyMail Pro!" prompt in the bottom left when more than four accounts are syncing. (Thanks @mattlyons0)
 
-- On Linux, Mailspring no longer launches with the onboarding window in between monitors on dual-display setups. (Thanks @dbhowell)
+- On Linux, UnifyMail no longer launches with the onboarding window in between monitors on dual-display setups. (Thanks @dbhowell)
 
 - The contact search index now includes the first names of contacts, so you can find them more easily when typing in address fields. (#227)
 
@@ -1680,9 +1680,9 @@ Fixes:
 
 Features:
 
-- Mailspring now identifies an "Archive" folder if one is present in your Office 365 / IMAP accounts and enables the "Archive" button and "Swipe to Archive" behavior. If it is not picked up automatically, you can set it from Preferences > Folders.
+- UnifyMail now identifies an "Archive" folder if one is present in your Office 365 / IMAP accounts and enables the "Archive" button and "Swipe to Archive" behavior. If it is not picked up automatically, you can set it from Preferences > Folders.
 
-- Mailspring now warns you if you the salutation in your email ("Hey Ben!") doesn't match the name of a recipient or appears misspelled.
+- UnifyMail now warns you if you the salutation in your email ("Hey Ben!") doesn't match the name of a recipient or appears misspelled.
 
 - A new keyboard shortcut allows you to attach a file in the composer. (Ctrl-Shift-A by default!)
 
@@ -1690,9 +1690,9 @@ Fixes:
 
 - The contact sidebar now loads correctly if you switch to a contact with no name.
 
-- On Windows, Mailspring no longer needs to be restarted once before you can link a Gmail account.
+- On Windows, UnifyMail no longer needs to be restarted once before you can link a Gmail account.
 
-- When replying to a message you sent in a thread, Mailspring no longer incorrectly addresses the new message to yourself.
+- When replying to a message you sent in a thread, UnifyMail no longer incorrectly addresses the new message to yourself.
 
 - Mail rules now run correctly as new mail is received.
 
@@ -1714,7 +1714,7 @@ Features:
 
 Fixes:
 
-- On Windows, Mailspring now uses the system font, which looks more crisp on Windows 10.
+- On Windows, UnifyMail now uses the system font, which looks more crisp on Windows 10.
 
 - On Windows, swipe to archive now works on touch-screen laptops.
 
@@ -1724,7 +1724,7 @@ Fixes:
 
 - Preferences > Folders now shows UTF8 folder titles correctly.
 
-- On OpenSUSE, Mailspring now looks for certificates at the correct path, fixing authentication issues with servers that use SSL.
+- On OpenSUSE, UnifyMail now looks for certificates at the correct path, fixing authentication issues with servers that use SSL.
 
 - The undo/redo toast no longer appears when switching to Drafts and back.
 
@@ -1734,7 +1734,7 @@ Features:
 
 - Company profiles are now available in the right sidebar! See tons of great information about the people you're emailing, including their local time zone, the company's core business area, and more.
 
-- You can now choose folder associations explicitly if Mailspring is unable to correctly identify your Sent folder, for example.
+- You can now choose folder associations explicitly if UnifyMail is unable to correctly identify your Sent folder, for example.
 
 - The IMAP/SMTP authentication panel automatically defaults to security settings that match the ports you provide.
 
@@ -1762,11 +1762,11 @@ Features:
 
 Fixes:
 
-- On Linux, Mailspring looks for your trusted SSL certificate roots in more locations, fixing the "Certificate Errors" many Fedora and ArchLinux users were seeing when linking accounts.
+- On Linux, UnifyMail looks for your trusted SSL certificate roots in more locations, fixing the "Certificate Errors" many Fedora and ArchLinux users were seeing when linking accounts.
 
-- On Linux, Mailspring bundles SASL2 and SASL2 plugins, resolving "Authentication Error" messages that users of non-Debian Linux distros saw when the local installation of SASL2 was an incompatible version.
+- On Linux, UnifyMail bundles SASL2 and SASL2 plugins, resolving "Authentication Error" messages that users of non-Debian Linux distros saw when the local installation of SASL2 was an incompatible version.
 
-- On Linux, Mailspring now links against libsecret, resolving intermittent "Identity missing required fields" errors that were caused by the Node bindings to libgnome-keyring's API.
+- On Linux, UnifyMail now links against libsecret, resolving intermittent "Identity missing required fields" errors that were caused by the Node bindings to libgnome-keyring's API.
 
 - On Linux, composer and thread windows no longer have a "double window bar".
 
@@ -1778,7 +1778,7 @@ Fixes:
 
 - On Mac OS X, some menu shortcuts (like Command-H) now appear in the menu bar properly.
 
-- Mailspring now correctly parses `mailto:` links with multiple semicolon-separated CC and BCC addresses.
+- UnifyMail now correctly parses `mailto:` links with multiple semicolon-separated CC and BCC addresses.
 
 - The "Raw HTML" signature editor is now the proper size.
 
@@ -1788,25 +1788,25 @@ Fixes:
 
 - During authentication, you can now view a "Raw Log" of the IMAP and SMTP communication with your servers for easy debugging of connection issues.
 
-- During authentication, Mailspring will warn you if you connect Gmail via IMAP.
+- During authentication, UnifyMail will warn you if you connect Gmail via IMAP.
 
-- The "Install Theme...", "Install a Plugin Manually..." and "Create a Plugin..." menu items now work. Note that Nylas Mail / N1 themes require some modifications to work with Mailspring!
+- The "Install Theme...", "Install a Plugin Manually..." and "Create a Plugin..." menu items now work. Note that Nylas Mail / N1 themes require some modifications to work with UnifyMail!
 
-- On Windows and Linux, Mailspring can now make itself the default mail client.
+- On Windows and Linux, UnifyMail can now make itself the default mail client.
 
 - The contact sidebar in the app now works reliably and is rate-limited for free users (The Clearbit API is very expensive!)
 
-- On Windows, Mailspring now displays emails with encoded subject lines (often containing emoji or foreign characters) correctly.
+- On Windows, UnifyMail now displays emails with encoded subject lines (often containing emoji or foreign characters) correctly.
 
-- On Windows, you can now resize and maximize the Mailspring window.
+- On Windows, you can now resize and maximize the UnifyMail window.
 
-- Mailspring now skips folders it can't sync rather than stopping the entire account.
+- UnifyMail now skips folders it can't sync rather than stopping the entire account.
 
 ### 1.0.1 (10/4/2017)
 
 Fixes:
 
-- On Linux, Mailspring now syncs mail reliably thanks to fixed builds of curl and mailcore2.
+- On Linux, UnifyMail now syncs mail reliably thanks to fixed builds of curl and mailcore2.
 
 - On Windows, the app's icon now includes all the required resolutions.
 
@@ -1818,22 +1818,22 @@ Features:
 
 - Entirely re-written sync engine uses significantly less RAM and CPU, improving performance and battery life.
 
-- Mailspring launches 55% faster, thanks to a new package manager and theme manager and a thinner application bundle.
+- UnifyMail launches 55% faster, thanks to a new package manager and theme manager and a thinner application bundle.
 
 - Improved quoted text detection makes it easier to read threads, especially messages sent from Exchange and older versions of Outlook.
 
 Developer:
 
-- Mailspring now stores user preferences in the appropriate platform-specific location: `Library/Application Support` on the Mac, `AppData/Roaming` on Windows, etc.
+- UnifyMail now stores user preferences in the appropriate platform-specific location: `Library/Application Support` on the Mac, `AppData/Roaming` on Windows, etc.
 
-- `NylasEnv` is now known as `AppEnv` and `nylas-exports` and `nylas-component-kit` have been renamed `mailspring-*`. Additionally, packages need to specify `"engines": {"mailspring":"*"}` instead of listing `nylas`.
+- `NylasEnv` is now known as `AppEnv` and `nylas-exports` and `nylas-component-kit` have been renamed `UnifyMail-*`. Additionally, packages need to specify `"engines": {"UnifyMail":"*"}` instead of listing `nylas`.
 
-- Much more of Mailspring has been converted to ES2016, and CoffeeScript is no longer supported for plugin development. The CoffeeScript interpreter will be removed in a future version. Please use ES2016 JavaScript instead.
+- Much more of UnifyMail has been converted to ES2016, and CoffeeScript is no longer supported for plugin development. The CoffeeScript interpreter will be removed in a future version. Please use ES2016 JavaScript instead.
 
-- Mailspring now uses `Prettier` — before submitting pull requests, ensure `npm run lint` is clean, or add a Prettier plugin to your text editor. (It's awesome!)
+- UnifyMail now uses `Prettier` — before submitting pull requests, ensure `npm run lint` is clean, or add a Prettier plugin to your text editor. (It's awesome!)
 
 - A plugin browser / "store" is coming soon - stay tuned!
 
 Privacy:
 
-- Mailspring does not send your email credentials to the cloud. Features like Snooze, Send Later, and Send Reminders now run on your computer. Future versions may re-introduce the option to run these features in the cloud.
+- UnifyMail does not send your email credentials to the cloud. Features like Snooze, Send Later, and Send Reminders now run on your computer. Future versions may re-introduce the option to run these features in the cloud.

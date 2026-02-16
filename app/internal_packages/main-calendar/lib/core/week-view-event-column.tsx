@@ -1,7 +1,7 @@
 import React from 'react';
 import { Moment } from 'moment';
 import classnames from 'classnames';
-import { Utils } from 'mailspring-exports';
+import { Utils } from 'unifymail-exports';
 import { CalendarEvent } from './calendar-event';
 import { EventOccurrence, FocusedEventInfo } from './calendar-data-source';
 import { overlapForEvents } from './week-view-helpers';

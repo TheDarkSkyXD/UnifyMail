@@ -2,7 +2,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import rimraf from 'rimraf';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 import ConfigSchemaItem from './config-schema-item';
 import WorkspaceSection from './workspace-section';
 import SendingSection from './sending-section';
@@ -106,7 +106,7 @@ class PreferencesGeneral extends React.Component<{
             />
             <div className="platform-note platform-linux-only">
               {localized(
-                'Mailspring desktop notifications on Linux require Zenity. You may need to install it with your package manager.'
+                'UnifyMail desktop notifications on Linux require Zenity. You may need to install it with your package manager.'
               )}
             </div>
           </div>

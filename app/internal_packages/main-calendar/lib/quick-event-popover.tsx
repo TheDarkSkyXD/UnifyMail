@@ -9,7 +9,7 @@ import {
   localized,
   SyncbackEventTask,
   TaskQueue,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { Moment } from 'moment';
 
 interface QuickEventPopoverState {
@@ -58,7 +58,7 @@ export class QuickEventPopover extends React.Component<
     end: Moment;
   }) => {
     const allCalendars = await DatabaseStore.findAll<Calendar>(Calendar);
-    const disabledCalendars: string[] = AppEnv.config.get('mailspring.disabledCalendars') || [];
+    const disabledCalendars: string[] = AppEnv.config.get('UnifyMail.disabledCalendars') || [];
     const editableCals = allCalendars.filter(
       (c) => !c.readOnly && !disabledCalendars.includes(c.id)
     );

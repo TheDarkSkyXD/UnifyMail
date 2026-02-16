@@ -13,7 +13,7 @@ export class AttributeBoolean extends Attribute {
     return val;
   }
   fromJSON(val) {
-    // Some attributes we identify as booleans in Mailspring are ints
+    // Some attributes we identify as booleans in UnifyMail are ints
     // in the underlying sync engine for reference-counting purposes.
     // Coerce all values > 0 to `true`.
     return val === 'true' || val / 1 >= 1 || val === true || false;

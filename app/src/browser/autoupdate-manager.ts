@@ -2,11 +2,14 @@
 import { dialog, nativeImage } from 'electron';
 import { EventEmitter } from 'events';
 import path from 'path';
-import os from 'os';
 import fs from 'fs';
 import { localized } from '../intl';
+import { autoUpdater } from 'electron-updater';
+import log from 'electron-log';
 
-let autoUpdater = null;
+// Configure logging
+autoUpdater.logger = log;
+(autoUpdater.logger as any).transports.file.level = 'info';
 
 const IdleState = 'idle';
 const CheckingState = 'checking';
@@ -15,15 +18,12 @@ const UpdateAvailableState = 'update-available';
 const NoUpdateAvailableState = 'no-update-available';
 const UnsupportedState = 'unsupported';
 const ErrorState = 'error';
-const preferredChannel = 'stable';
 
 export default class AutoUpdateManager extends EventEmitter {
   state = IdleState;
   version: string;
   config: import('../config').default;
   specMode: boolean;
-  preferredChannel: string;
-  feedURL: string;
   releaseNotes: string;
   releaseVersion: string;
 
@@ -33,61 +33,23 @@ export default class AutoUpdateManager extends EventEmitter {
     this.version = version;
     this.config = config;
     this.specMode = specMode;
-    this.preferredChannel = preferredChannel;
 
-    this.updateFeedURL();
-    this.config.onDidChange('identity.id', this.updateFeedURL);
+    // Set GitHub repository explicitly
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'TheDarkSkyXD',
+      repo: 'UnifyMail',
+    });
 
     setTimeout(() => this.setupAutoUpdater(), 0);
   }
 
-  updateFeedURL = () => {
-    const params = {
-      platform: process.platform,
-      arch: process.arch,
-      version: this.version,
-      id: this.config.get('identity.id') || 'anonymous',
-      channel: this.preferredChannel,
-    };
-
-    // If we're on the x64 Mac build, but the machine has an Apple-branded
-    // processor, switch the user to the arm64 build.
-    if (params.platform === 'darwin' && process.arch === 'x64') {
-      const cpus = os.cpus();
-      if (cpus.length && cpus[0].model.startsWith('Apple ')) {
-        params.arch = 'arm64';
-      }
-    }
-
-    let host = `updates.getmailspring.com`;
-    if (this.config.get('env') === 'staging') {
-      host = `updates-staging.getmailspring.com`;
-    }
-
-    this.feedURL = `https://${host}/check/${params.platform}/${params.arch}/${params.version}/${params.id}/${params.channel}`;
-    if (autoUpdater) {
-      autoUpdater.setFeedURL(this.feedURL);
-    }
-  };
-
   setupAutoUpdater() {
-    if (process.platform === 'win32') {
-      const Impl = require('./autoupdate-impl-win32').default;
-      autoUpdater = new Impl();
-    } else if (process.platform === 'linux') {
-      const Impl = require('./autoupdate-impl-base').default;
-      autoUpdater = new Impl();
-    } else {
-      autoUpdater = require('electron').autoUpdater;
-    }
-
     autoUpdater.on('error', error => {
       if (this.specMode) return;
       console.error(`Error Downloading Update: ${error.message}`);
       this.setState(ErrorState);
     });
-
-    autoUpdater.setFeedURL(this.feedURL);
 
     autoUpdater.on('checking-for-update', () => {
       this.setState(CheckingState);
@@ -101,22 +63,17 @@ export default class AutoUpdateManager extends EventEmitter {
       this.setState(DownloadingState);
     });
 
-    autoUpdater.on('update-downloaded', (event, releaseNotes, releaseVersion) => {
-      this.releaseNotes = releaseNotes;
-      this.releaseVersion = releaseVersion;
+    autoUpdater.on('update-downloaded', (info) => {
+      this.releaseNotes = typeof info.releaseNotes === 'string' ? info.releaseNotes : (info.releaseNotes || []).map(n => n.note).join('\n');
+      this.releaseVersion = info.version;
       this.setState(UpdateAvailableState);
       this.emitUpdateAvailableEvent();
     });
 
-    if (autoUpdater.supportsUpdates && !autoUpdater.supportsUpdates()) {
-      this.setState(UnsupportedState);
-      return;
-    }
-
-    //check immediately at startup
+    // Check immediately at startup
     this.check({ hidePopups: true });
 
-    //check every 30 minutes
+    // Check every 30 minutes
     setInterval(() => {
       if ([UpdateAvailableState, UnsupportedState].includes(this.state)) {
         console.log('Skipping update check... update ready to install, or updater unavailable.');
@@ -130,11 +87,15 @@ export default class AutoUpdateManager extends EventEmitter {
     if (!this.releaseVersion) {
       return;
     }
-    global.application.windowManager.sendToAllWindows(
-      'update-available',
-      {},
-      this.getReleaseDetails()
-    );
+    // Check if windowManager exists (might be undefined in tests/early startup)
+    const windowManager = global.application?.windowManager;
+    if (windowManager) {
+      windowManager.sendToAllWindows(
+        'update-available',
+        {},
+        this.getReleaseDetails()
+      );
+    }
   }
 
   setState(state) {
@@ -157,7 +118,6 @@ export default class AutoUpdateManager extends EventEmitter {
   }
 
   check({ hidePopups }: { hidePopups?: boolean } = {}) {
-    this.updateFeedURL();
     if (!hidePopups) {
       autoUpdater.once('update-not-available', this.onUpdateNotAvailable);
       autoUpdater.once('error', this.onUpdateError);
@@ -170,37 +130,45 @@ export default class AutoUpdateManager extends EventEmitter {
   }
 
   dialogIcon() {
+    if (!global.application || !global.application.resourcePath) return undefined;
     const iconPath = path.join(
       global.application.resourcePath,
       'static',
       'images',
-      'mailspring.png'
+      'UnifyMail.png'
     );
     if (!fs.existsSync(iconPath)) return undefined;
     return nativeImage.createFromPath(iconPath);
   }
 
   onUpdateNotAvailable = () => {
+    // Remove listeners to avoid accumulation if check is called multiple times
+    // (though 'once' handles it, explicit removal in error ensures cleanup)
     autoUpdater.removeListener('error', this.onUpdateError);
+
     dialog.showMessageBox({
       type: 'info',
       buttons: [localized('OK')],
       icon: this.dialogIcon(),
       message: localized('No update available.'),
       title: localized('No update available.'),
-      detail: localized(`You're running the latest version of Mailspring (%@).`, this.version),
+      detail: localized(`You're running the latest version of UnifyMail (%@).`, this.version),
     });
   };
 
-  onUpdateError = (event, message) => {
+  onUpdateError = (event: any, message?: string) => { // Adapted signature
     autoUpdater.removeListener('update-not-available', this.onUpdateNotAvailable);
+
+    // electron-updater error event passes Error object as first argument
+    const errorMsg = (event instanceof Error) ? event.message : (message || String(event));
+
     dialog.showMessageBox({
       type: 'warning',
       buttons: [localized('OK')],
       icon: this.dialogIcon(),
       message: localized('There was an error checking for updates.'),
       title: localized('Update Error'),
-      detail: message,
+      detail: errorMsg,
     });
   };
 }

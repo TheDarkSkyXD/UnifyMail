@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import { DraftEditingSession } from './draft-editing-session';
 import DraftFactory, { ReplyType, ReplyBehavior } from './draft-factory';
 import DatabaseStore from './database-store';
@@ -32,14 +32,14 @@ const { DefaultSendActionKey } = SendActionsStore;
 Public: DraftStore responds to Actions that interact with Drafts and exposes
 public getter methods to return Draft objects and sessions.
 
-It also creates and queues {Task} objects to persist changes to the Mailspring
+It also creates and queues {Task} objects to persist changes to the UnifyMail
 API.
 
 Remember that a "Draft" is actually just a "Message" with `draft: true`.
 
 Section: Drafts
 */
-class DraftStore extends MailspringStore {
+class DraftStore extends UnifyMailStore {
   _draftSessions: { [headerMessageId: string]: DraftEditingSession } = {};
   _draftsSending: { [headerMessageId: string]: boolean } = {};
 

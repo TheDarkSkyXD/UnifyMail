@@ -1,4 +1,4 @@
-import { Utils } from 'mailspring-exports';
+import { Utils } from 'unifymail-exports';
 import { MAX_MATCHES, CHAR_THRESHOLD } from './search-constants';
 
 export default class UnifiedDOMParser {

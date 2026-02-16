@@ -1,4 +1,4 @@
-import { ListTabular } from 'mailspring-component-kit';
+import { ListTabular } from 'unifymail-component-kit';
 import { Disposable } from 'event-kit';
 
 /**

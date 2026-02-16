@@ -1,8 +1,8 @@
 import _ from 'underscore';
 import React from 'react';
 import PropTypes from 'prop-types';
-import { RetinaImg, Flexbox } from 'mailspring-component-kit';
-import { IdentityStore, localized, MailspringAPIRequest } from 'mailspring-exports';
+import { RetinaImg, Flexbox } from 'unifymail-component-kit';
+import { IdentityStore, localized, UnifyMailAPIRequest } from 'unifymail-exports';
 
 interface NewsletterSignupProps {
   name: string;
@@ -60,7 +60,7 @@ export default class NewsletterSignup extends React.Component<
     }
 
     try {
-      const { status } = await MailspringAPIRequest.makeRequest({
+      const { status } = await UnifyMailAPIRequest.makeRequest({
         server: 'identity',
         method: 'GET',
         path: this._path(props),
@@ -78,7 +78,7 @@ export default class NewsletterSignup extends React.Component<
   _onSubscribe = async () => {
     this._setState({ status: 'Pending' });
     try {
-      const { status } = await MailspringAPIRequest.makeRequest({
+      const { status } = await UnifyMailAPIRequest.makeRequest({
         server: 'identity',
         method: 'POST',
         path: this._path(),
@@ -92,7 +92,7 @@ export default class NewsletterSignup extends React.Component<
   _onUnsubscribe = async () => {
     this._setState({ status: 'Pending' });
     try {
-      const { status } = await MailspringAPIRequest.makeRequest({
+      const { status } = await UnifyMailAPIRequest.makeRequest({
         server: 'identity',
         method: 'DELETE',
         path: this._path(),

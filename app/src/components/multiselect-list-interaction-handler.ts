@@ -4,7 +4,7 @@
  * DS207: Consider shorter variations of null checks
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-import { WorkspaceStore } from 'mailspring-exports';
+import { WorkspaceStore } from 'unifymail-exports';
 import { MultiselectListProps } from './multiselect-list';
 
 export default class MultiselectListInteractionHandler {

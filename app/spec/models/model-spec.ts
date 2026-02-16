@@ -191,7 +191,7 @@ describe('Model', function modelSpecs() {
         this.m.fromJSON({ test_boolean: 'true' });
         expect(this.m.testBoolean).toBe(true);
 
-        // this case is important - there are several columns that Mailspring treats
+        // this case is important - there are several columns that UnifyMail treats
         // as booleans that are actually integers on the mailsync side for book keeping,.
         this.m.testBoolean = undefined;
         this.m.fromJSON({ test_boolean: 4 });

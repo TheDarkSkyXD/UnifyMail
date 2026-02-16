@@ -1,7 +1,7 @@
 import React from 'react';
 import { clipboard } from 'electron';
-import { localized, MailspringAPIRequest } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized, UnifyMailAPIRequest } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 
 function buildShareHTML(htmlEl, styleEl) {
   return `
@@ -10,8 +10,8 @@ function buildShareHTML(htmlEl, styleEl) {
     <head>
     <meta charset="utf-8"> 
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <meta name="author" content="Mailspring">
-    <title>Mailspring Activity</title>
+    <meta name="author" content="UnifyMail">
+    <title>UnifyMail Activity</title>
     <style type="text/css">
     body {
       font-family: sans-serif;
@@ -68,7 +68,7 @@ export default class ShareButton extends React.Component<
       loading: true,
     });
 
-    const link = await MailspringAPIRequest.postStaticPage({
+    const link = await UnifyMailAPIRequest.postStaticPage({
       key: `activity-${Date.now()}`,
       html: buildShareHTML(
         document.querySelector('style[source-path*="activity/styles/index.less"]'),

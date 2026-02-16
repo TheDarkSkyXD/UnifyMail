@@ -5,7 +5,7 @@ import {
   ComponentRegistry,
   ExtensionRegistry,
   MailboxPerspective,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import Root from './root';
 

@@ -1,8 +1,8 @@
 import React from 'react';
 import moment from 'moment';
 import PropTypes from 'prop-types';
-import { RetinaImg } from 'mailspring-component-kit';
-import { localized, DateUtils } from 'mailspring-exports';
+import { RetinaImg } from 'unifymail-component-kit';
+import { localized, DateUtils } from 'unifymail-exports';
 
 import { updateReminderMetadata } from './send-reminders-utils';
 import { PLUGIN_ID } from './send-reminders-constants';

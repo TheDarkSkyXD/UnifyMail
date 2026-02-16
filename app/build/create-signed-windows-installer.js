@@ -16,17 +16,17 @@ const { version } = require(path.join(appDir, 'package.json'));
 const config = {
   usePackageJson: false,
   outputDirectory: path.join(appDir, 'dist'),
-  appDirectory: path.join(appDir, 'dist', 'mailspring-win32-x64'),
+  appDirectory: path.join(appDir, 'dist', 'UnifyMail-win32-x64'),
   loadingGif: path.join(appDir, 'build', 'resources', 'win', 'loading.gif'),
-  iconUrl: 'http://mailspring-builds.s3.amazonaws.com/assets/mailspring.ico',
-  description: 'Mailspring',
+  iconUrl: 'https://raw.githubusercontent.com/TheDarkSkyXD/UnifyMail/master/app/build/resources/win/UnifyMail.ico',
+  description: 'UnifyMail',
   version: version,
-  title: 'Mailspring',
+  title: 'UnifyMail',
   authors: 'Foundry 376, LLC',
-  setupIcon: path.join(appDir, 'build', 'resources', 'win', 'mailspring.ico'),
-  setupExe: 'MailspringSetup.exe',
-  exe: 'mailspring.exe',
-  name: 'Mailspring',
+  setupIcon: path.join(appDir, 'build', 'resources', 'win', 'UnifyMail.ico'),
+  setupExe: 'UnifyMailSetup.exe',
+  exe: 'UnifyMail.exe',
+  name: 'UnifyMail',
 };
 
 console.log(config);

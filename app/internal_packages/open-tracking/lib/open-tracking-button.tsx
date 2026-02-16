@@ -5,9 +5,9 @@ import {
   localized,
   PropTypes,
   APIError,
-  MailspringAPIRequest,
-} from 'mailspring-exports';
-import { MetadataComposerToggleButton } from 'mailspring-component-kit';
+  UnifyMailAPIRequest,
+} from 'unifymail-exports';
+import { MetadataComposerToggleButton } from 'unifymail-component-kit';
 import { PLUGIN_ID, PLUGIN_NAME } from './open-tracking-constants';
 
 export default class OpenTrackingButton extends React.Component<{
@@ -33,7 +33,7 @@ export default class OpenTrackingButton extends React.Component<{
   _errorMessage(error) {
     if (
       error instanceof APIError &&
-      MailspringAPIRequest.TimeoutErrorCodes.includes(error.statusCode)
+      UnifyMailAPIRequest.TimeoutErrorCodes.includes(error.statusCode)
     ) {
       return localized(
         `Open tracking does not work offline. Please re-enable when you come back online.`
@@ -56,7 +56,7 @@ export default class OpenTrackingButton extends React.Component<{
 
     return (
       <MetadataComposerToggleButton
-        iconUrl="mailspring://open-tracking/assets/icon-composer-eye@2x.png"
+        iconUrl="UnifyMail://open-tracking/assets/icon-composer-eye@2x.png"
         pluginId={PLUGIN_ID}
         pluginName={PLUGIN_NAME}
         metadataEnabledValue={enabledValue}

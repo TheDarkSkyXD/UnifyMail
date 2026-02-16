@@ -8,8 +8,8 @@ import {
   IdentityStore,
   MailsyncProcess,
   localized,
-} from 'mailspring-exports';
-import MailspringProviderSettings from './mailspring-provider-settings.json';
+} from 'unifymail-exports';
+import UnifyMailProviderSettings from './unifymail-provider-settings.json';
 import MailcoreProviderSettings from './mailcore-provider-settings.json';
 import dns from 'dns';
 import {
@@ -149,12 +149,12 @@ export async function expandAccountWithCommonSettings(account: Account) {
   // this matches the acccount type presets ("yahoo") and common domains against
   // data derived from Thunderbirds ISPDB.
   let mstemplate =
-    MailspringProviderSettings[domain] || MailspringProviderSettings[account.provider];
+    UnifyMailProviderSettings[domain] || UnifyMailProviderSettings[account.provider];
   if (mstemplate) {
     if (mstemplate.alias) {
-      mstemplate = MailspringProviderSettings[mstemplate.alias];
+      mstemplate = UnifyMailProviderSettings[mstemplate.alias];
     }
-    console.log(`Using Mailspring Template: ${JSON.stringify(mstemplate, null, 2)}`);
+    console.log(`Using UnifyMail Template: ${JSON.stringify(mstemplate, null, 2)}`);
   } else {
     console.log(`Using Fallback Template`);
     mstemplate = {
@@ -210,7 +210,7 @@ export async function expandAccountWithCommonSettings(account: Account) {
   // on protonmail by default Folders set as container folder
   const containerFolderDefault = AccountStore.containerFolderDefaultGetter();
   if (
-    containerFolderDefault !== 'Mailspring' &&
+    containerFolderDefault !== 'UnifyMail' &&
     (populated.settings.container_folder === '' ||
       populated.settings.container_folder === undefined)
   ) {

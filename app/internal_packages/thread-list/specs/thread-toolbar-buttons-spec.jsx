@@ -7,7 +7,7 @@ import {
   CategoryStore,
   TaskFactory,
   MailboxPerspective,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import {
   ToggleStarredButton,
   ToggleUnreadButton,

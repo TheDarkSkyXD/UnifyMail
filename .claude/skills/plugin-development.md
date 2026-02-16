@@ -1,6 +1,6 @@
 # Plugin Development Skill
 
-Use this skill when working on code related to Mailspring's plugin system, including:
+Use this skill when working on code related to UnifyMail's plugin system, including:
 - Creating, modifying, or debugging plugins/packages
 - Working with the PackageManager or Package classes
 - Modifying plugin loading, discovery, or activation logic
@@ -14,7 +14,7 @@ Use this skill when working on code related to Mailspring's plugin system, inclu
 Before making changes to plugin-related code, you MUST read the plugin system architecture documentation:
 
 ```
-/home/user/Mailspring/PLUGIN_SYSTEM_ARCHITECTURE.md
+/home/user/UnifyMail/PLUGIN_SYSTEM_ARCHITECTURE.md
 ```
 
 This document contains comprehensive information about:
@@ -44,7 +44,7 @@ When working on plugin functionality, these are the primary files to understand:
 
 ## Development Guidelines
 
-1. **Plugin Validation**: All plugins must have `engines.mailspring` in package.json
+1. **Plugin Validation**: All plugins must have `engines.UnifyMail` in package.json
 2. **Lifecycle Compliance**: Plugins must export `activate()` and `deactivate()` functions
 3. **Clean Deactivation**: Always unregister components/extensions in `deactivate()`
 4. **Window Types**: Consider which window types a plugin should load in
@@ -52,7 +52,7 @@ When working on plugin functionality, these are the primary files to understand:
 
 ## Testing Plugin Changes
 
-- Use `npm start` to run in dev mode (uses `Mailspring-dev` config directory)
+- Use `npm start` to run in dev mode (uses `UnifyMail-dev` config directory)
 - Hot reload with `Ctrl+R` / `Cmd+R`
-- Access `$m` in dev console for `mailspring-exports`
-- User plugins go in `~/.config/Mailspring-dev/packages/` during development
+- Access `$m` in dev console for `UnifyMail-exports`
+- User plugins go in `~/.config/UnifyMail-dev/packages/` during development

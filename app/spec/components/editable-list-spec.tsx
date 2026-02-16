@@ -7,7 +7,7 @@ import {
 } from 'react-dom/test-utils';
 
 import EditableList from '../../src/components/editable-list';
-import MTestUtils from '../mailspring-test-utils';
+import MTestUtils from '../unifymail-test-utils';
 
 const { findDOMNode } = ReactDOM;
 

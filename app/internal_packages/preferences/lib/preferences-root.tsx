@@ -8,8 +8,8 @@ import {
   KeyCommandsRegion,
   ListensToFluxStore,
   ConfigPropContainer,
-} from 'mailspring-component-kit';
-import { PreferencesUIStore } from 'mailspring-exports';
+} from 'unifymail-component-kit';
+import { PreferencesUIStore } from 'unifymail-exports';
 import PreferencesTabsBar from './preferences-tabs-bar';
 
 const stopPropagation = e => {

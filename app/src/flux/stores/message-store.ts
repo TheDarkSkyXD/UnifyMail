@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import * as Actions from '../actions';
 import { Message } from '../models/message';
 import { Thread } from '../models/thread';
@@ -8,12 +8,12 @@ import FocusedPerspectiveStore from './focused-perspective-store';
 import FocusedContentStore from './focused-content-store';
 import * as ExtensionRegistry from '../../registries/extension-registry';
 import electron from 'electron';
-import { MessageViewExtension } from 'mailspring-exports';
+import { MessageViewExtension } from 'unifymail-exports';
 import { DatabaseChangeRecord } from './database-change-record';
 
 const FolderNamesHiddenByDefault = ['spam', 'trash'];
 
-class _MessageStore extends MailspringStore {
+class _MessageStore extends UnifyMailStore {
   FolderNamesHiddenByDefault = FolderNamesHiddenByDefault;
 
   _showingHiddenItems = false;
@@ -200,7 +200,7 @@ class _MessageStore extends MailspringStore {
   }
 
   _setWindowTitle() {
-    const title = 'Mailspring' + (this._thread ? ' · ' + this._thread.subject : '');
+    const title = 'UnifyMail' + (this._thread ? ' · ' + this._thread.subject : '');
     require('@electron/remote').getCurrentWindow().setTitle(title);
   }
 

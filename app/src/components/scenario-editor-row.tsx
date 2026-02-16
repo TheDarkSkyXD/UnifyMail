@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Rx, { Disposable } from 'rx-lite';
-import { Flexbox } from 'mailspring-component-kit';
+import { Flexbox } from 'unifymail-component-kit';
 
 import { Template } from './scenario-editor-models';
 

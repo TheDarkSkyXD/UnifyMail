@@ -1,8 +1,8 @@
 import React from 'react';
 const { mount } = require('enzyme');
 
-import { Contact } from 'mailspring-exports';
-import { KeyCommandsRegion, TokenizingTextField, Menu } from 'mailspring-component-kit';
+import { Contact } from 'unifymail-exports';
+import { KeyCommandsRegion, TokenizingTextField, Menu } from 'unifymail-component-kit';
 
 class CustomToken extends React.Component {
   render() {
@@ -18,18 +18,18 @@ class CustomSuggestion extends React.Component {
 
 const participant1 = new Contact({
   id: '1',
-  email: 'ben@mailspring.com',
+  email: 'ben@UnifyMail.com',
 });
 const participant2 = new Contact({
   id: '2',
-  email: 'burgers@mailspring.com',
-  name: 'Mailspring Burger Basket',
+  email: 'burgers@UnifyMail.com',
+  name: 'UnifyMail Burger Basket',
   hidden: false,
   source: 'mail',
 });
 const participant3 = new Contact({
   id: '3',
-  email: 'evan@mailspring.com',
+  email: 'evan@UnifyMail.com',
   name: 'Evan',
 });
 const participant4 = new Contact({
@@ -154,9 +154,9 @@ describe('TokenizingTextField', function() {
       token.simulate('dragStart', dragStartEvent);
 
       expect(dragStartEventData).toEqual({
-        'mailspring-token-items':
-          '[{"id":"2","name":"Mailspring Burger Basket","h":false,"s":"mail","email":"burgers@mailspring.com","gis":[],"__cls":"Contact"}]',
-        'text/plain': 'Mailspring Burger Basket <burgers@mailspring.com>',
+        'UnifyMail-token-items':
+          '[{"id":"2","name":"UnifyMail Burger Basket","h":false,"s":"mail","email":"burgers@UnifyMail.com","gis":[],"__cls":"Contact"}]',
+        'text/plain': 'UnifyMail Burger Basket <burgers@UnifyMail.com>',
       });
 
       const dropEvent = {
@@ -420,12 +420,12 @@ describe('TokenizingTextField.Token', function() {
 
       expect(this.token.state().editing).toBe(null);
       this.token.simulate('doubleClick', {});
-      expect(this.token.state().editing).toBe('ben@mailspring.com');
+      expect(this.token.state().editing).toBe('ben@UnifyMail.com');
     });
 
       expect(this.token.state().editing).toBe(null);
       this.token.simulate('doubleClick', {});
-      expect(this.token.state().editing).toBe('ben@mailspring.com');
+      expect(this.token.state().editing).toBe('ben@UnifyMail.com');
       const tokenEditInput = this.token.find('input');
       tokenEditInput.getDOMNode().value = 'new tag content';
       tokenEditInput.simulate('change');

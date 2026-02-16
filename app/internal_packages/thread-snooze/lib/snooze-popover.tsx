@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { localized, DateUtils, Actions, Thread } from 'mailspring-exports';
-import { RetinaImg, DateInput } from 'mailspring-component-kit';
+import { localized, DateUtils, Actions, Thread } from 'unifymail-exports';
+import { RetinaImg, DateInput } from 'unifymail-component-kit';
 import * as SnoozeActions from './snooze-actions';
 
 const { DATE_FORMAT_LONG } = DateUtils;
@@ -73,7 +73,7 @@ class SnoozePopover extends Component<{
   renderItem = itemLabel => {
     const date = SnoozeDatesFactory[itemLabel]();
     const iconName = SnoozeIconNames[itemLabel];
-    const iconPath = `mailspring://thread-snooze/assets/ic-snoozepopover-${iconName}@2x.png`;
+    const iconPath = `UnifyMail://thread-snooze/assets/ic-snoozepopover-${iconName}@2x.png`;
     return (
       <div key={itemLabel} className="snooze-item" onClick={() => this.onSnooze(date, itemLabel)}>
         <RetinaImg

@@ -1,6 +1,6 @@
 import React from 'react';
-import { PropTypes, Thread } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { PropTypes, Thread } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 
 const StaticEmptyIndicator = <div className="personal-level-icon" />;
 
@@ -17,7 +17,7 @@ export default class PersonalLevelIcon extends React.Component<{ thread: Thread 
     return (
       <div className="personal-level-icon">
         <RetinaImg
-          url={`mailspring://personal-level-indicators/assets/PLI-Level${level}@2x.png`}
+          url={`UnifyMail://personal-level-indicators/assets/PLI-Level${level}@2x.png`}
           mode={RetinaImg.Mode.ContentDark}
         />
       </div>

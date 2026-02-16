@@ -1,4 +1,4 @@
-import { EventedIFrame } from 'mailspring-component-kit';
+import { EventedIFrame } from 'unifymail-component-kit';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {
@@ -8,7 +8,7 @@ import {
   MessageStore,
   Message,
   Autolink,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { adjustImages } from './adjust-images';
 import EmailFrameStylesStore from './email-frame-styles-store';
 

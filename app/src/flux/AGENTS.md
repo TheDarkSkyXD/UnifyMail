@@ -13,7 +13,7 @@ Flux architecture implementation — the state management backbone of the applic
 | `actions.ts` | All application actions: defines Flux action creators dispatched by UI and services |
 | `action-bridge.ts` | IPC bridge that synchronizes Flux actions between main and renderer processes |
 | `mailsync-bridge.ts` | Bridge to the native mailsync C++ process: sends commands, receives events, handles sync status |
-| `mailspring-api-request.ts` | HTTP request utility for Mailspring web API calls (identity, billing) |
+| `UnifyMail-api-request.ts` | HTTP request utility for UnifyMail web API calls (identity, billing) |
 | `attributes.ts` | Barrel export for all attribute types |
 | `errors.ts` | Custom error classes for Flux operations |
 
@@ -44,7 +44,7 @@ Flux architecture implementation — the state management backbone of the applic
 
 ### Common Patterns
 - **Actions**: `Actions.actionName(payload)` dispatches to all listening stores
-- **Stores**: Extend `MailspringStore`, listen to actions, trigger change events
+- **Stores**: Extend `UnifyMailStore`, listen to actions, trigger change events
 - **Models**: Extend `Model` or `ModelWithMetadata`, define `attributes` static getter for ORM mapping
 - **Tasks**: Extend `Task`, implement `performLocal()` and server syncback logic
 - **Database queries**: `DatabaseStore.findAll(Model).where([Matcher]).order(Attribute)`
@@ -52,7 +52,7 @@ Flux architecture implementation — the state management backbone of the applic
 ## Dependencies
 
 ### Internal
-- `app/src/global/mailspring-exports` — Exports models, stores, actions publicly
+- `app/src/global/UnifyMail-exports` — Exports models, stores, actions publicly
 - `app/src/registries/` — Component and extension registries
 - `app/src/services/` — Services that stores depend on
 

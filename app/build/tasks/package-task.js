@@ -120,8 +120,8 @@ module.exports = grunt => {
       platform: platform,
       protocols: [
         {
-          name: 'Mailspring Protocol',
-          schemes: ['mailspring'],
+          name: 'UnifyMail Protocol',
+          schemes: ['UnifyMail'],
         },
         {
           name: 'Mailto Protocol',
@@ -142,15 +142,15 @@ module.exports = grunt => {
           'build',
           'resources',
           'mac',
-          'mailspring.icns'
+          'UnifyMail.icns'
         ),
-        win32: path.resolve(grunt.config('appDir'), 'build', 'resources', 'win', 'mailspring.ico'),
+        win32: path.resolve(grunt.config('appDir'), 'build', 'resources', 'win', 'UnifyMail.ico'),
         linux: undefined,
       }[platform],
       name: {
-        darwin: 'Mailspring',
-        win32: 'Mailspring',
-        linux: 'mailspring',
+        darwin: 'UnifyMail',
+        win32: 'UnifyMail',
+        linux: 'UnifyMail',
       }[platform],
       appCopyright: `Copyright (C) 2014-${new Date().getFullYear()} Foundry 376, LLC. All rights reserved.`,
       derefSymlinks: false,
@@ -248,9 +248,9 @@ module.exports = grunt => {
         : undefined,
       win32metadata: {
         CompanyName: 'Foundry 376, LLC',
-        FileDescription: 'Mailspring',
+        FileDescription: 'UnifyMail',
         LegalCopyright: `Copyright (C) 2014-${new Date().getFullYear()} Foundry 376, LLC. All rights reserved.`,
-        ProductName: 'Mailspring',
+        ProductName: 'UnifyMail',
       },
       // NOTE: The following plist keys can NOT be set in the
       // extra.plist since they are manually overridden by
@@ -267,7 +267,7 @@ module.exports = grunt => {
       // Electron.app/Contents/Info.plist. A majority of the defaults are
       // left in the Electron Info.plist file
       extendInfo: path.resolve(grunt.config('appDir'), 'build', 'resources', 'mac', 'extra.plist'),
-      appBundleId: 'com.mailspring.mailspring',
+      appBundleId: 'com.UnifyMail.UnifyMail',
       afterCopy: [
         runCopyPlatformSpecificResources,
         runWriteCommitHashIntoPackage,
@@ -278,7 +278,7 @@ module.exports = grunt => {
     },
   });
 
-  grunt.registerTask('package', 'Package Mailspring', function pack() {
+  grunt.registerTask('package', 'Package UnifyMail', function pack() {
     const done = this.async();
     const start = Date.now();
 

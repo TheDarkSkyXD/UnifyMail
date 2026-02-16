@@ -1,12 +1,12 @@
 import _ from 'underscore';
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import { AccountStore } from './account-store';
 import WorkspaceStore from './workspace-store';
 import { MailboxPerspective } from '../../mailbox-perspective';
 import CategoryStore from './category-store';
 import * as Actions from '../actions';
 
-class FocusedPerspectiveStore extends MailspringStore {
+class FocusedPerspectiveStore extends UnifyMailStore {
   _current = MailboxPerspective.forNothing();
   _initialized = false;
 

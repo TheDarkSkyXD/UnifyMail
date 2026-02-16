@@ -9,8 +9,8 @@ import {
   QuotedHTMLTransformer,
   AttachmentStore,
   Message,
-} from 'mailspring-exports';
-import { InjectedComponentSet, RetinaImg } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { InjectedComponentSet, RetinaImg } from 'unifymail-component-kit';
 
 import EmailFrame from './email-frame';
 import { BrowserWindow } from '@electron/remote';
@@ -19,7 +19,7 @@ const TransparentPixel =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNikAQAACIAHF/uBd8AAAAASUVORK5CYII=';
 
 const SpinnerImg =
-  '<img alt="spinner.gif" src="mailspring://message-list/assets/spinner.gif" style="-webkit-user-drag: none;">';
+  '<img alt="spinner.gif" src="UnifyMail://message-list/assets/spinner.gif" style="-webkit-user-drag: none;">';
 
 class ConditionalQuotedTextControl extends React.Component<{ body: string; onClick?: () => void }> {
   static displayName = 'ConditionalQuotedTextControl';

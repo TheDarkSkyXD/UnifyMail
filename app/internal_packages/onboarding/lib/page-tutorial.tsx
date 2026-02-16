@@ -1,4 +1,4 @@
-import { localized, React } from 'mailspring-exports';
+import { localized, React } from 'unifymail-exports';
 import * as OnboardingActions from './onboarding-actions';
 
 const Steps = [
@@ -8,7 +8,7 @@ const Steps = [
     title: localized('Compose with context'),
     image: 'feature-people@2x.png',
     description: localized(
-      'Mailspring shows you everything about your contacts right inside your inbox. See LinkedIn profiles, Twitter bios, message history, and more.'
+      'UnifyMail shows you everything about your contacts right inside your inbox. See LinkedIn profiles, Twitter bios, message history, and more.'
     ),
     x: 96.6,
     y: 1.3,
@@ -21,7 +21,7 @@ const Steps = [
     title: localized('Track opens and clicks'),
     image: 'feature-activity@2x.png',
     description: localized(
-      'With activity tracking, you’ll know as soon as someone reads your message. Sending to a group? Mailspring shows you which recipients opened your email so you can follow up with precision.'
+      'With activity tracking, you’ll know as soon as someone reads your message. Sending to a group? UnifyMail shows you which recipients opened your email so you can follow up with precision.'
     ),
     x: 12.8,
     y: 1,
@@ -34,7 +34,7 @@ const Steps = [
     title: localized('Send on your own schedule'),
     image: 'feature-snooze@2x.png',
     description: localized(
-      'Snooze emails to return at any time that suits you. Schedule messages to send at the ideal time. Mailspring makes it easy to control the fabric of spacetime!'
+      'Snooze emails to return at any time that suits you. Schedule messages to send at the ideal time. UnifyMail makes it easy to control the fabric of spacetime!'
     ),
     x: 5.5,
     y: 23.3,
@@ -46,7 +46,7 @@ const Steps = [
   //   id: 'composer',
   //   title: 'Eliminate hacky extensions',
   //   image: 'feature-composer@2x.png',
-  //   description: "Embed calendar invitations, propose meeting times, use quick reply templates, send mass emails with mail merge, and more—all directly from Mailspring’s powerful composer.",
+  //   description: "Embed calendar invitations, propose meeting times, use quick reply templates, send mass emails with mail merge, and more—all directly from UnifyMail’s powerful composer.",
   //   x: 60.95,
   //   y: 66,
   //   xDot: 60.3,
@@ -139,7 +139,7 @@ export default class TutorialPage extends React.Component<
           </div>
           <div className="right">
             <img
-              src={`mailspring://onboarding/assets/${current.image}`}
+              src={`UnifyMail://onboarding/assets/${current.image}`}
               style={{ zoom: 0.5, margin: 'auto' }}
               alt=""
             />

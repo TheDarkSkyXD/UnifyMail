@@ -1,8 +1,8 @@
 /* eslint jsx-a11y/tabindex-no-positive: 0 */
 import React from 'react';
 
-import { Flexbox, ScrollRegion } from 'mailspring-component-kit';
-import { localized } from 'mailspring-exports';
+import { Flexbox, ScrollRegion } from 'unifymail-component-kit';
+import { localized } from 'unifymail-exports';
 import ThemeOption, { toSelector } from './theme-option';
 import { Disposable } from 'event-kit';
 
@@ -104,7 +104,7 @@ class ThemePicker extends React.Component<
           </ScrollRegion>
           <div className="create-theme">
             <a
-              href="https://github.com/Foundry376/Mailspring-Theme-Starter"
+              href="https://github.com/TheDarkSkyXD/UnifyMail-Theme-Starter"
               style={{ color: '#3187e1' }}
             >
               {localized('Create a Theme')}

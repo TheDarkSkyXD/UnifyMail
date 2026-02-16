@@ -7,9 +7,9 @@ import {
   Message,
   DraftEditingSession,
   FeatureUsageStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
-import { Menu, RetinaImg } from 'mailspring-component-kit';
+import { Menu, RetinaImg } from 'unifymail-component-kit';
 import { TranslatePopupOptions, translateMessageBody, TranslationsUsedLexicon } from './service';
 
 export class TranslateComposerButton extends React.Component<{
@@ -29,7 +29,7 @@ export class TranslateComposerButton extends React.Component<{
 
   shouldComponentUpdate(nextProps) {
     // Our render method doesn't use the provided `draft`, and the draft changes
-    // constantly (on every keystroke!) `shouldComponentUpdate` helps keep Mailspring fast.
+    // constantly (on every keystroke!) `shouldComponentUpdate` helps keep UnifyMail fast.
     return nextProps.session !== this.props.session;
   }
 
@@ -84,7 +84,7 @@ export class TranslateComposerButton extends React.Component<{
   // `React.createElement('a', {href: 'http://facebook.github.io/react/'}, 'Hello!')`
 
   // We're rendering a `Menu` inside our Popover, and using a `RetinaImg` for the button.
-  // These components are part of N1's standard `mailspring-component-kit` library,
+  // These components are part of N1's standard `UnifyMail-component-kit` library,
   // and make it easy to build interfaces that match the rest of N1's UI.
   //
   // For example, using the `RetinaImg` component makes it easy to display an
@@ -103,7 +103,7 @@ export class TranslateComposerButton extends React.Component<{
       >
         <RetinaImg
           mode={RetinaImg.Mode.ContentIsMask}
-          url="mailspring://translation/assets/icon-composer-translate@2x.png"
+          url="UnifyMail://translation/assets/icon-composer-translate@2x.png"
         />
         &nbsp;
         <RetinaImg name="icon-composer-dropdown.png" mode={RetinaImg.Mode.ContentIsMask} />

@@ -1,4 +1,4 @@
-import { Utils, Calendar } from 'mailspring-exports';
+import { Utils, Calendar } from 'unifymail-exports';
 
 // Cache of calendar colors synced from CalDAV servers
 const calendarColorCache: Map<string, string> = new Map();

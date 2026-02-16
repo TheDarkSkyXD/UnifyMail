@@ -1,4 +1,4 @@
-import { ComponentRegistry, ExtensionRegistry } from 'mailspring-exports';
+import { ComponentRegistry, ExtensionRegistry } from 'unifymail-exports';
 
 import AutoloadImagesExtension from './autoload-images-extension';
 import AutoloadImagesHeader from './autoload-images-header';
@@ -8,7 +8,7 @@ All packages must export a basic object that has at least the following 3
 methods:
 
 1. `activate` - Actions to take once the package gets turned on.
-Pre-enabled packages get activated on Mailspring bootup. They can also be
+Pre-enabled packages get activated on UnifyMail bootup. They can also be
 activated manually by a user.
 
 2. `deactivate` - Actions to take when a package gets turned off. This can

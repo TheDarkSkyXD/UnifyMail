@@ -9,7 +9,7 @@
   "scripts": {
   },
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
   "windowTypes": {
     "contacts": true

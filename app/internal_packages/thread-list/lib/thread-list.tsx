@@ -9,7 +9,7 @@ import {
   EmptyListState,
   FluxContainer,
   SyncingListState,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 
 import {
   Actions,
@@ -25,7 +25,7 @@ import {
   FolderSyncProgressStore,
   Thread,
   TaskFactory,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import * as ThreadListColumns from './thread-list-columns';
 import ThreadListScrollTooltip from './thread-list-scroll-tooltip';
@@ -233,8 +233,8 @@ class ThreadList extends React.Component<
 
     const canvas = CanvasUtils.canvasForDragging('threads', data.threadIds.length);
     event.dataTransfer.setDragImage(canvas, 10, 10);
-    event.dataTransfer.setData('mailspring-threads-data', JSON.stringify(data));
-    event.dataTransfer.setData(`mailspring-accounts=${data.accountIds.join(',')}`, '1');
+    event.dataTransfer.setData('UnifyMail-threads-data', JSON.stringify(data));
+    event.dataTransfer.setData(`UnifyMail-accounts=${data.accountIds.join(',')}`, '1');
   };
 
   _onDragEnd = event => {};

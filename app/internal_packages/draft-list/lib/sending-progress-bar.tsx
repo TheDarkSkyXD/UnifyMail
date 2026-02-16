@@ -1,5 +1,5 @@
 import React from 'react';
-import { PropTypes, Utils } from 'mailspring-exports';
+import { PropTypes, Utils } from 'unifymail-exports';
 
 class SendingProgressBar extends React.Component<{ progress: number }> {
   static propTypes = { progress: PropTypes.number.isRequired };

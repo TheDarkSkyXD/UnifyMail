@@ -12,9 +12,9 @@ export const GMAIL_CLIENT_ID =
 //
 // We could run a small web app that receives the code and exchanges it for the refresh token (storing this on the server), but
 // that web flow would still hand the resulting client secret to the desktop app, whose authenticity it can't verify.
-// (It can verify the connection is secure, but not that the receiving party is /this/ copy of Mailspring.)
+// (It can verify the connection is secure, but not that the receiving party is /this/ copy of UnifyMail.)
 //
-// Note: This is not a security risk for the end-user -- it just means someone could "fork" Mailspring and re-use it's
+// Note: This is not a security risk for the end-user -- it just means someone could "fork" UnifyMail and re-use it's
 // Client ID and Secret. For now, it seems we're on the honor code - Please don't do this.
 //
 export const GMAIL_CLIENT_SECRET =
@@ -22,7 +22,7 @@ export const GMAIL_CLIENT_SECRET =
   crypto
     .createDecipheriv(
       'aes-256-ctr',
-      "don't-be-ev1l-thanks--mailspring",
+      "don't-be-ev1l-thanks--UnifyMail",
       Buffer.from('wgvAx+N05nHqhFxJ9I07jw==', 'base64')
     )
     .update(Buffer.from('1EyEGYVh3NBNIbYEdpdMvOzCH7+vrSciGeYZ1F+W6W+yShk=', 'base64'))

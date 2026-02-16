@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageViewExtension, Actions } from 'mailspring-exports';
+import { MessageViewExtension, Actions } from 'unifymail-exports';
 import LinkTrackingMessagePopover from './link-tracking-message-popover';
 import { PLUGIN_ID } from './link-tracking-constants';
 import { LinkTrackingMetadata } from './types';
@@ -39,7 +39,7 @@ export default class LinkTrackingMessageExtension extends MessageViewExtension {
         dotNode.title = `${links[nodeHref].click_count} click${
           links[nodeHref].click_count === 1 ? '' : 's'
         } (${originalHref})`;
-        dotNode.src = 'mailspring://link-tracking/assets/ic-tracking-visited@2x.png';
+        dotNode.src = 'UnifyMail://link-tracking/assets/ic-tracking-visited@2x.png';
         dotNode.style =
           'margin-bottom: 0.75em; margin-left: 1px; margin-right: 1px; vertical-align: text-bottom; width: 6px; cursor: pointer;';
         dotNode.onmousedown = () => {
@@ -63,7 +63,7 @@ export default class LinkTrackingMessageExtension extends MessageViewExtension {
         };
       } else {
         dotNode.title = `This link has not been clicked (${originalHref})`;
-        dotNode.src = 'mailspring://link-tracking/assets/ic-tracking-unvisited@2x.png';
+        dotNode.src = 'UnifyMail://link-tracking/assets/ic-tracking-unvisited@2x.png';
       }
       node.href = originalHref;
       node.title = originalHref;

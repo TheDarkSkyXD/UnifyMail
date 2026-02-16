@@ -14,7 +14,7 @@ import { AttributeValues } from './model';
 Public: The Message model represents an email message or draft.
 
 Messages are a sub-object of threads. The content of a message === immutable (with the
-exception being drafts). Mailspring does not support operations such as move || delete on
+exception being drafts). UnifyMail does not support operations such as move || delete on
 individual messages; those operations should be performed on the message’s thread.
 All messages are part of a thread, even if that thread has only one message.
 
@@ -415,7 +415,7 @@ export class Message extends ModelWithMetadata {
       this.to.length === 1 &&
       this.from.length === 1 &&
       this.to[0].email === this.from[0].email &&
-      (this.from[0].name || '').endsWith('via Mailspring');
+      (this.from[0].name || '').endsWith('via UnifyMail');
     const isDraftBeingDeleted = this.id.startsWith('deleted-');
 
     return isReminder || isDraftBeingDeleted;

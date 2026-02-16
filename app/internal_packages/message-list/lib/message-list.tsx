@@ -10,7 +10,7 @@ import {
   Thread,
   SearchableComponentStore,
   SearchableComponentMaker,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import {
   Spinner,
@@ -21,7 +21,7 @@ import {
   MailImportantIcon,
   KeyCommandsRegion,
   InjectedComponentSet,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 
 import FindInThread from './find-in-thread';
 import MessageItemContainer from './message-item-container';

@@ -14,8 +14,8 @@ export type Actions = typeof import('../flux/actions');
 export const Actions: Actions;
 
 // API Endpoints
-export type MailspringAPIRequest = typeof import('../flux/mailspring-api-request').default;
-export const MailspringAPIRequest: MailspringAPIRequest;
+export type UnifyMailAPIRequest = typeof import('../flux/unifymail-api-request').default;
+export const UnifyMailAPIRequest: UnifyMailAPIRequest;
 export * from '../mailsync-process';
 
 // The Database
@@ -236,5 +236,5 @@ export type SystemStartService = typeof import('../system-start-service').defaul
 export const SystemStartService: SystemStartService;
 
 // Testing
-export type MailspringTestUtils = typeof import('../../spec/mailspring-test-utils').default;
-export const MailspringTestUtils: MailspringTestUtils;
+export type UnifyMailTestUtils = typeof import('../../spec/unifymail-test-utils').default;
+export const UnifyMailTestUtils: UnifyMailTestUtils;

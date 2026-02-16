@@ -1,4 +1,4 @@
-import { Message, SignatureStore } from 'mailspring-exports';
+import { Message, SignatureStore } from 'unifymail-exports';
 import SignatureComposerExtension from '../lib/signature-composer-extension';
 
 const TEST_ID = 1;
@@ -25,13 +25,13 @@ describe('SignatureComposerExtension', function signatureComposerExtension() {
       it('should insert the signature at the end of the message or before the first quoted text block and have a newline', () => {
         const a = new Message({
           draft: true,
-          from: ['one@mailspring.com'],
+          from: ['one@UnifyMail.com'],
           accountId: TEST_ACCOUNT_ID,
           body: 'This is a test! <div class="gmail_quote">Hello world</div>',
         });
         const b = new Message({
           draft: true,
-          from: ['one@mailspring.com'],
+          from: ['one@UnifyMail.com'],
           accountId: TEST_ACCOUNT_ID,
           body: 'This is a another test.',
         });
@@ -79,7 +79,7 @@ describe('SignatureComposerExtension', function signatureComposerExtension() {
         })`, () => {
           const message = new Message({
             draft: true,
-            from: ['one@mailspring.com'],
+            from: ['one@UnifyMail.com'],
             body: scenario.body,
             accountId: TEST_ACCOUNT_ID,
           });

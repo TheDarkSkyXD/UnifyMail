@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 import { Editor } from 'slate';
 import {
   IEditorToolbarConfigItem,

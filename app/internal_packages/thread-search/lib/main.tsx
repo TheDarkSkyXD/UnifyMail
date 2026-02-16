@@ -4,8 +4,8 @@ import {
   localized,
   ComponentRegistry,
   WorkspaceStore,
-} from 'mailspring-exports';
-import { HasTutorialTip } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { HasTutorialTip } from 'unifymail-component-kit';
 
 import ThreadSearchBar from './thread-search-bar';
 

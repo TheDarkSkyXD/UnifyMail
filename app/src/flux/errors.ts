@@ -1,4 +1,4 @@
-// This file contains custom Mailspring error classes.
+// This file contains custom UnifyMail error classes.
 //
 // In general I think these should be created as sparingly as possible.
 // Only add one if you really can't use native `new Error("my msg")`

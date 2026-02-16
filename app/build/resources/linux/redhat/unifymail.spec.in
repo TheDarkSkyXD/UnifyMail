@@ -3,7 +3,7 @@ Version:        <%= version %>
 Release:        0.1%{?dist}
 Summary:        <%= description %>
 License:        GPLv3
-URL:            https://getmailspring.com/
+URL:            https://getunifymail.com/
 AutoReqProv:    no # Avoid libchromiumcontent.so missing dependency
 
 %ifarch i386 i486 i586 i686
@@ -26,36 +26,36 @@ Requires: libasound.so.2()(64bit), libXss.so.1()(64bit), libsecret-1.so.0()(64bi
 %define _build_id_links none
 
 %install
-mkdir -p %{buildroot}/usr/share/mailspring
-cp -r <%= contentsDir %>/* %{buildroot}/usr/share/mailspring
+mkdir -p %{buildroot}/usr/share/UnifyMail
+cp -r <%= contentsDir %>/* %{buildroot}/usr/share/UnifyMail
 
 mkdir -p %{buildroot}/usr/bin/
 
-ln -s ../share/mailspring/mailspring %{buildroot}/usr/bin/mailspring
-chmod 755 %{buildroot}/usr/bin/mailspring
+ln -s ../share/UnifyMail/UnifyMail %{buildroot}/usr/bin/UnifyMail
+chmod 755 %{buildroot}/usr/bin/UnifyMail
 
 mkdir -p %{buildroot}/usr/share/applications/
-mv Mailspring.desktop %{buildroot}/usr/share/applications/
+mv UnifyMail.desktop %{buildroot}/usr/share/applications/
 
 mkdir -p %{buildroot}/usr/share/appdata/
-mv mailspring.appdata.xml %{buildroot}/usr/share/appdata/
+mv UnifyMail.appdata.xml %{buildroot}/usr/share/appdata/
 
 for s in 16 32 64 128 256 512; do
     mkdir -p %{buildroot}/usr/share/icons/hicolor/${s}x${s}/apps
-    cp -p <%= linuxAssetsDir %>/icons/${s}.png %{buildroot}/usr/share/icons/hicolor/${s}x${s}/apps/mailspring.png
+    cp -p <%= linuxAssetsDir %>/icons/${s}.png %{buildroot}/usr/share/icons/hicolor/${s}x${s}/apps/UnifyMail.png
 done
 
 %files
-/usr/bin/mailspring
-/usr/share/mailspring
-/usr/share/applications/Mailspring.desktop
-/usr/share/appdata/mailspring.appdata.xml
-/usr/share/icons/hicolor/16x16/apps/mailspring.png
-/usr/share/icons/hicolor/32x32/apps/mailspring.png
-/usr/share/icons/hicolor/64x64/apps/mailspring.png
-/usr/share/icons/hicolor/128x128/apps/mailspring.png
-/usr/share/icons/hicolor/256x256/apps/mailspring.png
-/usr/share/icons/hicolor/512x512/apps/mailspring.png
+/usr/bin/UnifyMail
+/usr/share/UnifyMail
+/usr/share/applications/UnifyMail.desktop
+/usr/share/appdata/UnifyMail.appdata.xml
+/usr/share/icons/hicolor/16x16/apps/UnifyMail.png
+/usr/share/icons/hicolor/32x32/apps/UnifyMail.png
+/usr/share/icons/hicolor/64x64/apps/UnifyMail.png
+/usr/share/icons/hicolor/128x128/apps/UnifyMail.png
+/usr/share/icons/hicolor/256x256/apps/UnifyMail.png
+/usr/share/icons/hicolor/512x512/apps/UnifyMail.png
 
 %post
 gtk-update-icon-cache -f /usr/share/icons/hicolor &> /dev/null || :

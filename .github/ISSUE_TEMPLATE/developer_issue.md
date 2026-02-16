@@ -7,7 +7,7 @@ assignees: ''
 <!-- WARNING: DO NOT USE THIS TEMPLATE TO REPORT ISSUES OR SUGGEST FEATURES!
   -- This template only exists for contributors to track their own ongoing tasks.
   -- All other issues created by non-contributors WILL BE CLOSED without being addressed.
-  -- Please use https://community.getmailspring.com/ for all bug reports,
+  -- Please use https://community.getunifymail.com/ for all bug reports,
   -- service issues, and feature requests.
   -->
 

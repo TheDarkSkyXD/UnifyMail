@@ -9,8 +9,8 @@ import {
   MailboxPerspective,
   FolderSyncProgressStore,
   FocusedPerspectiveStore,
-} from 'mailspring-exports';
-import { SyncingListState } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { SyncingListState } from 'unifymail-component-kit';
 
 const INBOX_ZERO_ANIMATIONS = ['gem', 'oasis', 'tron', 'airstrip', 'galaxy'];
 

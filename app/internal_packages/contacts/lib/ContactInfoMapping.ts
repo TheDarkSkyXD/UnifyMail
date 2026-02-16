@@ -1,5 +1,5 @@
 import vCard from 'vcf';
-import { ContactInfoGoogle, ContactInfoVCF, Contact, Utils } from 'mailspring-exports';
+import { ContactInfoGoogle, ContactInfoVCF, Contact, Utils } from 'unifymail-exports';
 import * as VCFHelpers from './VCFHelpers';
 
 /**

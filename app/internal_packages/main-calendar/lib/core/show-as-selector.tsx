@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 import { EventPropertyRow } from './event-property-row';
 
 export type ShowAsOption = 'busy' | 'free' | 'tentative';

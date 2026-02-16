@@ -1,1 +1,1 @@
-xdescribe('FolderSyncProgressStore', function mailspringSyncStatusStore() {});
+xdescribe('FolderSyncProgressStore', function UnifyMailSyncStatusStore() {});

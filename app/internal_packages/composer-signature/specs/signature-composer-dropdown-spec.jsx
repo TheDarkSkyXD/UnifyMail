@@ -2,9 +2,9 @@
 
 import React from 'react';
 import ReactTestUtils from 'react-dom/test-utils';
-import { SignatureStore } from 'mailspring-exports';
+import { SignatureStore } from 'unifymail-exports';
 import SignatureComposerDropdown from '../lib/signature-composer-dropdown';
-import MTestUtils from '../../../spec/mailspring-test-utils';
+import MTestUtils from '../../../spec/unifymail-test-utils';
 
 const SIGNATURES = {
   '1': {

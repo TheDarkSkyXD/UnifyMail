@@ -5,21 +5,21 @@
  * Read: https://github.com/electron-archive/grunt-electron-installer#handling-squirrel-events
  * Read: https://github.com/electron/electron/blob/master/docs/api/auto-updater.md#windows
  *
- * When Mailspring gets installed on a Windows machine it gets put in:
- * C:\Users\<USERNAME>\AppData\Local\Mailspring\app-x.x.x
+ * When UnifyMail gets installed on a Windows machine it gets put in:
+ * C:\Users\<USERNAME>\AppData\Local\UnifyMail\app-x.x.x
  *
  * The `process.execPath` is:
- * C:\Users\<USERNAME>\AppData\Local\Mailspring\app-x.x.x\nylas.exe
+ * C:\Users\<USERNAME>\AppData\Local\UnifyMail\app-x.x.x\nylas.exe
  *
  * We manually copy everything in build/resources/win into a 'resources' folder
  * located inside the main app directory. See runCopyPlatformSpecificResources
  * in package-task.js
  *
  * This means `__dirname` should be:
- * C:\Users\<USERNAME>\AppData\Local\Mailspring\app-x.x.x\resources
+ * C:\Users\<USERNAME>\AppData\Local\UnifyMail\app-x.x.x\resources
  *
  * We also expect Squirrel Windows to have a file called `nylas.exe` at:
- * C:\Users\<USERNAME>\AppData\Local\Mailspring\nylas.exe
+ * C:\Users\<USERNAME>\AppData\Local\UnifyMail\nylas.exe
  */
 const ChildProcess = require('child_process');
 const fs = require('fs-plus');
@@ -27,16 +27,16 @@ const path = require('path');
 const os = require('os');
 const { shell } = require('electron');
 
-// C:\Users\<USERNAME>\AppData\Local\Mailspring\app-x.x.x
+// C:\Users\<USERNAME>\AppData\Local\UnifyMail\app-x.x.x
 const appFolder = path.resolve(process.execPath, '..');
 
-// C:\Users\<USERNAME>\AppData\Local\Mailspring\
+// C:\Users\<USERNAME>\AppData\Local\UnifyMail\
 const rootAppDataFolder = path.resolve(appFolder, '..');
 
-// C:\Users\<USERNAME>\AppData\Local\Mailspring\Update.exe
+// C:\Users\<USERNAME>\AppData\Local\UnifyMail\Update.exe
 const updateDotExe = path.join(rootAppDataFolder, 'Update.exe');
 
-// "mailspring.exe"
+// "UnifyMail.exe"
 const exeName = path.basename(process.execPath);
 
 // Spawn a command and invoke the callback when it completes with an error
@@ -105,7 +105,7 @@ function createRegistryEntries({ allowEscalation, registerDefaultIfPossible }, c
   const requiresLocalMachine = isWindows7;
 
   // On Windows 7, we must write to LOCAL_MACHINE and need escalated privileges.
-  // Don't do it at install time - wait for the user to ask Mailspring to be the default.
+  // Don't do it at install time - wait for the user to ask UnifyMail to be the default.
   if (requiresLocalMachine && !allowEscalation) {
     callback();
     return;
@@ -124,7 +124,7 @@ function createRegistryEntries({ allowEscalation, registerDefaultIfPossible }, c
   }
 
   fs.readFile(
-    path.join(appFolder, 'resources', 'mailspring-mailto-registration.reg'),
+    path.join(appFolder, 'resources', 'UnifyMail-mailto-registration.reg'),
     (err, data) => {
       if (err || !data) {
         callback(err);
@@ -145,7 +145,7 @@ function createRegistryEntries({ allowEscalation, registerDefaultIfPossible }, c
         importContents = importContents.replace(/{{HKEY_ROOT}}/g, 'HKEY_CURRENT_USER');
       }
 
-      const importTempPath = path.join(os.tmpdir(), `mailspring-reg-${Date.now()}.reg`);
+      const importTempPath = path.join(os.tmpdir(), `UnifyMail-reg-${Date.now()}.reg`);
 
       fs.writeFile(importTempPath, importContents, writeErr => {
         if (writeErr) {
@@ -158,7 +158,7 @@ function createRegistryEntries({ allowEscalation, registerDefaultIfPossible }, c
           spawnArgs.concat(['import', escapeBackticks(importTempPath)]),
           spawnErr => {
             if (isWindows7 && registerDefaultIfPossible) {
-              const defaultReg = path.join(appFolder, 'resources', 'mailspring-mailto-default.reg');
+              const defaultReg = path.join(appFolder, 'resources', 'UnifyMail-mailto-default.reg');
               spawn(
                 spawnPath,
                 spawnArgs.concat(['import', escapeBackticks(defaultReg)]),
@@ -179,16 +179,16 @@ function createRegistryEntries({ allowEscalation, registerDefaultIfPossible }, c
 exports.spawn = spawnUpdate;
 exports.createRegistryEntries = createRegistryEntries;
 
-// Is the Update.exe installed with Mailspring?
+// Is the Update.exe installed with UnifyMail?
 exports.existsSync = () => fs.existsSync(updateDotExe);
 
 // Register the AppUserModelId with a display name so Windows notifications
-// show "Mailspring" instead of "com.squirrel.mailspring.mailspring"
+// show "UnifyMail" instead of "com.squirrel.unifymail.unifymail"
 // Registry path: HKEY_CURRENT_USER\SOFTWARE\Classes\AppUserModelId\{AUMID}
 function registerAppUserModelId(callback) {
-  const aumid = 'com.squirrel.mailspring.mailspring';
-  const displayName = 'Mailspring';
-  const iconPath = path.join(appFolder, 'resources', 'mailspring.ico');
+  const aumid = 'com.squirrel.unifymail.unifymail';
+  const displayName = 'UnifyMail';
+  const iconPath = path.join(appFolder, 'resources', 'UnifyMail.ico');
 
   let regPath = 'reg.exe';
   if (process.env.SystemRoot) {
@@ -226,8 +226,8 @@ function registerAppUserModelId(callback) {
 
 exports.registerAppUserModelId = registerAppUserModelId;
 
-// Restart Mailspring using the version pointed to by the Mailspring.cmd shim
-exports.restartMailspring = app => {
+// Restart UnifyMail using the version pointed to by the UnifyMail.cmd shim
+exports.restartUnifyMail = app => {
   app.once('will-quit', () => {
     spawnUpdate(['--processStart', exeName], () => {}, { detached: true });
   });
@@ -251,16 +251,16 @@ exports.handleSquirrelInstall = app => {
   // Copy visual elements files synchronously (fast)
   try {
     fs.copyFileSync(
-      path.join(appFolder, 'resources', 'mailspring-75px.png'),
-      path.join(rootAppDataFolder, 'mailspring-75px.png')
+      path.join(appFolder, 'resources', 'UnifyMail-75px.png'),
+      path.join(rootAppDataFolder, 'UnifyMail-75px.png')
     );
     fs.copyFileSync(
-      path.join(appFolder, 'resources', 'mailspring-150px.png'),
-      path.join(rootAppDataFolder, 'mailspring-150px.png')
+      path.join(appFolder, 'resources', 'UnifyMail-150px.png'),
+      path.join(rootAppDataFolder, 'UnifyMail-150px.png')
     );
     fs.copyFileSync(
-      path.join(appFolder, 'resources', 'mailspring.VisualElementsManifest.xml'),
-      path.join(rootAppDataFolder, 'mailspring.VisualElementsManifest.xml')
+      path.join(appFolder, 'resources', 'UnifyMail.VisualElementsManifest.xml'),
+      path.join(rootAppDataFolder, 'UnifyMail.VisualElementsManifest.xml')
     );
   } catch (err) {
     // Ignore errors - visual elements are optional
@@ -273,22 +273,22 @@ exports.handleSquirrelInstall = app => {
     'Windows',
     'Start Menu',
     'Programs',
-    'Mailspring.lnk'
+    'UnifyMail.lnk'
   );
   const desktopPath = path.join(
     process.env.USERPROFILE || process.env.HOME,
     'Desktop',
-    'Mailspring.lnk'
+    'UnifyMail.lnk'
   );
-  const iconPath = path.join(appFolder, 'resources', 'mailspring.ico');
+  const iconPath = path.join(appFolder, 'resources', 'UnifyMail.ico');
 
   const shortcutOptions = {
     target: updateDotExe,
-    args: '--processStart mailspring.exe',
+    args: '--processStart UnifyMail.exe',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
     iconIndex: 0,
     description: 'The best email app for people and teams at work',
-    appUserModelId: 'com.squirrel.mailspring.mailspring',
+    appUserModelId: 'com.squirrel.unifymail.unifymail',
   };
 
   try {
@@ -308,7 +308,7 @@ exports.handleSquirrelInstall = app => {
   }
 
   // Spawn reg.exe to register AUMID (detached - won't block exit)
-  const aumid = 'com.squirrel.mailspring.mailspring';
+  const aumid = 'com.squirrel.unifymail.unifymail';
   const regKey = `HKEY_CURRENT_USER\\SOFTWARE\\Classes\\AppUserModelId\\${aumid}`;
   let regPath = 'reg.exe';
   if (process.env.SystemRoot) {
@@ -322,7 +322,7 @@ exports.handleSquirrelInstall = app => {
     '/t',
     'REG_SZ',
     '/d',
-    'Mailspring',
+    'UnifyMail',
     '/f',
   ]);
   if (fs.existsSync(iconPath)) {
@@ -349,12 +349,12 @@ exports.handleSquirrelUninstall = app => {
     'Windows',
     'Start Menu',
     'Programs',
-    'Mailspring.lnk'
+    'UnifyMail.lnk'
   );
   const desktopPath = path.join(
     process.env.USERPROFILE || process.env.HOME,
     'Desktop',
-    'Mailspring.lnk'
+    'UnifyMail.lnk'
   );
 
   try {

@@ -108,9 +108,9 @@ module.exports = ErrorLogger = (function () {
       return;
     }
     require('electron').crashReporter.start({
-      productName: 'Mailspring',
-      companyName: 'Mailspring',
-      submitURL: `https://id.getmailspring.com/report-crash?ver=${appVersion}&platform=${process.platform}`,
+      productName: 'UnifyMail',
+      companyName: 'UnifyMail',
+      submitURL: `http://localhost:5101/report-crash?ver=${appVersion}&platform=${process.platform}`,
       uploadToServer: true,
       autoSubmit: true,
       extra: {

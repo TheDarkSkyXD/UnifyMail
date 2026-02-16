@@ -12,13 +12,13 @@ xdescribe('ContactStore', function() {
 
   describe('when searching for a contact', function() {
     beforeEach(function() {
-      this.c1 = new Contact({ name: '', email: '1test@mailspring.com', refs: 7 });
-      this.c2 = new Contact({ name: 'First', email: '2test@mailspring.com', refs: 6 });
-      this.c3 = new Contact({ name: 'First Last', email: '3test@mailspring.com', refs: 5 });
-      this.c4 = new Contact({ name: 'Fit', email: 'fit@mailspring.com', refs: 4 });
-      this.c5 = new Contact({ name: 'Fins', email: 'fins@mailspring.com', refs: 3 });
-      this.c6 = new Contact({ name: 'Fill', email: 'fill@mailspring.com', refs: 2 });
-      this.c7 = new Contact({ name: 'Fin', email: 'fin@mailspring.com', refs: 1 });
+      this.c1 = new Contact({ name: '', email: '1test@UnifyMail.com', refs: 7 });
+      this.c2 = new Contact({ name: 'First', email: '2test@UnifyMail.com', refs: 6 });
+      this.c3 = new Contact({ name: 'First Last', email: '3test@UnifyMail.com', refs: 5 });
+      this.c4 = new Contact({ name: 'Fit', email: 'fit@UnifyMail.com', refs: 4 });
+      this.c5 = new Contact({ name: 'Fins', email: 'fins@UnifyMail.com', refs: 3 });
+      this.c6 = new Contact({ name: 'Fill', email: 'fill@UnifyMail.com', refs: 2 });
+      this.c7 = new Contact({ name: 'Fin', email: 'fin@UnifyMail.com', refs: 1 });
     });
 
     it('can find by first name', function() {
@@ -91,7 +91,7 @@ xdescribe('ContactStore', function() {
     });
 
     it('should return false for non-Contact objects', () =>
-      expect(ContactStore.isValidContact({ name: 'Ben', email: 'ben@mailspring.com' })).toBe(false));
+      expect(ContactStore.isValidContact({ name: 'Ben', email: 'ben@UnifyMail.com' })).toBe(false));
 
     it("returns false if we're not passed a contact", () =>
       expect(ContactStore.isValidContact()).toBe(false));
@@ -100,16 +100,16 @@ xdescribe('ContactStore', function() {
   describe('parseContactsInString', function() {
     const testCases = {
       // Single contact test cases
-      'evan@mailspring.com': [new Contact({ name: 'evan@mailspring.com', email: 'evan@mailspring.com' })],
+      'evan@UnifyMail.com': [new Contact({ name: 'evan@UnifyMail.com', email: 'evan@UnifyMail.com' })],
       'Evan Morikawa': [],
-      "'evan@mailspring.com'": [new Contact({ name: 'evan@mailspring.com', email: 'evan@mailspring.com' })],
-      '"evan@mailspring.com"': [new Contact({ name: 'evan@mailspring.com', email: 'evan@mailspring.com' })],
-      "'evan@mailspring.com": [new Contact({ name: "'evan@mailspring.com", email: "'evan@mailspring.com" })],
-      'Evan Morikawa <evan@mailspring.com>': [
-        new Contact({ name: 'Evan Morikawa', email: 'evan@mailspring.com' }),
+      "'evan@UnifyMail.com'": [new Contact({ name: 'evan@UnifyMail.com', email: 'evan@UnifyMail.com' })],
+      '"evan@UnifyMail.com"': [new Contact({ name: 'evan@UnifyMail.com', email: 'evan@UnifyMail.com' })],
+      "'evan@UnifyMail.com": [new Contact({ name: "'evan@UnifyMail.com", email: "'evan@UnifyMail.com" })],
+      'Evan Morikawa <evan@UnifyMail.com>': [
+        new Contact({ name: 'Evan Morikawa', email: 'evan@UnifyMail.com' }),
       ],
-      'Evan Morikawa (evan@mailspring.com)': [
-        new Contact({ name: 'Evan Morikawa', email: 'evan@mailspring.com' }),
+      'Evan Morikawa (evan@UnifyMail.com)': [
+        new Contact({ name: 'Evan Morikawa', email: 'evan@UnifyMail.com' }),
       ],
       'spang (Christine Spang) <noreply+phabricator@nilas.com>': [
         new Contact({ name: 'spang (Christine Spang)', email: 'noreply+phabricator@nilas.com' }),
@@ -120,29 +120,29 @@ xdescribe('ContactStore', function() {
       'spang "Christine Spang" <noreply+phabricator@nilas.com>': [
         new Contact({ name: 'spang "Christine Spang"', email: 'noreply+phabricator@nilas.com' }),
       ],
-      'Evan (evan@mailspring.com)': [new Contact({ name: 'Evan', email: 'evan@mailspring.com' })],
-      '"Michael" (mg@mailspring.com)': [new Contact({ name: 'Michael', email: 'mg@mailspring.com' })],
-      'announce-uc.1440659566.kankcagcmaacemjlnoma-security=mailspring.com@lists.openwall.com': [
+      'Evan (evan@UnifyMail.com)': [new Contact({ name: 'Evan', email: 'evan@UnifyMail.com' })],
+      '"Michael" (mg@UnifyMail.com)': [new Contact({ name: 'Michael', email: 'mg@UnifyMail.com' })],
+      'announce-uc.1440659566.kankcagcmaacemjlnoma-security=UnifyMail.com@lists.openwall.com': [
         new Contact({
-          name: 'announce-uc.1440659566.kankcagcmaacemjlnoma-security=mailspring.com@lists.openwall.com',
+          name: 'announce-uc.1440659566.kankcagcmaacemjlnoma-security=UnifyMail.com@lists.openwall.com',
           email:
-            'announce-uc.1440659566.kankcagcmaacemjlnoma-security=mailspring.com@lists.openwall.com',
+            'announce-uc.1440659566.kankcagcmaacemjlnoma-security=UnifyMail.com@lists.openwall.com',
         }),
       ],
 
       // Multiple contact test cases
-      'Evan Morikawa <evan@mailspring.com>, Ben <ben@mailspring.com>': [
-        new Contact({ name: 'Evan Morikawa', email: 'evan@mailspring.com' }),
-        new Contact({ name: 'Ben', email: 'ben@mailspring.com' }),
+      'Evan Morikawa <evan@UnifyMail.com>, Ben <ben@UnifyMail.com>': [
+        new Contact({ name: 'Evan Morikawa', email: 'evan@UnifyMail.com' }),
+        new Contact({ name: 'Ben', email: 'ben@UnifyMail.com' }),
       ],
-      'Evan Morikawa <evan@mailspring.com>; Ben <ben@mailspring.com>': [
-        new Contact({ name: 'Evan Morikawa', email: 'evan@mailspring.com' }),
-        new Contact({ name: 'Ben', email: 'ben@mailspring.com' }),
+      'Evan Morikawa <evan@UnifyMail.com>; Ben <ben@UnifyMail.com>': [
+        new Contact({ name: 'Evan Morikawa', email: 'evan@UnifyMail.com' }),
+        new Contact({ name: 'Ben', email: 'ben@UnifyMail.com' }),
       ],
-      'mark@mailspring.com\nGleb (gleb@mailspring.com)\rEvan Morikawa <evan@mailspring.com>, spang (Christine Spang) <noreply+phabricator@nilas.com>': [
-        new Contact({ name: '', email: 'mark@mailspring.com' }),
-        new Contact({ name: 'Gleb', email: 'gleb@mailspring.com' }),
-        new Contact({ name: 'Evan Morikawa', email: 'evan@mailspring.com' }),
+      'mark@UnifyMail.com\nGleb (gleb@UnifyMail.com)\rEvan Morikawa <evan@UnifyMail.com>, spang (Christine Spang) <noreply+phabricator@nilas.com>': [
+        new Contact({ name: '', email: 'mark@UnifyMail.com' }),
+        new Contact({ name: 'Gleb', email: 'gleb@UnifyMail.com' }),
+        new Contact({ name: 'Evan Morikawa', email: 'evan@UnifyMail.com' }),
         new Contact({ name: 'spang (Christine Spang)', email: 'noreply+phabricator@nilas.com' }),
       ],
     };

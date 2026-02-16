@@ -1,6 +1,6 @@
 import React from 'react';
 import { ipcRenderer } from 'electron';
-import { AccountStore, Actions, Account } from 'mailspring-exports';
+import { AccountStore, Actions, Account } from 'unifymail-exports';
 import PreferencesAccountList from './preferences-account-list';
 import PreferencesAccountDetails from './preferences-account-details';
 

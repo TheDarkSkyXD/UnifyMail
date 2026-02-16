@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "serverUrl": {
     "development": "http://localhost:5101",
-    "staging": "https://share-staging.getmailspring.com",
-    "production": "https://share.getmailspring.com"
+    "staging": "https://share-staging.getunifymail.com",
+    "production": "https://share.getunifymail.com"
   },
 
   "isOptional": true,
@@ -14,7 +14,7 @@
   "main": "./lib/main",
   "private": true,
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
   "license": "GPL-3.0"
 }

@@ -1,4 +1,4 @@
-import { Rx, Message, DatabaseStore } from 'mailspring-exports';
+import { Rx, Message, DatabaseStore } from 'unifymail-exports';
 import { OPEN_TRACKING_ID, LINK_TRACKING_ID } from './plugin-helpers';
 
 export default class ActivityDataSource {

@@ -1,6 +1,6 @@
-name: mailspring
+name: UnifyMail
 license: GPL-3.0
-adopt-info: mailspring
+adopt-info: UnifyMail
 
 confinement: strict
 base: core24
@@ -11,20 +11,20 @@ platforms:
   arm64:
 
 parts:
-  mailspring:
+  UnifyMail:
     plugin: nil
     override-pull: |
-      deb="$(ls $CRAFT_PROJECT_DIR/app/dist/mailspring-*.deb)"
+      deb="$(ls $CRAFT_PROJECT_DIR/app/dist/UnifyMail-*.deb)"
       craftctl set version="$(basename "$deb" | grep -Eo "[0-9]+.[0-9]+.[0-9]+")"
       dpkg -x "$deb" "$CRAFT_PART_SRC"
     override-build: |
       cp -a "$CRAFT_PART_SRC"/* "$CRAFT_PART_INSTALL"
       craftctl default
-      sed -i 's|Icon=mailspring|Icon=/usr/share/pixmaps/mailspring\.png|' \
-        $CRAFT_PART_INSTALL/usr/share/applications/Mailspring.desktop
+      sed -i 's|Icon=UnifyMail|Icon=/usr/share/pixmaps/UnifyMail\.png|' \
+        $CRAFT_PART_INSTALL/usr/share/applications/UnifyMail.desktop
     prime:
-      - -usr/share/mailspring/chrome-sandbox
-    parse-info: [usr/share/appdata/mailspring.appdata.xml]
+      - -usr/share/UnifyMail/chrome-sandbox
+    parse-info: [usr/share/appdata/UnifyMail.appdata.xml]
     stage-packages:
       - libxkbfile1
       - libsasl2-2
@@ -49,10 +49,10 @@ parts:
       - usr/lib/*/libsecret-*
 
 apps:
-  mailspring:
-    command: usr/bin/mailspring --no-sandbox
-    common-id: mailspring
-    desktop: usr/share/applications/Mailspring.desktop
+  UnifyMail:
+    command: usr/bin/UnifyMail --no-sandbox
+    common-id: UnifyMail
+    desktop: usr/share/applications/UnifyMail.desktop
     extensions: [gnome]
     environment:
       HOME: $SNAP_USER_COMMON

@@ -1,7 +1,7 @@
 /* eslint quote-props: 0 */
 import ReactTestUtils from 'react-dom/test-utils';
 import React from 'react';
-import { SignatureStore, Actions } from 'mailspring-exports';
+import { SignatureStore, Actions } from 'unifymail-exports';
 import PreferencesSignatures from '../lib/preferences-signatures';
 
 const SIGNATURES = {
@@ -18,8 +18,8 @@ const SIGNATURES = {
 };
 
 const DEFAULTS = {
-  'one@mailspring.com': '1',
-  'two@mailspring.com': '2',
+  'one@UnifyMail.com': '1',
+  'two@UnifyMail.com': '2',
 };
 
 const makeComponent = (props = {}) => {

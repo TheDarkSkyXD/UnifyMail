@@ -41,12 +41,7 @@ jobs:
         run: npm ci
         working-directory: .
 
-      - name: Setup AWS CLI
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+
 
       - name: Lint
         run: npm run lint
@@ -54,23 +49,29 @@ jobs:
       - name: Build
         run: DEBUG=electron-packager npm run build
 
-      - name: Sync Artifacts to S3
-        run: |
-          aws s3 sync app/dist/ "s3://mailspring-builds/client/$(git rev-parse --short=8 HEAD)/linux-arm64" \
-            --acl public-read \
-            --exclude "*" --include "*.deb" --include "*.rpm"
+      - name: Create/Update Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          draft: true
+          files: |
+            app/dist/*.deb
+            app/dist/*.rpm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload DEB artifact for testing
         uses: actions/upload-artifact@v4
         with:
-          name: mailspring-arm64-deb
+          name: UnifyMail-arm64-deb
           path: app/dist/*.deb
           retention-days: 1
 
       - name: Upload RPM artifact for testing
         uses: actions/upload-artifact@v4
         with:
-          name: mailspring-arm64-rpm
+          name: UnifyMail-arm64-rpm
           path: app/dist/*.rpm
           retention-days: 1
 
@@ -89,7 +90,7 @@ jobs:
       - name: Download DEB artifact
         uses: actions/download-artifact@v4
         with:
-          name: mailspring-arm64-deb
+          name: UnifyMail-arm64-deb
           path: app/dist/
 
       - uses: snapcore/action-build@v1
@@ -112,13 +113,13 @@ jobs:
       - name: Download DEB artifact
         uses: actions/download-artifact@v4
         with:
-          name: mailspring-arm64-deb
+          name: UnifyMail-arm64-deb
 
       - name: Test installation on Ubuntu ${{ matrix.ubuntu_version }} (arm64)
         run: |
           docker run --rm --platform linux/arm64 -v ${{ github.workspace }}:/workspace ubuntu:${{ matrix.ubuntu_version }} bash -c "
             set -e
-            echo '=== Testing Mailspring ARM64 installation on Ubuntu ${{ matrix.ubuntu_version }} ==='
+            echo '=== Testing UnifyMail ARM64 installation on Ubuntu ${{ matrix.ubuntu_version }} ==='
 
             cd /workspace
             export DEBIAN_FRONTEND=noninteractive
@@ -128,39 +129,39 @@ jobs:
             apt-get install -f -y
             apt-get install -y xvfb file
 
-            dpkg -l | grep mailspring || (echo '✗ Mailspring package not installed' && exit 1)
-            which mailspring || (echo '✗ mailspring binary not found in PATH' && exit 1)
+            dpkg -l | grep UnifyMail || (echo '✗ UnifyMail package not installed' && exit 1)
+            which UnifyMail || (echo '✗ UnifyMail binary not found in PATH' && exit 1)
 
             echo 'Installed files:'
-            dpkg -L mailspring | head -20
+            dpkg -L UnifyMail | head -20
 
             echo 'Verifying ARM64 binary...'
-            file /usr/share/mailspring/mailspring | grep -iE 'aarch64|arm'
+            file /usr/share/UnifyMail/UnifyMail | grep -iE 'aarch64|arm'
             echo '✓ ARM64 binary confirmed'
 
-            echo 'Running mailspring --version...'
-            xvfb-run -a mailspring --version --no-sandbox > /tmp/version.txt 2>&1 || true
+            echo 'Running UnifyMail --version...'
+            xvfb-run -a UnifyMail --version --no-sandbox > /tmp/version.txt 2>&1 || true
             cat /tmp/version.txt
 
             if grep -qE '[0-9]+\.[0-9]+\.[0-9]+' /tmp/version.txt; then
-              echo '✓ mailspring --version passed on Ubuntu ${{ matrix.ubuntu_version }} arm64'
+              echo '✓ UnifyMail --version passed on Ubuntu ${{ matrix.ubuntu_version }} arm64'
             else
-              echo '✗ mailspring --version failed on Ubuntu ${{ matrix.ubuntu_version }} arm64'
+              echo '✗ UnifyMail --version failed on Ubuntu ${{ matrix.ubuntu_version }} arm64'
               exit 1
             fi
 
             # Verify mailsync binary exists
-            if [ -f /usr/share/mailspring/mailsync ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/mailsync
-            elif [ -f /usr/share/mailspring/mailsync.bin ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/mailsync.bin
-            elif [ -f /usr/share/mailspring/resources/app.asar.unpacked/mailsync ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/resources/app.asar.unpacked/mailsync
-            elif [ -f /usr/share/mailspring/resources/app.asar.unpacked/mailsync.bin ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/resources/app.asar.unpacked/mailsync.bin
+            if [ -f /usr/share/UnifyMail/mailsync ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/mailsync
+            elif [ -f /usr/share/UnifyMail/mailsync.bin ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/mailsync.bin
+            elif [ -f /usr/share/UnifyMail/resources/app.asar.unpacked/mailsync ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/resources/app.asar.unpacked/mailsync
+            elif [ -f /usr/share/UnifyMail/resources/app.asar.unpacked/mailsync.bin ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/resources/app.asar.unpacked/mailsync.bin
             else
               echo '✗ mailsync binary not found'
-              ls -la /usr/share/mailspring/ | head -30
+              ls -la /usr/share/UnifyMail/ | head -30
               exit 1
             fi
 
@@ -179,7 +180,7 @@ jobs:
               exit 1
             fi
 
-            echo '✓ Mailspring ARM64 installation test passed on Ubuntu ${{ matrix.ubuntu_version }}'
+            echo '✓ UnifyMail ARM64 installation test passed on Ubuntu ${{ matrix.ubuntu_version }}'
           "
 
   test-fedora:
@@ -192,53 +193,53 @@ jobs:
       - name: Download RPM artifact
         uses: actions/download-artifact@v4
         with:
-          name: mailspring-arm64-rpm
+          name: UnifyMail-arm64-rpm
 
       - name: Test installation on Fedora ${{ matrix.fedora_version }} (arm64)
         run: |
           docker run --rm --platform linux/arm64 -v ${{ github.workspace }}:/workspace fedora:${{ matrix.fedora_version }} bash -c "
             set -e
-            echo '=== Testing Mailspring ARM64 installation on Fedora ${{ matrix.fedora_version }} ==='
+            echo '=== Testing UnifyMail ARM64 installation on Fedora ${{ matrix.fedora_version }} ==='
 
             cd /workspace
             dnf install -y xorg-x11-server-Xvfb which alsa-lib
 
             dnf install -y *.rpm
 
-            rpm -q mailspring || (echo '✗ Mailspring package not installed' && exit 1)
-            which mailspring || (echo '✗ mailspring binary not found in PATH' && exit 1)
+            rpm -q UnifyMail || (echo '✗ UnifyMail package not installed' && exit 1)
+            which UnifyMail || (echo '✗ UnifyMail binary not found in PATH' && exit 1)
 
             echo 'Installed files:'
-            rpm -ql mailspring | head -20
+            rpm -ql UnifyMail | head -20
 
-            echo 'Running mailspring --version...'
-            xvfb-run -a mailspring --version --no-sandbox > /tmp/version.txt 2>&1 || true
+            echo 'Running UnifyMail --version...'
+            xvfb-run -a UnifyMail --version --no-sandbox > /tmp/version.txt 2>&1 || true
             cat /tmp/version.txt
 
             if grep -qE '[0-9]+\.[0-9]+\.[0-9]+' /tmp/version.txt; then
-              echo '✓ mailspring --version passed on Fedora ${{ matrix.fedora_version }} arm64'
+              echo '✓ UnifyMail --version passed on Fedora ${{ matrix.fedora_version }} arm64'
             else
-              echo '✗ mailspring --version failed on Fedora ${{ matrix.fedora_version }} arm64'
+              echo '✗ UnifyMail --version failed on Fedora ${{ matrix.fedora_version }} arm64'
               exit 1
             fi
 
             # Verify mailsync binary exists
-            if [ -f /usr/share/mailspring/mailsync ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/mailsync
-            elif [ -f /usr/share/mailspring/mailsync.bin ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/mailsync.bin
-            elif [ -f /usr/share/mailspring/resources/app.asar.unpacked/mailsync ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/resources/app.asar.unpacked/mailsync
-            elif [ -f /usr/share/mailspring/resources/app.asar.unpacked/mailsync.bin ]; then
-              MAILSYNC_PATH=/usr/share/mailspring/resources/app.asar.unpacked/mailsync.bin
-            elif [ -f /usr/local/share/mailspring/mailsync ]; then
-              MAILSYNC_PATH=/usr/local/share/mailspring/mailsync
-            elif [ -f /usr/local/share/mailspring/mailsync.bin ]; then
-              MAILSYNC_PATH=/usr/local/share/mailspring/mailsync.bin
+            if [ -f /usr/share/UnifyMail/mailsync ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/mailsync
+            elif [ -f /usr/share/UnifyMail/mailsync.bin ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/mailsync.bin
+            elif [ -f /usr/share/UnifyMail/resources/app.asar.unpacked/mailsync ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/resources/app.asar.unpacked/mailsync
+            elif [ -f /usr/share/UnifyMail/resources/app.asar.unpacked/mailsync.bin ]; then
+              MAILSYNC_PATH=/usr/share/UnifyMail/resources/app.asar.unpacked/mailsync.bin
+            elif [ -f /usr/local/share/UnifyMail/mailsync ]; then
+              MAILSYNC_PATH=/usr/local/share/UnifyMail/mailsync
+            elif [ -f /usr/local/share/UnifyMail/mailsync.bin ]; then
+              MAILSYNC_PATH=/usr/local/share/UnifyMail/mailsync.bin
             else
               echo '✗ mailsync binary not found'
-              rpm -ql mailspring | grep -i mailsync || echo 'No mailsync found in package'
-              ls -la /usr/share/mailspring/ | head -30
+              rpm -ql UnifyMail | grep -i mailsync || echo 'No mailsync found in package'
+              ls -la /usr/share/UnifyMail/ | head -30
               exit 1
             fi
 
@@ -257,5 +258,5 @@ jobs:
               exit 1
             fi
 
-            echo '✓ Mailspring ARM64 installation test passed on Fedora ${{ matrix.fedora_version }}'
+            echo '✓ UnifyMail ARM64 installation test passed on Fedora ${{ matrix.fedora_version }}'
           "

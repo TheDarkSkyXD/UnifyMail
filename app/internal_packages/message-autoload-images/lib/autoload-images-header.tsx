@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized, PropTypes, Message } from 'mailspring-exports';
+import { localized, PropTypes, Message } from 'unifymail-exports';
 
 import AutoloadImagesStore from './autoload-images-store';
 import * as Actions from './autoload-images-actions';

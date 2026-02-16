@@ -1,6 +1,6 @@
 import React from 'react';
-import { Account, localized, Actions, PropTypes } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { Account, localized, Actions, PropTypes } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 import { ipcRenderer } from 'electron';
 import * as AccountCommands from '../account-commands';
 

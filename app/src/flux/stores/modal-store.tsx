@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Modal } from 'mailspring-component-kit';
-import MailspringStore from 'mailspring-store';
+import { Modal } from 'unifymail-component-kit';
+import UnifyMailStore from 'unifymail-store';
 
 import * as Actions from '../actions';
 
-const CONTAINER_ID = 'mailspring-modal-container';
+const CONTAINER_ID = 'UnifyMail-modal-container';
 
 function createContainer(id) {
   const element = document.createElement(id);
@@ -13,7 +13,7 @@ function createContainer(id) {
   return element;
 }
 
-class ModalStore extends MailspringStore {
+class ModalStore extends UnifyMailStore {
   isOpen = false;
   container: HTMLElement;
   

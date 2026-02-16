@@ -1,6 +1,6 @@
 import { mount } from 'enzyme';
 import React from 'react';
-import { AccountStore, Account, Actions, KeyManager } from 'mailspring-exports';
+import { AccountStore, Account, Actions, KeyManager } from 'unifymail-exports';
 import { ipcRenderer } from 'electron';
 import AccountErrorNotification from '../lib/items/account-error-notif';
 

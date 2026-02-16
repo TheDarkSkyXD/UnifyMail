@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized, UndoRedoStore, SyncbackMetadataTask, DatabaseStore, Message, Actions } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized, UndoRedoStore, SyncbackMetadataTask, DatabaseStore, Message, Actions } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 import { CSSTransitionGroup } from 'react-transition-group';
 import { PLUGIN_ID } from '../../../internal_packages/send-later/lib/send-later-constants';
 

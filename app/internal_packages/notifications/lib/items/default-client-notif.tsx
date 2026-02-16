@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized, DefaultClientHelper } from 'mailspring-exports';
-import { Notification } from 'mailspring-component-kit';
+import { localized, DefaultClientHelper } from 'unifymail-exports';
+import { Notification } from 'unifymail-component-kit';
 import { IDisposable } from 'rx-core';
 
 const SETTINGS_KEY = 'mailto.prompted-about-default';
@@ -67,7 +67,7 @@ export default class DefaultClientNotification extends React.Component<
     }
     return (
       <Notification
-        title={localized('Would you like to make Mailspring your default mail client?')}
+        title={localized('Would you like to make UnifyMail your default mail client?')}
         priority="1"
         icon="volstead-defaultclient.png"
         actions={[

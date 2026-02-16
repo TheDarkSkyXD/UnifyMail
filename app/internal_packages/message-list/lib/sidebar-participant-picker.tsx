@@ -1,5 +1,5 @@
 import React from 'react';
-import { Actions, FocusedContactsStore, Contact } from 'mailspring-exports';
+import { Actions, FocusedContactsStore, Contact } from 'unifymail-exports';
 
 const SPLIT_KEY = '---splitvalue---';
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { RetinaImg } from 'mailspring-component-kit';
-import { localized } from 'mailspring-exports';
+import { RetinaImg } from 'unifymail-component-kit';
+import { localized } from 'unifymail-exports';
 
 interface SubjectLineIconsProps {
   canCollapse: boolean;

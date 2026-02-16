@@ -5,7 +5,7 @@ import {
   MessageViewExtension,
   ExtensionRegistry,
   ComponentRegistry,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { EventHeader } from './event-header';
 
 function bestICSAttachment(files: File[]) {

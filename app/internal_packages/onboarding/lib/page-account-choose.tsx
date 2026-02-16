@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { localized } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 import * as OnboardingActions from './onboarding-actions';
 import AccountProviders from './account-providers';
 

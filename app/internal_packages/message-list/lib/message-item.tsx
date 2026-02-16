@@ -8,8 +8,8 @@ import {
   Actions,
   AttachmentStore,
   MessageStore,
-} from 'mailspring-exports';
-import { RetinaImg, InjectedComponentSet, InjectedComponent } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { RetinaImg, InjectedComponentSet, InjectedComponent } from 'unifymail-component-kit';
 
 import MessageParticipants from './message-participants';
 import MessageItemBody from './message-item-body';

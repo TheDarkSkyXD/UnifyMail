@@ -4,7 +4,7 @@ import { Model } from '../models/model';
 
 /*
 Public: Collection attributes provide basic support for one-to-many relationships.
-For example, Threads in Mailspring have a collection of Labels or Folders.
+For example, Threads in UnifyMail have a collection of Labels or Folders.
 
 When Collection attributes are marked as `queryable`, the DatabaseStore
 automatically creates a join table and maintains it as you create, save,

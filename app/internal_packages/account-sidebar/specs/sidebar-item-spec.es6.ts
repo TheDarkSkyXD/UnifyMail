@@ -1,4 +1,4 @@
-import { Folder, Actions } from 'mailspring-exports';
+import { Folder, Actions } from 'unifymail-exports';
 import SidebarItem from '../lib/sidebar-item';
 
 describe('sidebar-item', function sidebarItemSpec() {

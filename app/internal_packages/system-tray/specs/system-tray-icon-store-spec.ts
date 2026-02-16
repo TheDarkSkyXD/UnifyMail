@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import { BadgeStore } from 'mailspring-exports';
+import { BadgeStore } from 'unifymail-exports';
 import SystemTrayIconStore from '../lib/system-tray-icon-store';
 
 describe('SystemTrayIconStore', function systemTrayIconStore() {

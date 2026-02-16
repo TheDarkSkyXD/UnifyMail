@@ -1,6 +1,6 @@
 import _ from 'underscore';
-import { Categories } from 'mailspring-observables';
-import MailspringStore from 'mailspring-store';
+import { Categories } from 'unifymail-observables';
+import UnifyMailStore from 'unifymail-store';
 import { AccountStore } from './account-store';
 import { Account } from '../models/account';
 import { Category } from '../models/category';
@@ -21,7 +21,7 @@ const asAccountId = a => {
   return a instanceof Account ? a.id : a;
 };
 
-class CategoryStore extends MailspringStore {
+class CategoryStore extends UnifyMailStore {
   _categoryCache = {};
   _standardCategories: { [accountId: string]: Array<Folder | Label> } = {};
   _userCategories: { [accountId: string]: Array<Folder | Label> } = {};

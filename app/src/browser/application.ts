@@ -17,7 +17,7 @@ import ApplicationTouchBar from './application-touch-bar';
 import AutoUpdateManager from './autoupdate-manager';
 import SystemTrayManager from './system-tray-manager';
 import { DefaultClientHelper } from '../default-client-helper';
-import MailspringProtocolHandler from './mailspring-protocol-handler';
+import UnifyMailProtocolHandler from './unifymail-protocol-handler';
 import ConfigPersistenceManager from './config-persistence-manager';
 import moveToApplications from './move-to-applications';
 import { MailsyncProcess } from '../mailsync-process';
@@ -48,7 +48,7 @@ export default class Application extends EventEmitter {
   touchBar: ApplicationTouchBar;
   fileListCache: FileListCache;
   applicationMenu: ApplicationMenu;
-  mailspringProtocolHandler: MailspringProtocolHandler;
+  UnifyMailProtocolHandler: UnifyMailProtocolHandler;
   windowManager: WindowManager;
   autoUpdateManager: AutoUpdateManager;
   systemTrayManager: SystemTrayManager;
@@ -71,7 +71,7 @@ export default class Application extends EventEmitter {
     this.safeMode = safeMode;
 
     this.fileListCache = new FileListCache();
-    this.mailspringProtocolHandler = new MailspringProtocolHandler({
+    this.UnifyMailProtocolHandler = new UnifyMailProtocolHandler({
       configDirPath,
       resourcePath,
       safeMode,
@@ -85,13 +85,13 @@ export default class Application extends EventEmitter {
       let buttons = [localized('Quit')];
       if (err.toString().includes('ENOENT')) {
         message = localized(
-          `Mailspring could not find the mailsync process. If you're building Mailspring from source, make sure mailsync.tar.gz has been downloaded and unpacked in your working copy.`
+          `UnifyMail could not find the mailsync process. If you're building UnifyMail from source, make sure mailsync.tar.gz has been downloaded and unpacked in your working copy.`
         );
       } else if (err.toString().includes('spawn')) {
-        message = localized(`Mailspring could not spawn the mailsync process. %@`, err.toString());
+        message = localized(`UnifyMail could not spawn the mailsync process. %@`, err.toString());
       } else {
         message = localized(
-          `We encountered a problem with your local email database. %@\n\nCheck that no other copies of Mailspring are running and click Rebuild to reset your local cache.`,
+          `We encountered a problem with your local email database. %@\n\nCheck that no other copies of UnifyMail are running and click Rebuild to reset your local cache.`,
           err.toString()
         );
         buttons = [localized('Quit'), localized('Rebuild')];
@@ -151,9 +151,9 @@ export default class Application extends EventEmitter {
 
     if (process.platform === 'linux') {
       const helper = new DefaultClientHelper();
-      helper.registerForURLScheme('mailspring');
+      helper.registerForURLScheme('UnifyMail');
     } else {
-      app.setAsDefaultProtocolClient('mailspring');
+      app.setAsDefaultProtocolClient('UnifyMail');
     }
   }
 
@@ -231,7 +231,7 @@ export default class Application extends EventEmitter {
     if (!addedToDock && appPath.includes('/Applications/') && appPath.includes('.app/')) {
       const appBundlePath = appPath.split('.app/')[0];
       proc.exec(
-        `defaults write com.apple.dock persistent-apps -array-add "<dict><key>tile-type</key><string>file-tile</string><key>tile-data</key><dict><key>file-type</key><integer>41</integer><key>file-label</key><string>Mailspring</string><key>bundle-identifier</key><string>com.mailspring.mailspring</string><key>file-data</key><dict><key>_CFURLString</key><string>file://${appBundlePath}.app/</string><key>_CFURLStringType</key><integer>15</integer></dict></dict></dict>" && pkill "Dock"`
+        `defaults write com.apple.dock persistent-apps -array-add "<dict><key>tile-type</key><string>file-tile</string><key>tile-data</key><dict><key>file-type</key><integer>41</integer><key>file-label</key><string>UnifyMail</string><key>bundle-identifier</key><string>com.UnifyMail.UnifyMail</string><key>file-data</key><dict><key>_CFURLString</key><string>file://${appBundlePath}.app/</string><key>_CFURLStringType</key><integer>15</integer></dict></dict></dict>" && pkill "Dock"`
       );
       this.config.set('addedToDock', true);
     }
@@ -277,7 +277,7 @@ export default class Application extends EventEmitter {
       this.windowManager.ensureWindow(WindowManager.MAIN_WINDOW);
     } else {
       this.windowManager.ensureWindow(WindowManager.ONBOARDING_WINDOW, {
-        title: localized('Welcome to Mailspring'),
+        title: localized('Welcome to UnifyMail'),
       });
     }
   }
@@ -351,8 +351,8 @@ export default class Application extends EventEmitter {
       app.quit();
     });
 
-    this.on('application:inspect', ({ x, y, MailspringWindow }) => {
-      const win = MailspringWindow || this.windowManager.focusedWindow();
+    this.on('application:inspect', ({ x, y, UnifyMailWindow }) => {
+      const win = UnifyMailWindow || this.windowManager.focusedWindow();
       if (!win) {
         return;
       }
@@ -366,7 +366,7 @@ export default class Application extends EventEmitter {
         onboarding.focus();
       } else {
         this.windowManager.ensureWindow(WindowManager.ONBOARDING_WINDOW, {
-          title: localized('Welcome to Mailspring'),
+          title: localized('Welcome to UnifyMail'),
           windowProps: {},
         });
       }
@@ -409,17 +409,17 @@ export default class Application extends EventEmitter {
     });
 
     this.on('application:view-help', () => {
-      const helpUrl = 'https://community.getmailspring.com/docs';
+      const helpUrl = 'https://github.com/TheDarkSkyXD/UnifyMail/discussions';
       shell.openExternal(helpUrl);
     });
 
     this.on('application:view-getting-started', () => {
-      const helpUrl = 'https://community.getmailspring.com/pub/quick-start-guide';
+      const helpUrl = 'https://github.com/TheDarkSkyXD/UnifyMail/discussions';
       shell.openExternal(helpUrl);
     });
 
     this.on('application:view-community', () => {
-      const helpUrl = 'https://community.getmailspring.com/';
+      const helpUrl = 'https://github.com/TheDarkSkyXD/UnifyMail/discussions';
       shell.openExternal(helpUrl);
     });
 
@@ -802,16 +802,16 @@ export default class Application extends EventEmitter {
   // Public: Executes the given command on the given window.
   //
   // command - The string representing the command.
-  // MailspringWindow - The {MailspringWindow} to send the command to.
+  // UnifyMailWindow - The {UnifyMailWindow} to send the command to.
   // args - The optional arguments to pass along.
-  sendCommandToWindow = (command, MailspringWindow, ...args) => {
+  sendCommandToWindow = (command, UnifyMailWindow, ...args) => {
     console.log('sendCommandToWindow');
     console.log(command);
     if (this.emit(command, ...args)) {
       return;
     }
-    if (MailspringWindow) {
-      MailspringWindow.sendCommand(command, ...args);
+    if (UnifyMailWindow) {
+      UnifyMailWindow.sendCommand(command, ...args);
     } else {
       this.sendCommandToFirstResponder(command);
     }
@@ -853,7 +853,7 @@ export default class Application extends EventEmitter {
 
     if (parts.protocol === 'mailto:') {
       main.sendMessage('mailto', urlToOpen);
-    } else if (parts.protocol === 'mailspring:') {
+    } else if (parts.protocol === 'UnifyMail:') {
       // Handle notification action URLs from Windows toast notifications
       // These URLs are triggered when users click buttons on Windows toast notifications
       // since Windows toast XML with activationType="background" doesn't work reliably with Electron
@@ -883,7 +883,7 @@ export default class Application extends EventEmitter {
     }
   }
 
-  // Opens up a new {MailspringWindow} to run specs within.
+  // Opens up a new {UnifyMailWindow} to run specs within.
   //
   // options -
   //   :exitWhenDone - A Boolean that, if true, will close the window upon
@@ -914,9 +914,9 @@ export default class Application extends EventEmitter {
       );
     }
 
-    // Important: Use .mailspring-spec instead of .mailspring-mail to avoid overwriting the
+    // Important: Use .UnifyMail-spec instead of .UnifyMail-mail to avoid overwriting the
     // user's real email config!
-    const configDirPath = path.join(app.getPath('home'), '.mailspring-spec');
+    const configDirPath = path.join(app.getPath('home'), '.UnifyMail-spec');
 
     specWindowOptions.resourcePath = resourcePath;
     specWindowOptions.configDirPath = configDirPath;

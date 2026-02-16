@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized, PropTypes, Utils } from 'mailspring-exports';
+import { localized, PropTypes, Utils } from 'unifymail-exports';
 import { clipboard } from 'electron';
 
 class CopyButton extends React.Component<

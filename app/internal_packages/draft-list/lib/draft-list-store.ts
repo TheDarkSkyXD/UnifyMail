@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import {
   Rx,
   Message,
@@ -10,10 +10,10 @@ import {
   FocusedPerspectiveStore,
   DatabaseStore,
   QueryResultSet,
-} from 'mailspring-exports';
-import { ListTabular, ListDataSource } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { ListTabular, ListDataSource } from 'unifymail-component-kit';
 
-class DraftListStore extends MailspringStore {
+class DraftListStore extends UnifyMailStore {
   constructor() {
     super();
     this.listenTo(FocusedPerspectiveStore, this._onPerspectiveChanged);

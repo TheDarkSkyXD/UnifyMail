@@ -7,7 +7,7 @@ module.exports = grunt => {
   const { spawn } = grunt.config('taskHelpers');
 
   const outputDir = grunt.config.get('outputDir');
-  const contentsDir = path.join(grunt.config('outputDir'), `mailspring-linux-${process.arch}`);
+  const contentsDir = path.join(grunt.config('outputDir'), `UnifyMail-linux-${process.arch}`);
   const linuxAssetsDir = path.resolve(path.join(grunt.config('buildDir'), 'resources', 'linux'));
   const arch = {
     ia32: 'i386',
@@ -50,21 +50,21 @@ module.exports = grunt => {
       version: grunt.config('appJSON').version,
       description: grunt.config('appJSON').description,
       productName: grunt.config('appJSON').productName,
-      linuxShareDir: '/usr/local/share/mailspring',
+      linuxShareDir: '/usr/local/share/UnifyMail',
       linuxAssetsDir: linuxAssetsDir,
       contentsDir: contentsDir,
     };
 
-    // This populates mailspring.spec
-    const specInFilePath = path.join(linuxAssetsDir, 'redhat', 'mailspring.spec.in');
+    // This populates UnifyMail.spec
+    const specInFilePath = path.join(linuxAssetsDir, 'redhat', 'UnifyMail.spec.in');
     writeFromTemplate(specInFilePath, templateData);
 
-    // This populates Mailspring.desktop
-    const desktopInFilePath = path.join(linuxAssetsDir, 'Mailspring.desktop.in');
+    // This populates UnifyMail.desktop
+    const desktopInFilePath = path.join(linuxAssetsDir, 'UnifyMail.desktop.in');
     writeFromTemplate(desktopInFilePath, templateData);
 
-    // This populates mailspring.appdata.xml
-    const appdataInFilePath = path.join(linuxAssetsDir, 'mailspring.appdata.xml.in');
+    // This populates UnifyMail.appdata.xml
+    const appdataInFilePath = path.join(linuxAssetsDir, 'UnifyMail.appdata.xml.in');
     writeFromTemplate(appdataInFilePath, templateData);
 
     const cmd = path.join(grunt.config('appDir'), 'script', 'mkrpm');
@@ -97,15 +97,15 @@ module.exports = grunt => {
         name: grunt.config('appJSON').name,
         description: grunt.config('appJSON').description,
         productName: grunt.config('appJSON').productName,
-        linuxShareDir: '/usr/share/mailspring',
+        linuxShareDir: '/usr/share/UnifyMail',
         arch: arch,
         section: 'mail',
-        maintainer: 'Mailspring Team <support@getmailspring.com>',
+        maintainer: 'UnifyMail Team <support@unifymail.local>',
         installedSize: installedSize,
       };
       writeFromTemplate(path.join(linuxAssetsDir, 'debian', 'control.in'), data);
-      writeFromTemplate(path.join(linuxAssetsDir, 'Mailspring.desktop.in'), data);
-      writeFromTemplate(path.join(linuxAssetsDir, 'mailspring.appdata.xml.in'), data);
+      writeFromTemplate(path.join(linuxAssetsDir, 'UnifyMail.desktop.in'), data);
+      writeFromTemplate(path.join(linuxAssetsDir, 'UnifyMail.appdata.xml.in'), data);
 
       const icon = path.join(
         grunt.config('appDir'),
@@ -121,7 +121,7 @@ module.exports = grunt => {
         if (spawnError) {
           return done(spawnError);
         }
-        grunt.log.ok(`Created ${outputDir}/mailspring-${version}-${arch}.deb`);
+        grunt.log.ok(`Created ${outputDir}/UnifyMail-${version}-${arch}.deb`);
         return done();
       });
     });

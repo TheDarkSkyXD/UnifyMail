@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { RetinaImg } from './retina-img';
-import { Label } from 'mailspring-exports';
+import { Label } from 'unifymail-exports';
 
 type MailLabelProps = {
   label: {

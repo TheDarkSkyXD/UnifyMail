@@ -1,4 +1,4 @@
-import { Utils, localized } from 'mailspring-exports';
+import { Utils, localized } from 'unifymail-exports';
 import React, { Component } from 'react';
 import { CSSTransitionGroup } from 'react-transition-group';
 import PropTypes from 'prop-types';

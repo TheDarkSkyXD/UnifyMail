@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { localized, DefaultClientHelper, SystemStartService } from 'mailspring-exports';
+import { localized, DefaultClientHelper, SystemStartService } from 'unifymail-exports';
 import { shell } from 'electron';
 
 import ConfigSchemaItem from './config-schema-item';
@@ -62,12 +62,12 @@ class DefaultMailClientItem extends React.Component<
                 helper.registerForURLScheme('mailto');
               } else {
                 shell.openExternal(
-                  'https://community.getmailspring.com/t/choose-mailspring-as-the-default-mail-client-on-linux/191'
+                  'https://github.com/TheDarkSkyXD/UnifyMail/discussions'
                 );
               }
             }}
           >
-            {localized('Use Mailspring as default mail client')}
+            {localized('Use UnifyMail as default mail client')}
           </div>
         </div>
       );
@@ -81,7 +81,7 @@ class DefaultMailClientItem extends React.Component<
           checked={this.state.defaultClient}
           onChange={this.toggleDefaultMailClient}
         />
-        <label htmlFor="default-client">{localized('Use Mailspring as default mail client')}</label>
+        <label htmlFor="default-client">{localized('Use UnifyMail as default mail client')}</label>
       </div>
     );
   }
@@ -184,7 +184,7 @@ const WorkspaceSection = props => {
 
       <div className="platform-note platform-linux-only">
         {localized(
-          `"Launch on system start" only works in XDG-compliant desktop environments. To enable the Mailspring icon in the system tray, you may need to install libappindicator.`
+          `"Launch on system start" only works in XDG-compliant desktop environments. To enable the UnifyMail icon in the system tray, you may need to install libappindicator.`
         )}
       </div>
     </section>

@@ -2,7 +2,7 @@
 /* eslint jsx-a11y/tabindex-no-positive:0 */
 
 import _ from 'underscore';
-import { Utils, localized } from 'mailspring-exports';
+import { Utils, localized } from 'unifymail-exports';
 import classnames from 'classnames';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';

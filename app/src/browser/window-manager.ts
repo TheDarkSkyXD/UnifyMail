@@ -2,7 +2,7 @@ import _ from 'underscore';
 import { app, BrowserWindow, screen } from 'electron';
 import WindowLauncher from './window-launcher';
 import { localized } from '../intl';
-import MailspringWindow from './mailspring-window';
+import UnifyMailWindow from './unifymail-window';
 import { isWaylandSession } from './is-wayland';
 
 const MAIN_WINDOW = 'default';
@@ -19,7 +19,7 @@ export default class WindowManager {
   static CONTACTS_WINDOW = CONTACTS_WINDOW;
 
   initializeInBackground: boolean;
-  _windows: { [key: string]: MailspringWindow } = {};
+  _windows: { [key: string]: UnifyMailWindow } = {};
   windowLauncher: WindowLauncher;
 
   constructor({
@@ -219,7 +219,7 @@ export default class WindowManager {
   }
 
   quitWinLinuxIfNoWindows() {
-    // Typically, Mailspring stays running in the background on all platforms,
+    // Typically, UnifyMail stays running in the background on all platforms,
     // since it has a status icon you can use to quit it.
 
     // However, on Windows and Linux we /do/ want to quit if the app is somehow

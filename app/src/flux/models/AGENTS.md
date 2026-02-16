@@ -53,7 +53,7 @@ Data model classes forming the ORM layer. Each model maps to a database table an
 
 ### Working In This Directory
 - **Every model must define a static `attributes` getter** returning attribute descriptors — this drives the ORM
-- When adding a new model: define `attributes`, register in `DatabaseObjectRegistry`, add to `mailspring-exports`
+- When adding a new model: define `attributes`, register in `DatabaseObjectRegistry`, add to `UnifyMail-exports`
 - `query.ts` implements a chainable query builder — `DatabaseStore.findAll(Thread).where([matcher]).order(attr)`
 - Query subscriptions are the reactive data layer — they re-execute when the underlying data changes
 - **`utils.ts` is large (22KB)** — contains many essential utility functions (ID gen, date parse, etc.)

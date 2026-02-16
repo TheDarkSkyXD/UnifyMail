@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import {
   localized,
   Actions,
@@ -7,7 +7,7 @@ import {
   DatabaseStore,
   NativeNotifications,
   FocusedPerspectiveStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import * as ActivityActions from './activity-actions';
 import ActivityDataSource from './activity-data-source';
@@ -22,7 +22,7 @@ export function pluckByEmail(recipients, email) {
   return null;
 }
 
-class ActivityEventStore extends MailspringStore {
+class ActivityEventStore extends UnifyMailStore {
   _throttlingTimestamps = {};
   _actions = [];
   _unreadCount = 0;

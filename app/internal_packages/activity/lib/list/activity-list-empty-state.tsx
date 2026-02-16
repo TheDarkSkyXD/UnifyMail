@@ -1,6 +1,6 @@
 import React from 'react';
-import { RetinaImg } from 'mailspring-component-kit';
-import { localizedReactFragment } from 'mailspring-exports';
+import { RetinaImg } from 'unifymail-component-kit';
+import { localizedReactFragment } from 'unifymail-exports';
 
 const ActivityListEmptyState = function ActivityListEmptyState() {
   return (

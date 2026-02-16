@@ -1,4 +1,4 @@
-import { AccountStore, RegExpUtils } from 'mailspring-exports';
+import { AccountStore, RegExpUtils } from 'unifymail-exports';
 
 type ICAL = typeof import('ical.js').default;
 type ICALComponent = InstanceType<ICAL['Component']>;

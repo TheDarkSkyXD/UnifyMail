@@ -12,7 +12,7 @@ import {
   Thread,
   Category,
   Label,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { Disposable } from 'rx-core';
 
 const ShowImportantKey = 'core.workspace.showImportant';

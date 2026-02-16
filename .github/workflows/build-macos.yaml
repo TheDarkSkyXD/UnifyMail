@@ -42,23 +42,18 @@ jobs:
           p12-file-base64: ${{ secrets.APPLE_CODESIGN_P12 }}
           p12-password: ${{ secrets.APPLE_CODESIGN_KEY_PASSWORD }}
 
-      # This is disabled because we need to codesign Mailspring with this profile, but it's
+      # This is disabled because we need to codesign UnifyMail with this profile, but it's
       # presence makes Apple use it for the mailsync executable too. We need more nuanced
       # provisioning profile configuration.
       #
       # - name: Setup Provisioning Profile
       #   run: |
-      #     echo "APPLE_PROVISIONING_PROFILE_PATH=${{ runner.temp }}/Mailspring.provisionprofile" >> $GITHUB_ENV
-      #     echo $APPLE_PROVISIONING_PROFILE_B64 | base64 --decode > "${{ runner.temp }}/Mailspring.provisionprofile"
+      #     echo "APPLE_PROVISIONING_PROFILE_PATH=${{ runner.temp }}/UnifyMail.provisionprofile" >> $GITHUB_ENV
+      #     echo $APPLE_PROVISIONING_PROFILE_B64 | base64 --decode > "${{ runner.temp }}/UnifyMail.provisionprofile"
       #   env:
       #     APPLE_PROVISIONING_PROFILE_B64: ${{ secrets.APPLE_PROVISIONING_PROFILE_B64 }}
 
-      - name: Setup AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+
 
       - name: Lint
         run: npm run lint
@@ -75,10 +70,21 @@ jobs:
       - name: Rename artifacts
         if: matrix.os == 'macos-latest'
         run: |
-          mv app/dist/Mailspring.zip app/dist/Mailspring-AppleSilicon.zip
+          mv app/dist/UnifyMail.zip app/dist/UnifyMail-AppleSilicon.zip
 
-      - name: Sync artifacts to S3 bucket
-        run: |
-          aws s3 sync app/dist/ "s3://mailspring-builds/client/$(git rev-parse --short=8 HEAD)/osx" \
-            --acl public-read \
-            --exclude "*" --include *.zip
+      - name: Generate latest-mac.yml
+        run: node app/build/generate-latest-mac-yml.js
+        env:
+          ARCH: ${{ matrix.arch }}
+
+      - name: Create/Update Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          draft: true
+          files: |
+            app/dist/*.zip
+            app/dist/latest-mac.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

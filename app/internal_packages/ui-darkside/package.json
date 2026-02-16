@@ -3,10 +3,10 @@
   "displayName": "Darkside",
   "theme": "ui",
   "version": "1.0.0",
-  "description": "A customizable, dark sidebar theme for Mailspring.",
+  "description": "A customizable, dark sidebar theme for UnifyMail.",
   "license": "MIT",
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
   "private": true
 }

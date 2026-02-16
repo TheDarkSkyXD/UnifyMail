@@ -7,11 +7,11 @@ import {
   Actions,
   AttachmentStore,
   SyncbackMetadataTask,
-  MailspringAPIRequest,
+  UnifyMailAPIRequest,
   QuotedHTMLTransformer,
   ComponentRegistry,
   DatabaseChangeRecord,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import plugin from '../package.json';
 import ThreadSharingButton from './thread-sharing-button';
@@ -44,7 +44,7 @@ export function sharingURLForThread(thread: Thread) {
     return null;
   }
   const identity = IdentityStore.identity();
-  return `https://shared.getmailspring.com/thread/${identity.id}/${metadata.key}`;
+  return `https://shared.getunifymail.com/thread/${identity.id}/${metadata.key}`;
 }
 
 let soon = {};
@@ -102,7 +102,7 @@ export const syncThreadToWeb = async (thread: Thread) => {
       if (data.length === 0) {
         throw new Error(`File ${filePath} is not on disk.`);
       }
-      const link = await MailspringAPIRequest.postStaticAsset({
+      const link = await UnifyMailAPIRequest.postStaticAsset({
         filename: `${file.id}/${file.displayName()}`,
         blob: new Blob([new Uint8Array(data)], { type: 'application/octet-stream' }),
       });
@@ -115,7 +115,7 @@ export const syncThreadToWeb = async (thread: Thread) => {
   const { firstName, lastName, emailAddress } = IdentityStore.identity();
 
   // next, post the JSON for the entire thread
-  await MailspringAPIRequest.postStaticAsset({
+  await UnifyMailAPIRequest.postStaticAsset({
     filename: metadata.key,
     blob: JSON.stringify({
       thread: thread,
@@ -142,7 +142,7 @@ export const syncThreadToWeb = async (thread: Thread) => {
 
 export const unsyncThread = async (thread: Thread) => {
   const metadata = thread.metadataForPluginId(PLUGIN_ID) || {};
-  await MailspringAPIRequest.postStaticAsset({
+  await UnifyMailAPIRequest.postStaticAsset({
     filename: metadata.key,
     blob: JSON.stringify({ shared: false }),
   });

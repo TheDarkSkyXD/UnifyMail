@@ -1,4 +1,4 @@
-import { PropTypes, Utils } from 'mailspring-exports';
+import { PropTypes, Utils } from 'unifymail-exports';
 import React from 'react';
 
 type FlexboxProps = {

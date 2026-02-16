@@ -10,7 +10,7 @@ import {
   SyncbackContactGroupTask,
   ChangeContactGroupMembershipTask,
   localized,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { ContactsPerspective, Store, ContactsPerspectiveForGroup } from './Store';
 import {
   ScrollRegion,
@@ -19,7 +19,7 @@ import {
   ListensToFluxStore,
   ListensToObservable,
   IOutlineViewItem,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import { isEqual } from 'underscore';
 import { showGPeopleReadonlyNotice } from './GoogleSupport';
 
@@ -94,7 +94,7 @@ const OutlineViewForAccount = ({
           Actions.queueTask(DestroyContactGroupTask.forRemoving(group));
         },
         onDrop: (item, { dataTransfer }) => {
-          const data = JSON.parse(dataTransfer.getData('mailspring-contacts-data'));
+          const data = JSON.parse(dataTransfer.getData('UnifyMail-contacts-data'));
           const contacts = data.ids.map(i => Store.filteredContacts().find(c => c.id === i));
           if (!contacts.length) {
             return false;
@@ -111,7 +111,7 @@ const OutlineViewForAccount = ({
           );
         },
         shouldAcceptDrop: (item, { dataTransfer }) => {
-          if (!dataTransfer.types.includes('mailspring-contacts-data')) {
+          if (!dataTransfer.types.includes('UnifyMail-contacts-data')) {
             return false;
           }
           if (isEqual(selected, perspective)) {
@@ -119,8 +119,8 @@ const OutlineViewForAccount = ({
           }
           // We can't inspect the drag payload until drop, so we use a dataTransfer
           // type to encode the account IDs of threads currently being dragged.
-          const accountsType = dataTransfer.types.find(t => t.startsWith('mailspring-accounts='));
-          const accountIds = (accountsType || '').replace('mailspring-accounts=', '').split(',');
+          const accountsType = dataTransfer.types.find(t => t.startsWith('UnifyMail-accounts='));
+          const accountIds = (accountsType || '').replace('UnifyMail-accounts=', '').split(',');
 
           return isEqual(accountIds, [perspective.accountId]);
         },

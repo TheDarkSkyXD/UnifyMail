@@ -3,7 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { findRenderedDOMComponentWithClass } from 'react-dom/test-utils';
 
-import { DateUtils, Actions } from 'mailspring-exports';
+import { DateUtils, Actions } from 'unifymail-exports';
 import SendLaterButton from '../lib/send-later-button';
 import { PLUGIN_ID } from '../lib/send-later-constants';
 

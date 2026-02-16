@@ -1,28 +1,28 @@
 import url from 'url';
 import querystring from 'querystring';
 import { ipcRenderer } from 'electron';
-import { localized, DatabaseStore, Thread, Matcher, Actions } from 'mailspring-exports';
+import { localized, DatabaseStore, Thread, Matcher, Actions } from 'unifymail-exports';
 
 const DATE_EPSILON = 60; // Seconds
 
-interface MailspringLinkParams {
+interface UnifyMailLinkParams {
   subject: string;
   lastDate?: number;
   date?: number;
 }
 
-const _parseOpenThreadUrl = (mailspringUrlString: string) => {
-  const parsedUrl = url.parse(mailspringUrlString);
+const _parseOpenThreadUrl = (UnifyMailUrlString: string) => {
+  const parsedUrl = url.parse(UnifyMailUrlString);
   const params = querystring.parse(parsedUrl.query) as any;
   return {
     subject: params.subject,
     date: params.date ? parseInt(params.date, 10) : undefined,
     lastDate: params.lastDate ? parseInt(params.lastDate, 10) : undefined,
-  } as MailspringLinkParams;
+  } as UnifyMailLinkParams;
 };
 
 const _findCorrespondingThread = (
-  { subject, lastDate, date }: MailspringLinkParams,
+  { subject, lastDate, date }: UnifyMailLinkParams,
   dateEpsilon = DATE_EPSILON
 ) => {
   const dateClause = date
@@ -47,8 +47,8 @@ const _findCorrespondingThread = (
   ]);
 };
 
-const _onOpenThreadFromWeb = (event, mailspringUrl: string) => {
-  const params = _parseOpenThreadUrl(mailspringUrl);
+const _onOpenThreadFromWeb = (event, UnifyMailUrl: string) => {
+  const params = _parseOpenThreadUrl(UnifyMailUrl);
 
   _findCorrespondingThread(params)
     .then(thread => {

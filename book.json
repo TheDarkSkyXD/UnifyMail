@@ -1,6 +1,6 @@
 {
     "gitbook": "3.2.2",
-    "title": "Mailspring Plugin SDK",
+    "title": "UnifyMail Plugin SDK",
     "root": "./app/build/docs_src/",
     "plugins": [
         "search",
@@ -14,12 +14,12 @@
     ],
     "pluginsConfig": {
         "editlink": {
-          "base": "https://github.com/Foundry376/Mailspring/tree/master",
+          "base": "https://github.com/TheDarkSkyXD/UnifyMail/tree/master",
           "label": "Edit This Page",
           "multilingual": false
         },
         "github": {
-            "url": "https://github.com/Foundry376/Mailspring"
+            "url": "https://github.com/TheDarkSkyXD/UnifyMail"
         },
         "favicon": {
             "shortcut": "/img/favicon.png"

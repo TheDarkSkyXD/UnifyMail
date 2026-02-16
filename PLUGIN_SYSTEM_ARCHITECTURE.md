@@ -1,6 +1,6 @@
-# Mailspring Plugin System Architecture
+# UnifyMail Plugin System Architecture
 
-This document provides a comprehensive overview of the Mailspring plugin system for developers looking to understand, extend, or improve the plugin infrastructure.
+This document provides a comprehensive overview of the UnifyMail plugin system for developers looking to understand, extend, or improve the plugin infrastructure.
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@ This document provides a comprehensive overview of the Mailspring plugin system 
 
 ## Overview
 
-Mailspring uses a robust plugin architecture where features are implemented as "packages". The system is managed by two core files:
+UnifyMail uses a robust plugin architecture where features are implemented as "packages". The system is managed by two core files:
 
 | File | Purpose |
 |------|---------|
@@ -35,7 +35,7 @@ Plugins are discovered from these directories in order:
 
 | Directory | Purpose | Notes |
 |-----------|---------|-------|
-| `<resourcePath>/internal_packages/` | Built-in plugins | 51 packages bundled with Mailspring |
+| `<resourcePath>/internal_packages/` | Built-in plugins | 51 packages bundled with UnifyMail |
 | `<configDirPath>/packages/` | User-installed plugins | Skipped in safe mode |
 | `<configDirPath>/dev/packages/` | Developer mode plugins | Only loaded in dev mode |
 | `<resourcePath>/spec/fixtures/packages/` | Test packages | Only in spec mode |
@@ -44,11 +44,11 @@ Plugins are discovered from these directories in order:
 
 | Platform | Config Directory |
 |----------|------------------|
-| Linux | `~/.config/Mailspring/` |
-| macOS | `~/Library/Application Support/Mailspring/` |
-| Windows | `%APPDATA%\Mailspring\` |
+| Linux | `~/.config/UnifyMail/` |
+| macOS | `~/Library/Application Support/UnifyMail/` |
+| Windows | `%APPDATA%\UnifyMail\` |
 
-In development mode, data is stored separately (e.g., `~/.config/Mailspring-dev/` on Linux).
+In development mode, data is stored separately (e.g., `~/.config/UnifyMail-dev/` on Linux).
 
 ---
 
@@ -83,7 +83,7 @@ my-plugin/
   "license": "GPL-3.0",
 
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
 
   "windowTypes": {
@@ -109,14 +109,14 @@ my-plugin/
 | `name` | Yes | Package identifier (kebab-case) |
 | `version` | Yes | Semantic version |
 | `main` | Yes* | Entry point path (required for non-theme plugins) |
-| `engines.mailspring` | Yes | **Required for validation** - target engine version |
+| `engines.UnifyMail` | Yes | **Required for validation** - target engine version |
 | `displayName` | No | Human-readable name for UI |
 | `description` | No | Plugin description |
 | `windowTypes` | No | Which window types load this plugin |
 | `isOptional` | No | If true, can be disabled by user |
 | `isDefault` | No | If true, enabled by default |
 | `syncInit` | No | If true, loads immediately during startup |
-| `isIdentityRequired` | No | If true, requires Mailspring account to activate |
+| `isIdentityRequired` | No | If true, requires UnifyMail account to activate |
 | `theme` | No | Set to `"ui"` for theme plugins |
 
 ### Window Types
@@ -138,7 +138,7 @@ my-plugin/
 Every plugin must export `activate()` and `deactivate()` functions:
 
 ```typescript
-import { ComponentRegistry, ExtensionRegistry } from 'mailspring-exports';
+import { ComponentRegistry, ExtensionRegistry } from 'UnifyMail-exports';
 import MyComponent from './my-component';
 import MyExtension from './my-extension';
 
@@ -193,7 +193,7 @@ export function activateConfig() {
 
 1. **Discovery**: `PackageManager.discoverPackages()` scans configured directories
 2. **Filtering**: Packages filtered by `windowTypes` for current window
-3. **Validation**: Checks for valid `package.json` with `engines.mailspring`
+3. **Validation**: Checks for valid `package.json` with `engines.UnifyMail`
 4. **Sync Loading**: Plugins with `syncInit: true` activate immediately
 5. **Delayed Loading**: Other plugins activate after 2.5 second delay
 6. **Resource Loading**: Keymaps, stylesheets, menus auto-loaded
@@ -218,7 +218,7 @@ activatePackage(pkg)
     ├── Skip if theme (handled separately)
     ├── Skip if optional and disabled in config
     ├── Skip if identity required but not present
-    ├── Verify engines.mailspring is set
+    ├── Verify engines.UnifyMail is set
     │
     ├── Mark as active
     └── Call pkg.activate()
@@ -242,7 +242,7 @@ Package.activate()
 Injects React components into UI locations:
 
 ```typescript
-import { ComponentRegistry, WorkspaceStore } from 'mailspring-exports';
+import { ComponentRegistry, WorkspaceStore } from 'UnifyMail-exports';
 
 // Register with a role
 ComponentRegistry.register(MyButton, {
@@ -294,7 +294,7 @@ ComponentRegistry.register(MyComponent, {
 Register behavioral extensions:
 
 ```typescript
-import { ExtensionRegistry } from 'mailspring-exports';
+import { ExtensionRegistry } from 'UnifyMail-exports';
 
 // Available extension registries:
 ExtensionRegistry.Composer.register(MyComposerExtension);
@@ -311,7 +311,7 @@ class MyComposerExtension extends ComposerExtension {
   static sendActions() {
     return [{
       title: 'Send Later',
-      iconUrl: 'mailspring://my-plugin/assets/clock.png',
+      iconUrl: 'UnifyMail://my-plugin/assets/clock.png',
       isEnabled: ({ draft }) => true,
       performSendAction: ({ draft }) => { /* ... */ }
     }];
@@ -388,13 +388,13 @@ AppEnv.packages.createPackageManually();
 ### Manual Installation
 
 1. Download/create plugin folder with valid `package.json`
-2. Copy to `~/.config/Mailspring/packages/` (or platform equivalent)
-3. Restart Mailspring (or call `installPackageFromPath()`)
+2. Copy to `~/.config/UnifyMail/packages/` (or platform equivalent)
+3. Restart UnifyMail (or call `installPackageFromPath()`)
 
 ### Validation Requirements
 
 - Must have `package.json` file
-- Must have `engines.mailspring` field
+- Must have `engines.UnifyMail` field
 - Main entry point must exist (for non-themes)
 
 ---
@@ -408,7 +408,7 @@ Themes are plugins with special handling:
   "name": "my-theme",
   "theme": "ui",
   "displayName": "My Theme",
-  "engines": { "mailspring": "*" }
+  "engines": { "UnifyMail": "*" }
 }
 ```
 
@@ -440,7 +440,7 @@ Located in `internal_packages/theme-picker/`:
 | No enable/disable UI | Plugins require config file editing (themes have UI) |
 | No update mechanism | Manual updates only |
 | No sandboxing | Plugins have full API access |
-| Limited version checking | `engines.mailspring: "*"` is common |
+| Limited version checking | `engines.UnifyMail: "*"` is common |
 
 ### Disabled Plugins Configuration
 
@@ -460,7 +460,7 @@ Optional plugins can be disabled via config:
 
 ### Global APIs
 
-**mailspring-exports:**
+**UnifyMail-exports:**
 - `Actions` - Flux action dispatcher
 - `DatabaseStore` - Read-only database queries
 - `Stores` - Application state (DraftStore, MessageStore, TaskQueue, etc.)
@@ -468,7 +468,7 @@ Optional plugins can be disabled via config:
 - `Tasks` - Async operations (SendDraftTask, ChangeLabelsTask, etc.)
 - All registries
 
-**mailspring-component-kit:**
+**UnifyMail-component-kit:**
 - `InjectedComponent`, `InjectedComponentSet`
 - `Modal`, `Menu`, `Flexbox`, `Spinner`
 - `KeyCommandsRegion`, `ListensToFluxStore`
@@ -477,13 +477,13 @@ Optional plugins can be disabled via config:
 
 - Hot reload: `Ctrl+R` (Windows/Linux) or `Cmd+R` (macOS)
 - Dev tools: Menu > Developer > Toggle Developer Tools
-- Console access: `$m` provides `mailspring-exports`
+- Console access: `$m` provides `UnifyMail-exports`
 
 ### External Resources
 
-- Plugin Starter: https://github.com/Foundry376/Mailspring-Plugin-Starter
-- Theme Starter: https://github.com/Foundry376/Mailspring-Theme-Starter
-- Community: https://community.getmailspring.com/
+- Plugin Starter: https://github.com/TheDarkSkyXD/UnifyMail-Plugin-Starter
+- Theme Starter: https://github.com/TheDarkSkyXD/UnifyMail-Theme-Starter
+- Community: https://community.getunifymail.com/
 
 ---
 
@@ -499,5 +499,5 @@ Optional plugins can be disabled via config:
 | `app/src/extensions/composer-extension.ts` | ComposerExtension base class |
 | `app/src/extensions/message-view-extension.ts` | MessageViewExtension base class |
 | `app/src/components/injected-component.tsx` | Renders registered components |
-| `app/src/global/mailspring-exports.ts` | Global API exports |
+| `app/src/global/UnifyMail-exports.ts` | Global API exports |
 | `app/internal_packages/theme-picker/` | Theme selection UI (reference for plugin UI) |

@@ -4,8 +4,8 @@ import {
   WorkspaceStore,
   Actions,
   ExtensionRegistry,
-} from 'mailspring-exports';
-import { HasTutorialTip } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { HasTutorialTip } from 'unifymail-component-kit';
 
 import ActivityMailboxPerspective from './activity-mailbox-perspective';
 import ActivityEventStore from './activity-event-store';

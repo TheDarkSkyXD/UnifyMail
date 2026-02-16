@@ -5,7 +5,7 @@ import EditList from '@bengotow/slate-edit-list';
 import AutoReplace from 'slate-auto-replace';
 import When from 'slate-when';
 
-import { MessageWithEditorState } from 'mailspring-exports';
+import { MessageWithEditorState } from 'unifymail-exports';
 import { BuildToggleButton, IEditorToolbarConfigItem } from './toolbar-component-factories';
 import { ComposerEditorPlugin } from './types';
 
@@ -369,7 +369,7 @@ export function hideQuotedTextByDefault(draft: MessageWithEditorState) {
 
 // plugins
 
-const MailspringBaseBlockPlugin: ComposerEditorPlugin = {
+const UnifyMailBaseBlockPlugin: ComposerEditorPlugin = {
   toolbarComponents: Object.values(BLOCK_CONFIG)
     .filter(config => config.button)
     .map(BuildToggleButton),
@@ -414,7 +414,7 @@ const MailspringBaseBlockPlugin: ComposerEditorPlugin = {
 const plugins: ComposerEditorPlugin[] = [
   // Base implementation of BLOCK_CONFIG block types,
   // the "block" toolbar section, and serialization
-  MailspringBaseBlockPlugin,
+  UnifyMailBaseBlockPlugin,
 
   // Return creates soft newlines in code blocks
   When({

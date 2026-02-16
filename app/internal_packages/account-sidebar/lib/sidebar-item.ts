@@ -1,7 +1,7 @@
 import _ from 'underscore';
 
 import _str from 'underscore.string';
-import { OutlineViewItem } from 'mailspring-component-kit';
+import { OutlineViewItem } from 'unifymail-component-kit';
 import {
   MailboxPerspective,
   FocusedPerspectiveStore,
@@ -11,7 +11,7 @@ import {
   Actions,
   RegExpUtils,
   localized,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import * as SidebarActions from './sidebar-actions';
 import { ISidebarItem } from './types';
@@ -56,7 +56,7 @@ const onDeleteItem = function (item) {
     type: 'info',
     message: localized('Are you sure?'),
     detail: localized(
-      'Deleting folders and labels cannot be undone and it may take a few minutes for changes to sync to Mailspring.'
+      'Deleting folders and labels cannot be undone and it may take a few minutes for changes to sync to UnifyMail.'
     ),
     buttons: [localized('Delete'), localized('Cancel')],
     defaultId: 0,
@@ -137,7 +137,7 @@ export default class SidebarItem {
         onCollapseToggled: toggleItemCollapsed,
 
         onDrop(item, event) {
-          const jsonString = event.dataTransfer.getData('mailspring-threads-data');
+          const jsonString = event.dataTransfer.getData('UnifyMail-threads-data');
           let jsonData = null;
           try {
             jsonData = JSON.parse(jsonString);
@@ -153,7 +153,7 @@ export default class SidebarItem {
         shouldAcceptDrop(item, event) {
           const target = item.perspective;
           const current = FocusedPerspectiveStore.current();
-          if (!event.dataTransfer.types.includes('mailspring-threads-data')) {
+          if (!event.dataTransfer.types.includes('UnifyMail-threads-data')) {
             return false;
           }
           if (target.isEqual(current)) {
@@ -163,9 +163,9 @@ export default class SidebarItem {
           // We can't inspect the drag payload until drop, so we use a dataTransfer
           // type to encode the account IDs of threads currently being dragged.
           const accountsType = event.dataTransfer.types.find(t =>
-            t.startsWith('mailspring-accounts=')
+            t.startsWith('UnifyMail-accounts=')
           );
-          const accountIds = (accountsType || '').replace('mailspring-accounts=', '').split(',');
+          const accountIds = (accountsType || '').replace('UnifyMail-accounts=', '').split(',');
           return target.canReceiveThreadsFromAccountIds(accountIds);
         },
 

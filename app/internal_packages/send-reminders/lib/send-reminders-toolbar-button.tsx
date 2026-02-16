@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { localized } from 'mailspring-exports';
-import { HasTutorialTip } from 'mailspring-component-kit';
+import { localized } from 'unifymail-exports';
+import { HasTutorialTip } from 'unifymail-component-kit';
 import SendRemindersPopoverButton from './send-reminders-popover-button';
 
 const SendRemindersPopoverButtonWithTip = HasTutorialTip(SendRemindersPopoverButton, {

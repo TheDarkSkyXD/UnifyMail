@@ -1,10 +1,10 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import fs from 'fs';
 import path from 'path';
-import { Utils, MessageBodyProcessor, CategoryStore } from 'mailspring-exports';
+import { Utils, MessageBodyProcessor, CategoryStore } from 'unifymail-exports';
 import * as AutoloadImagesActions from './autoload-images-actions';
 
-class AutoloadImagesStore extends MailspringStore {
+class AutoloadImagesStore extends UnifyMailStore {
   _whitelistEmails = {};
   _whitelistMessageIds = {};
   _whitelistEmailsPath = path.join(AppEnv.getConfigDirPath(), 'autoload-images-whitelist.txt');

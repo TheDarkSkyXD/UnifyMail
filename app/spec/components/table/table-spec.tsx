@@ -1,6 +1,6 @@
 import React from 'react';
 import { shallow } from 'enzyme';
-import { Table, TableRow, TableCell, LazyRenderedList } from 'mailspring-component-kit';
+import { Table, TableRow, TableCell, LazyRenderedList } from 'unifymail-component-kit';
 import { testDataSource } from '../../fixtures/table-data';
 
 describe('Table Components', function describeBlock() {

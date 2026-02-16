@@ -1,5 +1,5 @@
 import { localized } from './intl';
-import { Account } from 'mailspring-exports';
+import { Account } from 'unifymail-exports';
 
 interface KeySet {
   [key: string]: string;
@@ -97,7 +97,7 @@ class KeyManager {
       try {
         raw = await safeStorage.decryptString(Buffer.from(encryptedCredentials, 'utf-8'));
       } catch (err) {
-        console.error('Mailspring encountered an error reading passwords from the keychain.');
+        console.error('UnifyMail encountered an error reading passwords from the keychain.');
         console.error(err);
       }
     }
@@ -116,16 +116,16 @@ class KeyManager {
   _reportFatalError(err: Error) {
     const clickedButton = require('@electron/remote').dialog.showMessageBoxSync({
       type: 'error',
-      buttons: [localized('Mailspring Help'), localized('Quit')],
+      buttons: [localized('UnifyMail Help'), localized('Quit')],
       message: localized(
-        `Mailspring could not store your password securely. For more information, visit %@`,
-        'https://community.getmailspring.com/t/password-management-error/199'
+        `UnifyMail could not store your password securely. For more information, visit %@`,
+        'https://github.com/TheDarkSkyXD/UnifyMail/discussions'
       ),
     });
 
     if (clickedButton == 0) {
       const shell = require('electron').shell;
-      shell.openExternal('https://community.getmailspring.com/t/password-management-error/199');
+      shell.openExternal('https://github.com/TheDarkSkyXD/UnifyMail/discussions');
     }
 
     // tell the app to exit and rethrow the error to ensure code relying

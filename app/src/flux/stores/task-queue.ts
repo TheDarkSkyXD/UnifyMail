@@ -1,6 +1,6 @@
 import _ from 'underscore';
-import MailspringStore from 'mailspring-store';
-import { Rx } from 'mailspring-exports';
+import UnifyMailStore from 'unifymail-store';
+import { Rx } from 'unifymail-exports';
 import { Task } from '../tasks/task';
 import DatabaseStore from './database-store';
 
@@ -41,7 +41,7 @@ Actions.dequeueMatchingTask({
 })
 */
 
-class TaskQueue extends MailspringStore {
+class TaskQueue extends UnifyMailStore {
   _queue: Task[] = [];
   _completed: Task[] = [];
   _currentSequentialId = Date.now();

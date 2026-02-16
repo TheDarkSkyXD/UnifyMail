@@ -1,6 +1,6 @@
 import React from 'react';
 import { CSSTransitionGroup } from 'react-transition-group';
-import { WorkspaceStore } from 'mailspring-exports';
+import { WorkspaceStore } from 'unifymail-exports';
 
 import Sheet from './sheet';
 import Toolbar from './sheet-toolbar';

@@ -1,6 +1,6 @@
 # Build Changelog Entry
 
-Build a changelog entry for a new Mailspring release by analyzing git history.
+Build a changelog entry for a new UnifyMail release by analyzing git history.
 
 ## Instructions
 

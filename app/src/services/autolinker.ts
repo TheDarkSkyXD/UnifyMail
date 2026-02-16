@@ -1,4 +1,4 @@
-import { RegExpUtils, DOMUtils } from 'mailspring-exports';
+import { RegExpUtils, DOMUtils } from 'unifymail-exports';
 
 function _matchesAnyRegexp(text, regexps) {
   for (const excludeRegexp of regexps) {
@@ -88,7 +88,7 @@ export function Autolink(
       },
     ],
     ['tel:', RegExpUtils.phoneRegex({ aggressive: options.telAggressiveMatch })],
-    ['', RegExpUtils.mailspringCommandRegex()],
+    ['', RegExpUtils.UnifyMailCommandRegex()],
     ['', RegExpUtils.urlRegex()],
   ];
 

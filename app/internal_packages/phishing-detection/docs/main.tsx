@@ -3,7 +3,7 @@
 // This is a simple package to notify N1 users if an email is a potential
 // phishing scam.
 
-// You can access Mailspring dependencies by requiring 'mailspring-exports'
+// You can access UnifyMail dependencies by requiring 'unifymail-exports'
 import React from 'react';
 import {
   PropTypes,
@@ -12,7 +12,7 @@ import {
   // A `Store` is a Flux component which contains all business logic and data
   // models to be consumed by React components to render markup.
   MessageStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 class PhishingIndicator extends React.Component {
   // Adding a @displayName to a React component helps for debugging.

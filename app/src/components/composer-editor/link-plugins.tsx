@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Mark, Editor } from 'slate';
 import AutoReplace from 'slate-auto-replace';
-import { RegExpUtils } from 'mailspring-exports';
+import { RegExpUtils } from 'unifymail-exports';
 
 import { BuildMarkButtonWithValuePicker } from './toolbar-component-factories';
 import { ComposerEditorPlugin } from './types';

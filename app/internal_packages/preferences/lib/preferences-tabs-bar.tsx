@@ -2,8 +2,8 @@ import React from 'react';
 import fs from 'fs';
 import classNames from 'classnames';
 
-import { Flexbox, RetinaImg } from 'mailspring-component-kit';
-import { Actions, PreferencesUIStoreTab, Utils } from 'mailspring-exports';
+import { Flexbox, RetinaImg } from 'unifymail-component-kit';
+import { Actions, PreferencesUIStoreTab, Utils } from 'unifymail-exports';
 
 interface PreferencesTabItemProps {
   selection: {

@@ -1,7 +1,7 @@
 import {
   SearchQueryAST,
   SearchQueryParser,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 const {
   SearchQueryToken,

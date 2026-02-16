@@ -16,7 +16,7 @@ import { ChangeUnreadTask } from './flux/tasks/change-unread-task';
 import { ChangeFolderTask } from './flux/tasks/change-folder-task';
 import { ChangeStarredTask } from './flux/tasks/change-starred-task';
 import { ChangeLabelsTask } from './flux/tasks/change-labels-task';
-import { Message } from 'mailspring-exports';
+import { Message } from 'unifymail-exports';
 let MailRulesStore: typeof import('./flux/stores/mail-rules-store').default = null;
 type MailRule = import('./flux/stores/mail-rules-store').MailRule;
 

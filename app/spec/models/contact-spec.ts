@@ -4,7 +4,7 @@ import { Account } from '../../src/flux/models/account';
 
 const contact_1 = {
   name: 'Evan Morikawa',
-  email: 'evan@mailspring.com',
+  email: 'evan@UnifyMail.com',
 };
 
 describe('Contact', function() {
@@ -15,13 +15,13 @@ describe('Contact', function() {
   it('can be built via the constructor', function() {
     const c1 = new Contact(contact_1);
     expect(c1.name).toBe('Evan Morikawa');
-    expect(c1.email).toBe('evan@mailspring.com');
+    expect(c1.email).toBe('evan@UnifyMail.com');
   });
 
   it('accepts a JSON response', function() {
     const c1 = new Contact({}).fromJSON(contact_1);
     expect(c1.name).toBe('Evan Morikawa');
-    expect(c1.email).toBe('evan@mailspring.com');
+    expect(c1.email).toBe('evan@UnifyMail.com');
   });
 
   it('correctly parses first and last names', function() {
@@ -80,11 +80,11 @@ describe('Contact', function() {
   });
 
   it("falls back to the first component of the email if name isn't present", function() {
-    const c1 = new Contact({ name: ' Evan Morikawa ', email: 'evan@mailspring.com' });
+    const c1 = new Contact({ name: ' Evan Morikawa ', email: 'evan@UnifyMail.com' });
     expect(c1.displayName()).toBe('Evan Morikawa');
     expect(c1.displayName({ compact: true })).toBe('Evan');
 
-    const c2 = new Contact({ name: '', email: 'evan@mailspring.com' });
+    const c2 = new Contact({ name: '', email: 'evan@UnifyMail.com' });
     expect(c2.displayName()).toBe('evan');
     expect(c2.displayName({ compact: true })).toBe('evan');
 
@@ -110,12 +110,12 @@ describe('Contact', function() {
     expect(c3.firstName()).toBe('nyl@s');
     expect(c3.lastName()).toBe('2000');
 
-    const c6 = new Contact({ name: 'ev@mailspring.com', email: 'ev@mailspring.com' });
-    expect(c6.firstName()).toBe('ev@mailspring.com');
+    const c6 = new Contact({ name: 'ev@UnifyMail.com', email: 'ev@UnifyMail.com' });
+    expect(c6.firstName()).toBe('ev@UnifyMail.com');
     expect(c6.lastName()).toBe('');
 
-    const c7 = new Contact({ name: 'evan@mailspring.com' });
-    expect(c7.firstName()).toBe('evan@mailspring.com');
+    const c7 = new Contact({ name: 'evan@UnifyMail.com' });
+    expect(c7.firstName()).toBe('evan@UnifyMail.com');
     expect(c7.lastName()).toBe('');
 
     const c8 = new Contact({ name: 'Mike K@ylor via L@nkedIn' });
@@ -142,7 +142,7 @@ describe('Contact', function() {
 
   it('should properly return `You` as the display name for the current user', function() {
     const c1 = new Contact({ name: ' Test Monkey', email: this.account.emailAddress });
-    expect(c1.displayName()).toBe('You (tester@mailspring.com)');
+    expect(c1.displayName()).toBe('You (tester@UnifyMail.com)');
     expect(c1.displayName({ compact: true })).toBe('You');
   });
 
@@ -150,7 +150,7 @@ describe('Contact', function() {
     it('returns true if the contact name matches the account email address', function() {
       let c1 = new Contact({ email: this.account.emailAddress });
       expect(c1.isMe()).toBe(true);
-      c1 = new Contact({ email: 'ben@mailspring.com' });
+      c1 = new Contact({ email: 'ben@UnifyMail.com' });
       expect(c1.isMe()).toBe(false);
     });
 
@@ -170,9 +170,9 @@ describe('Contact', function() {
 
   describe('isValid', function() {
     it('should return true for a variety of valid contacts', function() {
-      expect(new Contact({ name: 'Ben', email: 'ben@mailspring.com' }).isValid()).toBe(true);
-      expect(new Contact({ email: 'ben@mailspring.com' }).isValid()).toBe(true);
-      expect(new Contact({ email: 'ben+123@mailspring.com' }).isValid()).toBe(true);
+      expect(new Contact({ name: 'Ben', email: 'ben@UnifyMail.com' }).isValid()).toBe(true);
+      expect(new Contact({ email: 'ben@UnifyMail.com' }).isValid()).toBe(true);
+      expect(new Contact({ email: 'ben+123@UnifyMail.com' }).isValid()).toBe(true);
     });
 
     it('should support contacts with unicode characters in domains', () =>
@@ -182,9 +182,9 @@ describe('Contact', function() {
       expect(new Contact({ name: 'Ben' }).isValid()).toBe(false));
 
     it('should return false if the contact has an email that is not valid', function() {
-      expect(new Contact({ name: 'Ben', email: 'Ben <ben@mailspring.com>' }).isValid()).toBe(false);
-      expect(new Contact({ name: 'Ben', email: '<ben@mailspring.com>' }).isValid()).toBe(false);
-      expect(new Contact({ name: 'Ben', email: '"ben@mailspring.com"' }).isValid()).toBe(false);
+      expect(new Contact({ name: 'Ben', email: 'Ben <ben@UnifyMail.com>' }).isValid()).toBe(false);
+      expect(new Contact({ name: 'Ben', email: '<ben@UnifyMail.com>' }).isValid()).toBe(false);
+      expect(new Contact({ name: 'Ben', email: '"ben@UnifyMail.com"' }).isValid()).toBe(false);
     });
 
     it("returns false if the email doesn't satisfy the regex", () =>

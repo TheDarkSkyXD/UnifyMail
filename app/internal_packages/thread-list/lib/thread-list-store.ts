@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 
 import {
   Rx,
@@ -8,11 +8,11 @@ import {
   WorkspaceStore,
   FocusedContentStore,
   FocusedPerspectiveStore,
-} from 'mailspring-exports';
-import { ListTabular, ListDataSource } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { ListTabular, ListDataSource } from 'unifymail-component-kit';
 import ThreadListDataSource from './thread-list-data-source';
 
-class ThreadListStore extends MailspringStore {
+class ThreadListStore extends UnifyMailStore {
   _dataSource?: ListDataSource;
   _dataSourceUnlisten: () => void;
 

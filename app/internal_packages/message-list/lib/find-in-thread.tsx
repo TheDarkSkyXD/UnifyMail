@@ -1,7 +1,7 @@
 import React from 'react';
 import classnames from 'classnames';
-import { localized, Actions, MessageStore, SearchableComponentStore } from 'mailspring-exports';
-import { RetinaImg, KeyCommandsRegion } from 'mailspring-component-kit';
+import { localized, Actions, MessageStore, SearchableComponentStore } from 'unifymail-exports';
+import { RetinaImg, KeyCommandsRegion } from 'unifymail-component-kit';
 
 interface FindInThreadProps {
   searchTerm: string;

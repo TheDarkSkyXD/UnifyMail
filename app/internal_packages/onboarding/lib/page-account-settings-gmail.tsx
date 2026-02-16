@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Account } from 'mailspring-exports';
+import { Account } from 'unifymail-exports';
 import { buildGmailAccountFromAuthResponse, buildGmailAuthURL } from './onboarding-helpers';
 
 import OAuthSignInPage from './oauth-signin-page';

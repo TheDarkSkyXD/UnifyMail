@@ -1,6 +1,6 @@
 import { EventOccurrence } from './calendar-data-source';
 import moment, { Moment } from 'moment';
-import { Utils } from 'mailspring-exports';
+import { Utils } from 'unifymail-exports';
 
 // This pre-fetches from Utils to prevent constant disc access
 const overlapsBounds = Utils.overlapsBounds;

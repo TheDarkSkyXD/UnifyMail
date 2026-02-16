@@ -6,10 +6,10 @@ This document outlines the remaining issues identified during the code review an
 
 - ✅ Created `ics-event-helpers.ts` with ICS manipulation functions
 - ✅ Created `recurring-event-dialog.ts` for "this occurrence or all" prompts
-- ✅ Updated `mailspring-calendar.tsx` drag persistence to use ICS helpers
+- ✅ Updated `UnifyMail-calendar.tsx` drag persistence to use ICS helpers
 - ✅ Updated `calendar-event-popover.tsx` save to use ICS helpers and recurring dialog
 - ✅ Updated keyboard event movement to use ICS helpers
-- ✅ Exported `ICSEventHelpers` from `mailspring-exports`
+- ✅ Exported `ICSEventHelpers` from `UnifyMail-exports`
 
 ---
 
@@ -17,12 +17,12 @@ This document outlines the remaining issues identified during the code review an
 
 ### 1.1 Add Recurring Event Handling to Deletion
 
-**Issue**: `_onDeleteSelectedEvents` in `mailspring-calendar.tsx:230-254` doesn't check for recurring events or show the dialog.
+**Issue**: `_onDeleteSelectedEvents` in `UnifyMail-calendar.tsx:230-254` doesn't check for recurring events or show the dialog.
 
 **Current behavior**: Deletes the event directly without asking about series vs occurrence.
 
 **Files to modify**:
-- `app/internal_packages/main-calendar/lib/core/mailspring-calendar.tsx`
+- `app/internal_packages/main-calendar/lib/core/UnifyMail-calendar.tsx`
 
 **Implementation**:
 ```typescript
@@ -86,7 +86,7 @@ event.title = leftoverText;
 
 **Implementation**:
 ```typescript
-import { ICSEventHelpers } from 'mailspring-exports';
+import { ICSEventHelpers } from 'UnifyMail-exports';
 
 // In createEvent method:
 const ics = ICSEventHelpers.createICSString({
@@ -116,7 +116,7 @@ event.title = leftoverText;
 
 **Issue**: When undoing a "this occurrence only" change, the exception event that was created is never deleted.
 
-**Current behavior** (`mailspring-calendar.tsx:682-690`):
+**Current behavior** (`UnifyMail-calendar.tsx:682-690`):
 ```typescript
 // Register undo (note: undoing exception creation is complex, we just restore master)
 this._registerUndoAction(
@@ -145,7 +145,7 @@ this._registerUndoAction(
 - Users can manually delete the orphan exception if needed
 
 **Files to modify**:
-- `app/internal_packages/main-calendar/lib/core/mailspring-calendar.tsx`
+- `app/internal_packages/main-calendar/lib/core/UnifyMail-calendar.tsx`
 - Potentially `calendar-event-popover.tsx` for consistency
 
 **Implementation for Option A**:
@@ -206,7 +206,7 @@ _registerExceptionUndoAction(
 
 ### 2.1 Fix Deprecated `componentWillMount` Lifecycle
 
-**Issue**: `mailspring-calendar.tsx:130` uses deprecated React lifecycle method.
+**Issue**: `UnifyMail-calendar.tsx:130` uses deprecated React lifecycle method.
 
 **Current code**:
 ```typescript

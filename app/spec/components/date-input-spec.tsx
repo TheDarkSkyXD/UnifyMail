@@ -1,7 +1,7 @@
 import React from 'react';
 import { mount } from 'enzyme';
 
-import { DateUtils } from 'mailspring-exports';
+import { DateUtils } from 'unifymail-exports';
 import DateInput from '../../src/components/date-input';
 
 describe('DateInput', function dateInput() {

@@ -1,9 +1,9 @@
 import React from 'react';
-import { Utils } from 'mailspring-exports';
+import { Utils } from 'unifymail-exports';
 import { CalendarEvent } from './calendar-event';
 import { EventOccurrence } from './calendar-data-source';
 import { OverlapByEventId } from './week-view-helpers';
-import { EventRendererProps } from './mailspring-calendar';
+import { EventRendererProps } from './unifymail-calendar';
 import { DragState, HitZone } from './calendar-drag-types';
 
 /*

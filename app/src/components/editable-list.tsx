@@ -3,7 +3,7 @@ import _ from 'underscore';
 import classNames from 'classnames';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import { Utils, localized } from 'mailspring-exports';
+import { Utils, localized } from 'unifymail-exports';
 
 import { ScrollRegion } from './scroll-region';
 import { KeyCommandsRegion } from './key-commands-region';

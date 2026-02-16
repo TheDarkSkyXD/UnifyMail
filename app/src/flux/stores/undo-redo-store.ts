@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import * as Actions from '../actions';
 import { Task } from '../tasks/task';
 
@@ -10,7 +10,7 @@ interface UndoBlock {
   redo?: () => void;
 }
 
-class UndoRedoStore extends MailspringStore {
+class UndoRedoStore extends UnifyMailStore {
   _undo: UndoBlock[] = [];
   _redo: UndoBlock[] = [];
   _mostRecentBlock: UndoBlock | null = null;

@@ -20,7 +20,7 @@ Flux stores — singleton state containers that listen to Actions, manage applic
 | File | Description |
 |------|-------------|
 | `account-store.ts` | **AccountStore**: manages email accounts — add, remove, reorder, current account selection |
-| `identity-store.ts` | **IdentityStore**: manages Mailspring identity (login, subscription, feature flags) |
+| `identity-store.ts` | **IdentityStore**: manages UnifyMail identity (login, subscription, feature flags) |
 | `feature-usage-store.tsx` | Tracks pro feature usage limits and displays upgrade prompts |
 
 ### Email Viewing
@@ -85,11 +85,11 @@ Flux stores — singleton state containers that listen to Actions, manage applic
 ### Working In This Directory
 - **Stores are singletons** — they're instantiated once and shared across the entire application
 - **DatabaseStore is the most critical store** — every data operation goes through it
-- All stores extend `MailspringStore` (from `app/src/global/mailspring-store.ts`)
+- All stores extend `UnifyMailStore` (from `app/src/global/UnifyMail-store.ts`)
 - Stores listen to Actions: `this.listenTo(Actions.actionName, this._handler)`
 - Stores notify components by calling `this.trigger()` — components subscribe via `FluxContainer`
 - **DraftEditingSession** is complex (17KB) — it manages real-time draft editing with debounced saves
-- When adding a new store: register it in `mailspring-exports.js`
+- When adding a new store: register it in `UnifyMail-exports.js`
 
 ### Testing Requirements
 - Store tests: `app/spec/stores/`
@@ -100,7 +100,7 @@ Flux stores — singleton state containers that listen to Actions, manage applic
 ### Common Patterns
 - **Store skeleton**:
   ```typescript
-  class MyStore extends MailspringStore {
+  class MyStore extends UnifyMailStore {
     constructor() {
       super();
       this.listenTo(Actions.myAction, this._onMyAction);
@@ -120,7 +120,7 @@ Flux stores — singleton state containers that listen to Actions, manage applic
 ### Internal
 - `app/src/flux/actions.ts` — Actions that stores listen to
 - `app/src/flux/models/` — Data models that stores manage
-- `app/src/global/mailspring-store.ts` — Base store class
+- `app/src/global/UnifyMail-store.ts` — Base store class
 - `app/src/registries/` — Used by some stores for component/extension discovery
 
 ### External

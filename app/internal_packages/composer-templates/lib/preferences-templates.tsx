@@ -1,8 +1,8 @@
 import fs from 'fs';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Flexbox, EditableList, ComposerEditor, ComposerSupport } from 'mailspring-component-kit';
-import { Actions, localized, localizedReactFragment } from 'mailspring-exports';
+import { Flexbox, EditableList, ComposerEditor, ComposerSupport } from 'unifymail-component-kit';
+import { Actions, localized, localizedReactFragment } from 'unifymail-exports';
 import { Value } from 'slate';
 
 import TemplateStore from './template-store';
@@ -83,7 +83,7 @@ class TemplateEditor extends React.Component<
         <div className="section note">
           {localizedReactFragment(
             'Changes are saved automatically. View the %@ for tips and tricks.',
-            <a href="https://community.getmailspring.com/t/reply-faster-with-email-templates/167">
+            <a href="https://github.com/TheDarkSkyXD/UnifyMail/discussions">
               {localized('Templates Guide')}
             </a>
           )}

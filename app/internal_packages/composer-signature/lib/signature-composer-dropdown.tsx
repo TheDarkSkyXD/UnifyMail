@@ -8,8 +8,8 @@ import {
   Account,
   ISignatureSet,
   MessageWithEditorState,
-} from 'mailspring-exports';
-import { Menu, RetinaImg, ButtonDropdown } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { Menu, RetinaImg, ButtonDropdown } from 'unifymail-component-kit';
 
 import { applySignature, currentSignatureIdSlate, currentSignatureId } from './signature-utils';
 

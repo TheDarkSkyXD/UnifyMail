@@ -1,7 +1,7 @@
 import { shell, ipcRenderer } from 'electron';
 import React from 'react';
-import { localized, Account, AccountStore, Actions, KeyManager } from 'mailspring-exports';
-import { Notification } from 'mailspring-component-kit';
+import { localized, Account, AccountStore, Actions, KeyManager } from 'unifymail-exports';
+import { Notification } from 'unifymail-component-kit';
 
 export default class AccountErrorNotification extends React.Component<
   Record<string, unknown>,
@@ -34,7 +34,7 @@ export default class AccountErrorNotification extends React.Component<
   }
 
   _onContactSupport = erroredAccount => {
-    let url = 'https://support.getmailspring.com/hc/en-us/requests/new';
+    let url = 'https://support.getunifymail.com/hc/en-us/requests/new';
     if (erroredAccount) {
       url += `?email=${encodeURIComponent(erroredAccount.emailAddress)}`;
       const { syncError } = erroredAccount;

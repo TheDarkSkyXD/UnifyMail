@@ -8,7 +8,7 @@ import { MailLabel } from './mail-label';
 import * as Actions from '../flux/actions';
 import { ChangeLabelsTask } from '../flux/tasks/change-labels-task';
 import { InjectedComponentSet } from './injected-component-set';
-import { Thread } from 'mailspring-exports';
+import { Thread } from 'unifymail-exports';
 
 const LabelComponentCache = {};
 

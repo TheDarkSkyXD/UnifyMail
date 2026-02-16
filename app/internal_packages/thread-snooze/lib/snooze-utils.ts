@@ -10,7 +10,7 @@ import {
   ChangeFolderTask,
   DraftFactory,
   SendDraftTask,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 export function snoozedUntilMessage(snoozeDate, now = moment()) {
   let message = localized('Snoozed');
@@ -59,10 +59,10 @@ export async function markUnreadOrResurfaceThreads(threads, source) {
     // send a hidden email that will mark the thread as unread and bring it
     // to the top of your inbox in any mail client
     const body = `
-    <strong>${localized('Mailspring Reminder')}:</strong> ${localized(
-      'This thread has been moved to the top of your inbox by Mailspring.'
+    <strong>${localized('UnifyMail Reminder')}:</strong> ${localized(
+      'This thread has been moved to the top of your inbox by UnifyMail.'
     )}</p>
-    <p>--${localized('The Mailspring Team')}</p>`;
+    <p>--${localized('The UnifyMail Team')}</p>`;
 
     for (const thread of threads) {
       const draft = await DraftFactory.createDraftForResurfacing(thread, null, body);

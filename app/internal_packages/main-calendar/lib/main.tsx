@@ -1,7 +1,7 @@
 import React from 'react';
-import { WorkspaceStore, ComponentRegistry } from 'mailspring-exports';
+import { WorkspaceStore, ComponentRegistry } from 'unifymail-exports';
 import { QuickEventButton } from './quick-event-button';
-import { MailspringCalendar } from './core/mailspring-calendar';
+import { UnifyMailCalendar } from './core/unifymail-calendar';
 import { EventSearchBar } from './core/event-search-bar';
 
 const Notice = () =>
@@ -17,7 +17,7 @@ const Notice = () =>
 Notice.displayName = 'Notice';
 
 export function activate() {
-  ComponentRegistry.register(MailspringCalendar, {
+  ComponentRegistry.register(UnifyMailCalendar, {
     location: WorkspaceStore.Location.Center,
   });
   ComponentRegistry.register(Notice, {
@@ -32,7 +32,7 @@ export function activate() {
 }
 
 export function deactivate() {
-  ComponentRegistry.unregister(MailspringCalendar);
+  ComponentRegistry.unregister(UnifyMailCalendar);
   ComponentRegistry.unregister(QuickEventButton);
   ComponentRegistry.unregister(EventSearchBar);
 }

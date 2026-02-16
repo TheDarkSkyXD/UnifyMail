@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { RetinaImg, Flexbox } from 'mailspring-component-kit';
-import { localized } from 'mailspring-exports';
+import { RetinaImg, Flexbox } from 'unifymail-component-kit';
+import { localized } from 'unifymail-exports';
 import { ConfigLike } from '../types';
 import SystemTrayIconStore from '../../../system-tray/lib/system-tray-icon-store';
 

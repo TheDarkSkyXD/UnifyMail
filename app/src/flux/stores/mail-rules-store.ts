@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import _ from 'underscore';
 import * as Utils from '../models/utils';
 import * as Actions from '../actions';
@@ -11,7 +11,7 @@ import { localized } from '../../intl';
 
 import { Template } from '../../components/scenario-editor-models';
 import { ConditionMode, ConditionTemplates, ActionTemplates } from '../../mail-rules-templates';
-import { DatabaseChangeRecord } from 'mailspring-exports';
+import { DatabaseChangeRecord } from 'unifymail-exports';
 
 const RulesJSONKey = 'MailRules-V2';
 const AutoSinceJSONKey = 'MailRules-Auto-Since';
@@ -38,7 +38,7 @@ export interface MailRule extends Template {
   ];
 }
 
-class MailRulesStore extends MailspringStore {
+class MailRulesStore extends UnifyMailStore {
   _autoSince = Number(window.localStorage.getItem(AutoSinceJSONKey) || 0);
   _reprocessing: {
     [accountId: string]: {
@@ -56,7 +56,7 @@ class MailRulesStore extends MailspringStore {
     /* This is a bit strange - if the user has mail rules enabled, they only
     expect rules to be applied to "new" mail. Not "new" mail as in just created,
     since that includes old mail we're syncing for the first time. Just "new"
-    mail that has arrived since they last ran Mailspring. So, we keep a date. */
+    mail that has arrived since they last ran UnifyMail. So, we keep a date. */
     if (this._autoSince === 0) {
       window.localStorage.setItem(AutoSinceJSONKey, `${Date.now()}`);
       this._autoSince = Date.now();

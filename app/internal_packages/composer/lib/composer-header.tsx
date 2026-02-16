@@ -7,12 +7,12 @@ import {
   AccountStore,
   Message,
   DraftEditingSession,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import {
   KeyCommandsRegion,
   ParticipantsTextField,
   ListensToFluxStore,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import AccountContactField from './account-contact-field';
 import ComposerHeaderActions from './composer-header-actions';
 import Fields from './fields';

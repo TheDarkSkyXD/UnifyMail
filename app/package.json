@@ -1,10 +1,10 @@
 {
-  "name": "mailspring",
-  "productName": "Mailspring",
+  "name": "unifymail",
+  "productName": "UnifyMail",
   "version": "1.17.4",
   "repository": {
     "type": "git",
-    "url": "git://github.com/foundry376/mailspring.git"
+    "url": "git://github.com/TheDarkSkyXD/UnifyMail.git"
   },
   "commitHash": "COMMIT_INSERTED_DURING_PACKAGING",
   "description": "The best email app for people and teams at work",
@@ -23,6 +23,8 @@
     "debug": "github:emorikawa/debug#nylas",
     "deep-extend": "0.6.0",
     "dompurify": "^3.3.1",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.7.3",
     "emoji-data": "^0.2.0",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.8",
@@ -86,5 +88,8 @@
   },
   "optionalDependencies": {
     "macos-notification-state": "github:bengotow/macos-notification-state#77e9e825"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.1"
   }
 }

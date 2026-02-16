@@ -1,12 +1,12 @@
 import _ from 'underscore';
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import DOMUtils from '../../dom-utils';
 import * as Actions from '../actions';
 import { MAX_MATCHES, CHAR_THRESHOLD } from '../../searchable-components/search-constants';
 import FocusedContentStore from './focused-content-store';
 import { Thread } from '../models/thread';
 
-class SearchableComponentStore extends MailspringStore {
+class SearchableComponentStore extends UnifyMailStore {
   currentMatch = null;
   matches = [];
   globalIndex = null; // null means nothing is selected

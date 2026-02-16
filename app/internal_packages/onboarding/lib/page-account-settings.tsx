@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized, Account, PropTypes, RegExpUtils } from 'mailspring-exports';
+import { localized, Account, PropTypes, RegExpUtils } from 'unifymail-exports';
 
 import * as OnboardingActions from './onboarding-actions';
 import CreatePageForForm from './decorators/create-page-for-form';
@@ -35,7 +35,7 @@ class AccountBasicSettingsForm extends React.Component<AccountBasicSettingsFormP
     return (
       providerConfig.note ||
       localized(
-        `Enter your email account credentials to get started. Mailspring\nstores your email password securely and it is never sent to our servers.`
+        `Enter your email account credentials to get started. UnifyMail\nstores your email password securely and it is never sent to our servers.`
       )
     );
   };

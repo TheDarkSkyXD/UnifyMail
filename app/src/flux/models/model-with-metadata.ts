@@ -2,7 +2,7 @@ import { Model, AttributeValues } from './model';
 import * as Attributes from '../attributes';
 
 /**
- Cloud-persisted data that is associated with a single Mailspring API object
+ Cloud-persisted data that is associated with a single UnifyMail API object
  (like a `Thread`, `Message`, or `Account`).
  */
 export class PluginMetadata extends Model {

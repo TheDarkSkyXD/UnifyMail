@@ -9,8 +9,8 @@ import {
   RegExpUtils,
   Thread,
   Utils,
-} from 'mailspring-exports';
-import { RetinaImg, ContactProfilePhoto } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { RetinaImg, ContactProfilePhoto } from 'unifymail-component-kit';
 import moment from 'moment-timezone';
 
 import ParticipantProfileDataSource from './participant-profile-data-source';
@@ -73,7 +73,7 @@ class SocialProfileLink extends React.Component<{
         href={`https://${hostname}/${handle}`}
       >
         <RetinaImg
-          url={`mailspring://participant-profile/assets/${service}-sidebar-icon@2x.png`}
+          url={`UnifyMail://participant-profile/assets/${service}-sidebar-icon@2x.png`}
           mode={RetinaImg.Mode.ContentPreserve}
         />
       </a>
@@ -134,7 +134,7 @@ class IconRow extends React.Component<{ node: React.ReactChild; icon: string }> 
     return (
       <div className={`icon-row ${icon}`}>
         <RetinaImg
-          url={`mailspring://participant-profile/assets/${icon}-icon@2x.png`}
+          url={`UnifyMail://participant-profile/assets/${icon}-icon@2x.png`}
           mode={RetinaImg.Mode.ContentPreserve}
           style={{ float: 'left' }}
         />
@@ -273,9 +273,9 @@ export default class SidebarParticipantProfile extends React.Component<
       await FeatureUsageStore.markUsedOrUpgrade('contact-profiles', {
         headerText: localized('All Contact Previews Used'),
         rechargeText: `${localized(
-          `You can view contact profiles for %1$@ emails each %2$@ with Mailspring Basic.`
+          `You can view contact profiles for %1$@ emails each %2$@ with UnifyMail Basic.`
         )} ${localized('Upgrade to Pro today!')}`,
-        iconUrl: 'mailspring://participant-profile/assets/ic-contact-profile-modal@2x.png',
+        iconUrl: 'UnifyMail://participant-profile/assets/ic-contact-profile-modal@2x.png',
       });
     } catch (err) {
       // user does not have access to this feature
@@ -324,7 +324,7 @@ export default class SidebarParticipantProfile extends React.Component<
       <div style={{ textAlign: 'center', marginBottom: 20 }}>
         <p>
           {localized(
-            `The contact sidebar in Mailspring Pro shows information about the people and companies you're emailing with.`
+            `The contact sidebar in UnifyMail Pro shows information about the people and companies you're emailing with.`
           )}
         </p>
         <div className="btn" onClick={!this.state.loading ? this._onClickedToTry : null}>

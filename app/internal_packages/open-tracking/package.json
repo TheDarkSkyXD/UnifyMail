@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "serverUrl": {
     "development": "http://localhost:5101",
-    "staging": "https://link-staging.getmailspring.com",
-    "production": "https://link.getmailspring.com"
+    "staging": "https://link-staging.getunifymail.com",
+    "production": "https://link.getunifymail.com"
   },
 
   "title": "Open Tracking",
@@ -20,7 +20,7 @@
     "url": ""
   },
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
   "windowTypes": {
     "default": true,

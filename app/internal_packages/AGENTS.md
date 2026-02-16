@@ -119,14 +119,14 @@ Internal plugin packages that implement the application's features. Each subdire
 - **Deactivation**: Export a `deactivate()` function for cleanup
 - **Component registration**: `ComponentRegistry.register(MyComponent, { role: 'RoleName' })`
 - **Store subscription**: `this.listenTo(SomeStore, this._onStoreChange)`
-- **Actions**: Import from `mailspring-exports` and dispatch via `Actions.someAction()`
+- **Actions**: Import from `UnifyMail-exports` and dispatch via `Actions.someAction()`
 - **Styling**: Use LESS files in `styles/` directory, variables from the active theme
 
 ## Dependencies
 
 ### Internal
-- `app/src/global/mailspring-exports` — Core API imports (Actions, Stores, Models)
-- `app/src/global/mailspring-component-kit` — Reusable UI component imports
+- `app/src/global/UnifyMail-exports` — Core API imports (Actions, Stores, Models)
+- `app/src/global/UnifyMail-component-kit` — Reusable UI component imports
 - `app/src/registries/` — Registration APIs
 - `app/src/extensions/` — Extension point base classes
 

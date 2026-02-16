@@ -1,12 +1,12 @@
 import React from 'react';
 import { mount } from 'enzyme';
-import { ContactStore, Contact } from 'mailspring-exports';
+import { ContactStore, Contact } from 'unifymail-exports';
 
-import { ParticipantsTextField } from 'mailspring-component-kit';
+import { ParticipantsTextField } from 'unifymail-component-kit';
 
 const participant1 = new Contact({
   id: 'local-1',
-  email: 'ben@mailspring.com',
+  email: 'ben@UnifyMail.com',
 });
 const participant2 = new Contact({
   id: 'local-2',
@@ -15,7 +15,7 @@ const participant2 = new Contact({
 });
 const participant3 = new Contact({
   id: 'local-3',
-  email: 'evan@mailspring.com',
+  email: 'evan@UnifyMail.com',
   name: 'Evan Morikawa',
 });
 
@@ -127,7 +127,7 @@ xdescribe('ParticipantsTextField', function ParticipantsTextFieldSpecs() {
       });
 
       this.expectInputToYield(participant3.email, {
-        to: [participant1, participant2, new Contact({ email: 'evan@mailspring.com' })],
+        to: [participant1, participant2, new Contact({ email: 'evan@UnifyMail.com' })],
         cc: [],
         bcc: [],
       });
@@ -157,15 +157,15 @@ xdescribe('ParticipantsTextField', function ParticipantsTextFieldSpecs() {
         const newContact1 = new Contact({
           id: 'b1',
           name: 'Ben Imposter',
-          email: 'imposter@mailspring.com',
+          email: 'imposter@UnifyMail.com',
         });
-        const newContact2 = new Contact({ name: 'Mailspring Team', email: 'feedback@mailspring.com' });
+        const newContact2 = new Contact({ name: 'UnifyMail Team', email: 'feedback@UnifyMail.com' });
 
         const inputs = [
-          'Ben Imposter <imposter@mailspring.com>, Mailspring Team <feedback@mailspring.com>',
-          '\n\nbla\nBen Imposter (imposter@mailspring.com), Mailspring Team (feedback@mailspring.com)',
-          'Hello world! I like cheese. \rBen Imposter (imposter@mailspring.com)\nMailspring Team (feedback@mailspring.com)',
-          'Ben Imposter<imposter@mailspring.com>Mailspring Team (feedback@mailspring.com)',
+          'Ben Imposter <imposter@UnifyMail.com>, UnifyMail Team <feedback@UnifyMail.com>',
+          '\n\nbla\nBen Imposter (imposter@UnifyMail.com), UnifyMail Team (feedback@UnifyMail.com)',
+          'Hello world! I like cheese. \rBen Imposter (imposter@UnifyMail.com)\nUnifyMail Team (feedback@UnifyMail.com)',
+          'Ben Imposter<imposter@UnifyMail.com>UnifyMail Team (feedback@UnifyMail.com)',
         ];
 
         for (const input of inputs) {
@@ -182,19 +182,19 @@ xdescribe('ParticipantsTextField', function ParticipantsTextFieldSpecs() {
       it('should still parse out emails into Contact objects', () => {
         const newContact1 = new Contact({
           id: 'gm',
-          name: 'garbage-man@mailspring.com',
-          email: 'garbage-man@mailspring.com',
+          name: 'garbage-man@UnifyMail.com',
+          email: 'garbage-man@UnifyMail.com',
         });
         const newContact2 = new Contact({
           id: 'rm',
-          name: 'recycling-guy@mailspring.com',
-          email: 'recycling-guy@mailspring.com',
+          name: 'recycling-guy@UnifyMail.com',
+          email: 'recycling-guy@UnifyMail.com',
         });
 
         const inputs = [
-          "Hello world I real. \n asd. garbage-man@mailspring.com—he's cool Also 'recycling-guy@mailspring.com'!",
-          'garbage-man@mailspring.com1WHOA I REALLY HATE DATA,recycling-guy@mailspring.com',
-          'nils.com garbage-man@mailspring.com @mailspring.com nope@.com nope! recycling-guy@mailspring.com HOLLA AT recycling-guy@mailspring.',
+          "Hello world I real. \n asd. garbage-man@UnifyMail.com—he's cool Also 'recycling-guy@UnifyMail.com'!",
+          'garbage-man@UnifyMail.com1WHOA I REALLY HATE DATA,recycling-guy@UnifyMail.com',
+          'nils.com garbage-man@UnifyMail.com @UnifyMail.com nope@.com nope! recycling-guy@UnifyMail.com HOLLA AT recycling-guy@UnifyMail.',
         ];
 
         for (const input of inputs) {

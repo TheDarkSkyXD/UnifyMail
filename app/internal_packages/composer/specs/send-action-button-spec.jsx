@@ -1,7 +1,7 @@
 import React from 'react';
 import { mount } from 'enzyme';
-import { ButtonDropdown, RetinaImg } from 'mailspring-component-kit';
-import { Actions, Message, SendActionsStore } from 'mailspring-exports';
+import { ButtonDropdown, RetinaImg } from 'unifymail-component-kit';
+import { Actions, Message, SendActionsStore } from 'unifymail-exports';
 import { SendActionButton } from '../lib/send-action-button';
 
 const GoodSendAction = {

@@ -8,7 +8,7 @@ import {
   TaskFactory,
   DatabaseStore,
   FocusedPerspectiveStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 type TemplateItem =
   | {

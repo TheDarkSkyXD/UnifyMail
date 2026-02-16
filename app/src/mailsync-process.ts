@@ -10,7 +10,7 @@ import os from 'os';
 import { EventEmitter } from 'events';
 import fs from 'fs';
 import { localized } from './intl';
-import { IIdentity, Account } from 'mailspring-exports';
+import { IIdentity, Account } from 'unifymail-exports';
 
 import {
   GMAIL_CLIENT_ID,
@@ -30,8 +30,8 @@ export const LocalizedErrorStrings = {
     'Connection Error - Unable to connect to the server / port you provided.'
   ),
   ErrorInvalidAccount: localized(
-    'This account is invalid or Mailspring could not find the Inbox or All Mail folder. %@',
-    'http://support.getmailspring.com/hc/en-us/articles/115001881912'
+    'This account is invalid or UnifyMail could not find the Inbox or All Mail folder. %@',
+    'https://github.com/TheDarkSkyXD/UnifyMail/issues'
   ),
   ErrorTLSNotAvailable: localized('TLS Not Available'),
   ErrorParse: localized('Parsing Error'),
@@ -77,8 +77,8 @@ export const LocalizedErrorStrings = {
     'Sorry, your SMTP server does not support basic username / password authentication.'
   ),
   ErrorIdentityMissingFields: localized(
-    'Your Mailspring ID is missing required fields - you may need to reset Mailspring. %@',
-    'http://support.getmailspring.com/hc/en-us/articles/115002012491'
+    'Your UnifyMail ID is missing required fields - you may need to reset UnifyMail. %@',
+    'https://github.com/TheDarkSkyXD/UnifyMail/issues'
   ),
 };
 
@@ -159,7 +159,7 @@ export class MailsyncProcess extends EventEmitter {
       IDENTITY_SERVER: 'unknown',
     };
     if (process.type === 'renderer') {
-      const rootURLForServer = require('./flux/mailspring-api-request').rootURLForServer;
+      const rootURLForServer = require('./flux/unifymail-api-request').rootURLForServer;
       env.IDENTITY_SERVER = rootURLForServer('identity');
     }
 
@@ -363,7 +363,7 @@ export class MailsyncProcess extends EventEmitter {
 
   sendMessage(json) {
     if (!Utils) {
-      Utils = require('mailspring-exports').Utils;
+      Utils = require('unifymail-exports').Utils;
     }
     console.log(`Sending to mailsync ${this.account ? this.account.id : '?'}`, json);
     const msg = `${JSON.stringify(json)}\n`;

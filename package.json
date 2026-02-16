@@ -1,12 +1,12 @@
 {
-  "name": "mailspring-root",
+  "name": "unifymail-root",
   "version": "0.0.1",
-  "description": "Packages required to develop and build Mailspring",
-  "author": "Mailspring",
+  "description": "Packages required to develop and build UnifyMail",
+  "author": "UnifyMail",
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Foundry376/Mailspring.git"
+    "url": "git+https://github.com/TheDarkSkyXD/UnifyMail.git"
   },
   "engines": {
     "node": ">=16.17",

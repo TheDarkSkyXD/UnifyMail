@@ -6,7 +6,7 @@ import {
   ComponentRegistry,
   MailboxPerspective,
   FocusedPerspectiveStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { clipboard } from 'electron';
 
 import Config from '../../src/config';

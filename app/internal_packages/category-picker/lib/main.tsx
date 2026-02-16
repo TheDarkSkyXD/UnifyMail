@@ -1,5 +1,5 @@
 import ToolbarCategoryPicker from './toolbar-category-picker';
-import { ComponentRegistry } from 'mailspring-exports';;
+import { ComponentRegistry } from 'unifymail-exports';;
 
 export function activate() {
   ComponentRegistry.register(ToolbarCategoryPicker, { role: 'ThreadActionsToolbarButton' });

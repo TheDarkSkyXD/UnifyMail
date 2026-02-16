@@ -1,7 +1,7 @@
 import moment from 'moment';
 import React from 'react';
-import { DateUtils } from 'mailspring-exports';
-import { DatePicker, RetinaImg, TimePicker } from 'mailspring-component-kit';
+import { DateUtils } from 'unifymail-exports';
+import { DatePicker, RetinaImg, TimePicker } from 'unifymail-component-kit';
 
 export const EventTimerangePicker: React.FunctionComponent<{
   start: number;

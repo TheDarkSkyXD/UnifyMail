@@ -4,7 +4,7 @@ import * as Immutable from 'immutable';
 import { Editor, Value, Operation, Range } from 'slate';
 import { Editor as SlateEditorComponent, EditorProps, Plugin } from 'slate-react';
 import { clipboard as ElectronClipboard } from 'electron';
-import { InlineStyleTransformer } from 'mailspring-exports';
+import { InlineStyleTransformer } from 'unifymail-exports';
 import path from 'path';
 import fs from 'fs';
 import { debounce } from 'underscore';
@@ -290,7 +290,7 @@ export function handleFilePasted(event: ClipboardEvent, onFileReceived: (path: s
   if (event.clipboardData.items.length === 0) {
     return false;
   }
-  // See https://github.com/Foundry376/Mailspring/pull/2104 - if you right-click + Copy Image in Chrome,
+  // See https://github.com/TheDarkSkyXD/UnifyMail/pull/2104 - if you right-click + Copy Image in Chrome,
   // the image file is item 1, not item 0. We want to prefer the files whenever one is present.
   for (const i in event.clipboardData.items) {
     const item = event.clipboardData.items[i];
@@ -309,7 +309,7 @@ export function handleFilePasted(event: ClipboardEvent, onFileReceived: (path: s
       const reader = new FileReader();
       reader.addEventListener('loadend', () => {
         const buffer = Buffer.from(new Uint8Array(reader.result as any));
-        const tmpFolder = temp.path('-mailspring-attachment');
+        const tmpFolder = temp.path('-UnifyMail-attachment');
         const tmpPath = path.join(tmpFolder, `Pasted File${ext}`);
         fs.mkdir(tmpFolder, () => {
           fs.writeFile(tmpPath, buffer, () => {

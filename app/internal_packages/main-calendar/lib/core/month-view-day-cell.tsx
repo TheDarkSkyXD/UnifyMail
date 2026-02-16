@@ -3,7 +3,7 @@ import { Moment } from 'moment-timezone';
 import classnames from 'classnames';
 import { EventOccurrence, FocusedEventInfo } from './calendar-data-source';
 import { MonthViewEvent } from './month-view-event';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 import { DragState, HitZone } from './calendar-drag-types';
 
 interface MonthViewDayCellProps {

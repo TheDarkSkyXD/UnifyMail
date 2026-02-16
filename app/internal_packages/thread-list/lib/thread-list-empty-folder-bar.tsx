@@ -1,5 +1,5 @@
 import React from 'react';
-import { ListensToFluxStore, RetinaImg } from 'mailspring-component-kit';
+import { ListensToFluxStore, RetinaImg } from 'unifymail-component-kit';
 import {
   localized,
   Actions,
@@ -9,7 +9,7 @@ import {
   ExpungeAllInFolderTask,
   FocusedPerspectiveStore,
   ThreadCountsStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 interface ThreadListEmptyFolderBarProps {
   role: string;

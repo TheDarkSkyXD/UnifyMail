@@ -4,7 +4,7 @@
 # components
 
 ## Purpose
-Reusable React UI components that form the application's component library. These components are available to all internal packages via `mailspring-component-kit` imports. Includes everything from primitive UI elements (buttons, spinners, switches) to complex interactive widgets (list views, editors, popovers, tokenizing text fields).
+Reusable React UI components that form the application's component library. These components are available to all internal packages via `UnifyMail-component-kit` imports. Includes everything from primitive UI elements (buttons, spinners, switches) to complex interactive widgets (list views, editors, popovers, tokenizing text fields).
 
 ## Key Files
 
@@ -52,7 +52,7 @@ Reusable React UI components that form the application's component library. Thes
 |------|-------------|
 | `button-dropdown.tsx` | Button with dropdown menu |
 | `metadata-composer-toggle-button.tsx` | Toggle button for composer metadata features (tracking, etc.) |
-| `open-identity-page-button.tsx` | Button linking to Mailspring identity page |
+| `open-identity-page-button.tsx` | Button linking to UnifyMail identity page |
 
 ### Overlays & Modals
 | File | Description |
@@ -133,7 +133,7 @@ Reusable React UI components that form the application's component library. Thes
 ## For AI Agents
 
 ### Working In This Directory
-- Components are exported via `app/src/global/mailspring-component-kit.js` — add new components to that barrel export
+- Components are exported via `app/src/global/UnifyMail-component-kit.js` — add new components to that barrel export
 - Follow existing component patterns: functional or class-based React with TypeScript
 - Most components accept both `className` and `style` props for customization
 - Complex components (list-tabular, tokenizing-text-field) have significant performance optimizations — modify carefully

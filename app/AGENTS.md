@@ -4,7 +4,7 @@
 # app
 
 ## Purpose
-The main Electron application directory. Contains all source code for the Mailspring desktop email client, including the renderer process UI (React/TypeScript), the browser/main process bootstrapping, the internal plugin packages, the build system, test specs, static assets, localization files, keyboard shortcuts, and menu definitions.
+The main Electron application directory. Contains all source code for the UnifyMail desktop email client, including the renderer process UI (React/TypeScript), the browser/main process bootstrapping, the internal plugin packages, the build system, test specs, static assets, localization files, keyboard shortcuts, and menu definitions.
 
 ## Key Files
 
@@ -28,7 +28,7 @@ The main Electron application directory. Contains all source code for the Mailsp
 | `menus/` | Platform-specific application menu definitions (see `menus/AGENTS.md`) |
 | `lang/` | Localization JSON files for 100+ languages |
 | `script/` | Platform-specific build scripts (Windows, macOS, Linux) |
-| `dot-mailspring/` | Default Mailspring user configuration and local package directory |
+| `dot-UnifyMail/` | Default UnifyMail user configuration and local package directory |
 
 ## For AI Agents
 

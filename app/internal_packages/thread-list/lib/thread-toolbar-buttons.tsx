@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import { RetinaImg, CreateButtonGroup, BindGlobalCommands } from 'mailspring-component-kit';
+import { RetinaImg, CreateButtonGroup, BindGlobalCommands } from 'unifymail-component-kit';
 import {
   localized,
   Actions,
@@ -11,7 +11,7 @@ import {
   CategoryStore,
   FocusedContentStore,
   FocusedPerspectiveStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import ThreadListStore from './thread-list-store';
 

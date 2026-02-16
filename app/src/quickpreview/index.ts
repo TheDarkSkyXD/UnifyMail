@@ -1,6 +1,6 @@
 import { execFile } from 'child_process';
 import path from 'path';
-import { File } from 'mailspring-exports';
+import { File } from 'unifymail-exports';
 import { ipcRenderer } from 'electron';
 
 // Generate token via IPC to ensure it's stored in the main process

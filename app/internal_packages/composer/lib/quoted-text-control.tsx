@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 
 export const QuotedTextControl: React.FunctionComponent<{
   quotedTextPresent: boolean;

@@ -1,7 +1,7 @@
 /* eslint jsx-a11y/tabindex-no-positive: 0 */
 import classnames from 'classnames';
 import React, { Component } from 'react';
-import { localized, DateUtils } from 'mailspring-exports';
+import { localized, DateUtils } from 'unifymail-exports';
 import PropTypes from 'prop-types';
 
 type DateInputProps = {

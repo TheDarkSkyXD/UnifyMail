@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import ReactTestUtils from 'react-dom/test-utils';
 
-import { Contact, Message } from 'mailspring-exports';
+import { Contact, Message } from 'unifymail-exports';
 import { ComposerHeader } from '../lib/composer-header';
 import Fields from '../lib/fields';
 

@@ -4,9 +4,9 @@ import classnames from 'classnames';
 import React from 'react';
 
 import { calcColor } from './calendar-helpers';
-import { Calendar, Account } from 'mailspring-exports';
+import { Calendar, Account } from 'unifymail-exports';
 
-const DISABLED_CALENDARS = 'mailspring.disabledCalendars';
+const DISABLED_CALENDARS = 'UnifyMail.disabledCalendars';
 
 function renderCalendarToggles(calendars: Calendar[], disabledCalendars: string[]) {
   return calendars.map(calendar => {

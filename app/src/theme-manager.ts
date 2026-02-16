@@ -190,7 +190,7 @@ export default class ThemeManager {
       return fs.readFileSync(stylesheetPath, 'utf8');
     } else {
       throw new Error(
-        localized(`Mailspring does not support stylesheets with the extension: %@`, ext)
+        localized(`UnifyMail does not support stylesheets with the extension: %@`, ext)
       );
     }
   }

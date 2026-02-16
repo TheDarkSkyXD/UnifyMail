@@ -1,8 +1,8 @@
 /* eslint jsx-a11y/tabindex-no-positive: 0 */
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { localized, PropTypes, Actions, Message } from 'mailspring-exports';
-import { Menu, RetinaImg } from 'mailspring-component-kit';
+import { localized, PropTypes, Actions, Message } from 'unifymail-exports';
+import { Menu, RetinaImg } from 'unifymail-component-kit';
 import TemplateStore from './template-store';
 
 class TemplatePopover extends React.Component<{ headerMessageId: string }> {
@@ -131,7 +131,7 @@ class TemplatePicker extends React.Component<{
         title={localized('Quick Reply')}
       >
         <RetinaImg
-          url="mailspring://composer-templates/assets/icon-composer-templates@2x.png"
+          url="UnifyMail://composer-templates/assets/icon-composer-templates@2x.png"
           mode={RetinaImg.Mode.ContentIsMask}
         />
         &nbsp;

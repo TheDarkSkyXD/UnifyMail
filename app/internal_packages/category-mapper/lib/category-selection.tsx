@@ -5,8 +5,8 @@ import {
   DropdownMenu,
   LabelColorizer,
   BoldedSearchResult,
-} from 'mailspring-component-kit';
-import { localized, Label, Utils, PropTypes } from 'mailspring-exports';
+} from 'unifymail-component-kit';
+import { localized, Label, Utils, PropTypes } from 'unifymail-exports';
 
 interface CategorySelectionProps {
   allowLabels: boolean;

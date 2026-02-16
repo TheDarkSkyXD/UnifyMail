@@ -1,6 +1,6 @@
 import React from 'react';
-import { InjectedComponentSet } from 'mailspring-component-kit';
-import { WorkspaceStore } from 'mailspring-exports';
+import { InjectedComponentSet } from 'unifymail-component-kit';
+import { WorkspaceStore } from 'unifymail-exports';
 import { ResizableRegion, ResizableHandle } from '../../../src/components/resizable-region';
 
 class ThreadListVertical extends React.Component<

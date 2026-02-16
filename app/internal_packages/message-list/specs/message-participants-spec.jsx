@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import ReactTestUtils from 'react-dom/test-utils';
-import { Message } from 'mailspring-exports';
+import { Message } from 'unifymail-exports';
 import MessageParticipants from '../lib/message-participants';
 
 const user_1 = {

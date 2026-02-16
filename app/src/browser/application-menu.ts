@@ -234,7 +234,7 @@ export default class ApplicationMenu {
   getDefaultTemplate() {
     return [
       {
-        label: 'Mailspring',
+        label: 'UnifyMail',
         submenu: [
           { label: localized('Check for Updates'), metadata: { autoUpdate: true } },
           {

@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized, PropTypes, DateUtils, Message } from 'mailspring-exports';
-import { Flexbox } from 'mailspring-component-kit';
+import { localized, PropTypes, DateUtils, Message } from 'unifymail-exports';
+import { Flexbox } from 'unifymail-component-kit';
 import { pluckByEmail } from '../../activity/lib/activity-event-store';
 import { OpenTrackingMetadata } from './types';
 

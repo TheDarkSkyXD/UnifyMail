@@ -3,8 +3,8 @@ import _ from 'underscore';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import { localized, PropTypes, Actions, WorkspaceStore, DOMUtils } from 'mailspring-exports';
-import MailspringStore from 'mailspring-store';
+import { localized, PropTypes, Actions, WorkspaceStore, DOMUtils } from 'unifymail-exports';
+import UnifyMailStore from 'unifymail-store';
 import { Disposable } from 'event-kit';
 
 const TipsBackgroundEl = document.createElement('tutorial-tip-background');
@@ -13,7 +13,7 @@ const TipsContainerEl = document.createElement('div');
 TipsContainerEl.classList.add('tooltips-container');
 document.body.insertBefore(TipsContainerEl, document.body.children[0]);
 
-class TipsStoreCls extends MailspringStore {
+class TipsStoreCls extends UnifyMailStore {
   _tipKeys = [];
 
   isTipVisible(key) {

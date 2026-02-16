@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { ExtensionRegistry, MessageStore } from 'mailspring-exports';
+import { ExtensionRegistry, MessageStore } from 'unifymail-exports';
 import ScreenshotModeMessageExtension from './screenshot-mode-message-extension';
 
 let enabled = false;
@@ -12,7 +12,7 @@ function getCurrentWindow() {
 
 function getCorrectTitle() {
   const thread = MessageStore.thread();
-  return 'Mailspring' + (thread ? ' · ' + thread.subject : '');
+  return 'UnifyMail' + (thread ? ' · ' + thread.subject : '');
 }
 
 let styleText: string | null = null;
@@ -47,7 +47,7 @@ function patchWindowTitle() {
     originalSetTitle = win.setTitle.bind(win);
     win.setTitle = (title: string) => {
       if (enabled) {
-        originalSetTitle('Mailspring');
+        originalSetTitle('UnifyMail');
       } else {
         originalSetTitle(title);
       }
@@ -55,7 +55,7 @@ function patchWindowTitle() {
   }
 
   if (enabled) {
-    originalSetTitle('Mailspring');
+    originalSetTitle('UnifyMail');
   } else {
     originalSetTitle(getCorrectTitle());
   }

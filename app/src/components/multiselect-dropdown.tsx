@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { ButtonDropdown, Menu } from 'mailspring-component-kit';
+import { ButtonDropdown, Menu } from 'unifymail-component-kit';
 import PropTypes from 'prop-types';
 
 type MultiselectDropdownProps = {

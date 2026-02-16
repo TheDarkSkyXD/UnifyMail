@@ -64,7 +64,7 @@ class DraftFactory {
       version: 0,
       unread: false,
       starred: false,
-      headerMessageId: `${uuidv4().toUpperCase()}@getmailspring.com`,
+      headerMessageId: `${uuidv4().toUpperCase()}@getunifymail.com`,
       from: [account.defaultMe()],
       date: new Date(),
       draft: true,
@@ -276,7 +276,7 @@ class DraftFactory {
     }
 
     return this.createDraft({
-      from: [new Contact({ email: account.emailAddress, name: `${account.name} via Mailspring` })],
+      from: [new Contact({ email: account.emailAddress, name: `${account.name} via UnifyMail` })],
       to: [account.defaultMe()],
       cc: [],
       pristine: false,

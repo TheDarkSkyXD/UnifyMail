@@ -2,7 +2,7 @@
 
 import _ from 'underscore';
 
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import KeyManager from '../../key-manager';
 import * as Actions from '../actions';
 import { Account } from '../models/account';
@@ -22,7 +22,7 @@ the database and exposes the currently active Account via {::current}
 
 Section: Stores
 */
-class _AccountStore extends MailspringStore {
+class _AccountStore extends UnifyMailStore {
   private _version: number;
   private _accounts: Account[];
   private _containerFolderDefault: string;
@@ -128,7 +128,7 @@ class _AccountStore extends MailspringStore {
 
     if (message && AppEnv.isMainWindow()) {
       AppEnv.showErrorDialog(
-        `Mailspring was unable to load your account preferences.\n\n${message}`
+        `UnifyMail was unable to load your account preferences.\n\n${message}`
       );
     }
   };
@@ -177,7 +177,7 @@ class _AccountStore extends MailspringStore {
   };
 
   /**
-   * When an account is removed from Mailspring, the AccountStore
+   * When an account is removed from UnifyMail, the AccountStore
    * triggers. The local-sync/src/local-sync-worker/index.js listens to
    * the AccountStore and runs `ensureK2Consistency`. This will actually
    * delete the Account on the local sync side.

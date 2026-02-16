@@ -10,11 +10,11 @@
 //   Account,
 //   DatabaseStore,
 //   WorkspaceStore,
-//   MailspringTestUtils,
+//   UnifyMailTestUtils,
 //   AccountStore,
 //   ComponentRegistry,
-// } = require('mailspring-exports');
-// import { ListTabular } from 'mailspring-component-kit';;
+// } = require('unifymail-exports');
+// import { ListTabular } from 'unifymail-component-kit';;
 
 // const ThreadStore = require('../lib/thread-store');
 // const ThreadList = require('../lib/thread-list');
@@ -208,7 +208,7 @@
 //   const columns = [c1, c2, c3];
 
 //   beforeEach(function() {
-//     MailspringTestUtils.loadKeymap('internal_packages/thread-list/keymaps/thread-list');
+//     UnifyMailTestUtils.loadKeymap('internal_packages/thread-list/keymaps/thread-list');
 //     spyOn(ThreadStore, '_onAccountChanged');
 //     spyOn(DatabaseStore, 'findAll').andCallFake(
 //       () =>

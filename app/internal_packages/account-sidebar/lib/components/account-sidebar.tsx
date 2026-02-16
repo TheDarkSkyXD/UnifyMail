@@ -1,6 +1,6 @@
 import React from 'react';
-import { Utils, DOMUtils, Account, AccountStore } from 'mailspring-exports';
-import { OutlineView, ScrollRegion, Flexbox } from 'mailspring-component-kit';
+import { Utils, DOMUtils, Account, AccountStore } from 'unifymail-exports';
+import { OutlineView, ScrollRegion, Flexbox } from 'unifymail-component-kit';
 import AccountSwitcher from './account-switcher';
 import SidebarStore from '../sidebar-store';
 import { ISidebarSection } from '../types';

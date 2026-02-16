@@ -1,6 +1,6 @@
 import React from 'react';
-import { PropTypes, FocusedContentStore, Actions } from 'mailspring-exports';
-import { FluxContainer } from 'mailspring-component-kit';
+import { PropTypes, FocusedContentStore, Actions } from 'unifymail-exports';
+import { FluxContainer } from 'unifymail-component-kit';
 
 type FocusContainerProps = {
   collection?: string;

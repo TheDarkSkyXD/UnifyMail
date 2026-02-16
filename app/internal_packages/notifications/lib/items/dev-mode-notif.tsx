@@ -1,5 +1,5 @@
-import { localized, React } from 'mailspring-exports';
-import { Notification } from 'mailspring-component-kit';
+import { localized, React } from 'unifymail-exports';
+import { Notification } from 'unifymail-component-kit';
 
 export default class DevModeNotification extends React.Component<
   Record<string, unknown>,
@@ -23,7 +23,7 @@ export default class DevModeNotification extends React.Component<
     return (
       <Notification
         priority="0"
-        title={localized('Mailspring is running in dev mode and may be slower!')}
+        title={localized('UnifyMail is running in dev mode and may be slower!')}
       />
     );
   }

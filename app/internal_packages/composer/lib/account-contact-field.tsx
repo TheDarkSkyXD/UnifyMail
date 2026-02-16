@@ -9,8 +9,8 @@ import {
   Contact,
   DraftEditingSession,
   Message,
-} from 'mailspring-exports';
-import { Menu, ButtonDropdown, InjectedComponentSet } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { Menu, ButtonDropdown, InjectedComponentSet } from 'unifymail-component-kit';
 
 interface AccountContactFieldProps {
   accounts: Account[];

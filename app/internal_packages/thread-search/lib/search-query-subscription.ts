@@ -6,7 +6,7 @@ import {
   SearchQueryParser,
   ComponentRegistry,
   MutableQuerySubscription,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 class SearchQuerySubscription extends MutableQuerySubscription<Thread> {
   _searchQuery: string;

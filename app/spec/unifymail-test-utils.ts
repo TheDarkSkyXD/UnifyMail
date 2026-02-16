@@ -10,7 +10,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import ReactTestUtils from 'react-dom/test-utils';
 
-const MailspringTestUtils = {
+const UnifyMailTestUtils = {
   loadKeymap: path => {
     return AppEnv.keymaps.loadKeymap(path);
   },
@@ -74,4 +74,4 @@ const MailspringTestUtils = {
     };
   },
 };
-export default MailspringTestUtils;
+export default UnifyMailTestUtils;

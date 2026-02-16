@@ -1,4 +1,4 @@
-import { ComposerExtension, RegExpUtils, FeatureUsageStore } from 'mailspring-exports';
+import { ComposerExtension, RegExpUtils, FeatureUsageStore } from 'unifymail-exports';
 import { PLUGIN_ID, PLUGIN_URL } from './link-tracking-constants';
 
 function forEachATagInBody(draftBodyRootNode, callback) {

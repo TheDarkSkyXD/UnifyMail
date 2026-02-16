@@ -1,4 +1,4 @@
-import { WorkspaceStore, ComponentRegistry, Actions, localized } from 'mailspring-exports';
+import { WorkspaceStore, ComponentRegistry, Actions, localized } from 'unifymail-exports';
 import { ContactPerspectivesList } from './ContactPerspectivesList';
 import { ContactDetailToolbar } from './ContactDetailToolbar';
 import { AddContactToolbar } from './AddContactToolbar';

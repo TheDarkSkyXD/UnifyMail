@@ -6,8 +6,8 @@ import {
   IAliasSet,
   ISignature,
   IDefaultSignatures,
-} from 'mailspring-exports';
-import { MultiselectDropdown } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { MultiselectDropdown } from 'unifymail-component-kit';
 
 interface SignatureAccountDefaultPickerProps {
   defaults: IDefaultSignatures;

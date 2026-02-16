@@ -1,15 +1,15 @@
-import { Utils, KeyManager } from 'mailspring-exports';
+import { Utils, KeyManager } from 'unifymail-exports';
 import { IdentityStore } from '../../src/flux/stores/identity-store';
-import * as MailspringAPIRequest from '../../src/flux/mailspring-api-request';
+import * as UnifyMailAPIRequest from '../../src/flux/unifymail-api-request';
 
 const TEST_NYLAS_ID = 'icihsnqh4pwujyqihlrj70vh';
 
 describe('IdentityStore', function identityStoreSpec() {
   beforeEach(() => {
     this.identityJSON = {
-      firstName: 'Mailspring 050',
+      firstName: 'UnifyMail 050',
       lastName: 'Test',
-      email: 'mailspring050test@evanmorikawa.com',
+      email: 'UnifyMail050test@evanmorikawa.com',
       id: TEST_NYLAS_ID,
       featureUsage: {
         feat: {
@@ -83,12 +83,12 @@ describe('IdentityStore', function identityStoreSpec() {
     it('saves the identity returned', async () => {
       const resp = Utils.deepClone(this.identityJSON);
       resp.featureUsage.feat.quota = 5;
-      spyOn(MailspringAPIRequest, 'makeRequest').andCallFake(() => {
+      spyOn(UnifyMailAPIRequest, 'makeRequest').andCallFake(() => {
         return Promise.resolve(resp);
       });
       await IdentityStore.fetchIdentity();
-      expect(MailspringAPIRequest.makeRequest).toHaveBeenCalled();
-      const options = MailspringAPIRequest.makeRequest.calls[0].args[0];
+      expect(UnifyMailAPIRequest.makeRequest).toHaveBeenCalled();
+      const options = UnifyMailAPIRequest.makeRequest.calls[0].args[0];
       expect(options.path).toEqual('/api/me');
       expect(IdentityStore.saveIdentity).toHaveBeenCalled();
       const newIdent = IdentityStore.saveIdentity.calls[0].args[0];
@@ -97,7 +97,7 @@ describe('IdentityStore', function identityStoreSpec() {
     });
 
     it('errors if the json is invalid', async () => {
-      spyOn(MailspringAPIRequest, 'makeRequest').andCallFake(() => {
+      spyOn(UnifyMailAPIRequest, 'makeRequest').andCallFake(() => {
         return Promise.resolve({});
       });
       await IdentityStore.fetchIdentity();

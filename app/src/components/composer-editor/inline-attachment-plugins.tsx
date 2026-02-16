@@ -1,6 +1,6 @@
 import React from 'react';
-import { ImageAttachmentItem } from 'mailspring-component-kit';
-import { AttachmentStore } from 'mailspring-exports';
+import { ImageAttachmentItem } from 'unifymail-component-kit';
+import { AttachmentStore } from 'unifymail-exports';
 import { isQuoteNode } from './base-block-plugins';
 import { ComposerEditorPlugin } from './types';
 import { Editor, Inline, Node } from 'slate';

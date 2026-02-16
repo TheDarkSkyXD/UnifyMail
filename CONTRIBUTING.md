@@ -1,15 +1,15 @@
-# Contributing to Mailspring
+# Contributing to UnifyMail
 
-Thanks for checking out Mailspring! We'd love for you to contribute. Whether
+Thanks for checking out UnifyMail! We'd love for you to contribute. Whether
 you're a first-time open source contributor or an experienced developer, there
-are ways you can help make Mailspring great!
+are ways you can help make UnifyMail great!
 
 ## Contributing Code
 
 One of the best ways is to grab a
-[bug report](https://community.getmailspring.com/c/bugs/10),
-[sync issue](https://community.getmailspring.com/c/sync/22),
-or [feature suggestion](https://community.getmailspring.com/c/features/12)
+[bug report](https://community.getunifymail.com/c/bugs/10),
+[sync issue](https://community.getunifymail.com/c/sync/22),
+or [feature suggestion](https://community.getunifymail.com/c/features/12)
 that has been marked `accepted` and dig in. You can especially look for issues
 marked as `help-wanted` or `low-hanging-fruit`.
 
@@ -19,7 +19,7 @@ See [Where to Contribute](#where-to-contribute) below for more information.
 
 You can also help implement *any* feature by creating a **plugin** for it!
 If you need inspiration, you can dig through the list of
-[feature suggestions](https://community.getmailspring.com/c/features/12),
+[feature suggestions](https://community.getunifymail.com/c/features/12),
 especially looking for anything marked `for-plugin`.
 
 ### Pull requests
@@ -27,20 +27,20 @@ especially looking for anything marked `for-plugin`.
 The first time you submit a pull request, a bot will ask you to sign a
 standard, bare-bones Contributor License Agreement. The CLA states that you
 waive any patent or copyright claims you might have to the code you're
-contributing. (For example, you can't submit a PR and then sue Mailspring
+contributing. (For example, you can't submit a PR and then sue UnifyMail
 for using your code.)
 
 ## Triaging Issues
 
-Another way to help is to [answer questions](https://community.getmailspring.com/c/help/7),
-or to triage [bug reports](https://community.getmailspring.com/c/bugs/10) and
-[sync issues](https://community.getmailspring.com/c/sync/22). If you're good at
+Another way to help is to [answer questions](https://community.getunifymail.com/c/help/7),
+or to triage [bug reports](https://community.getunifymail.com/c/bugs/10) and
+[sync issues](https://community.getunifymail.com/c/sync/22). If you're good at
 testing and addressing issues, we'd love your help!
 
 ## Filing Issues
 
 If you have a bug to report or a feature to suggest, you may do so on our
-[Discourse](https://community.getmailspring.com/). Please carefully follow all
+[Discourse](https://community.getunifymail.com/). Please carefully follow all
 instructions in the template for the given type of issue you're reporting.
 
 We also ask that you search for existing issues, *including closed ones!*
@@ -48,16 +48,16 @@ We're in the process of migrating. If someone has already reported a bug or
 requested the feature you have in mind,  **vote for it** at the top.
 Higher voted issues are more likely to be addressed.
 
-For bugs, please verify that you're running the latest version of Mailspring.
+For bugs, please verify that you're running the latest version of UnifyMail.
 If you file an issue without providing detail, we may close it without comment.
 
 **Under no circumstances should you report an issue via GitHub. The GitHub
-Issues feature is exclusively for Mailspring contributors to track tasks
+Issues feature is exclusively for UnifyMail contributors to track tasks
 which have been diagnosed, accepted, and scheduled on the roadmap.**
 
 # Build and Run From Source
 
-If you want to understand how Mailspring works or want to debug an issue,
+If you want to understand how UnifyMail works or want to debug an issue,
 you'll want to get the source, build it, and run it locally.
 
 ## Installing Prerequisites
@@ -86,11 +86,11 @@ recommended. Based on your platform, you'll also need:
   - On Red Hat-based Linux: `sudo yum install libX11-devel.x86_64 libxkbfile-devel.x86_64 libsecret-1-dev libsecret-devel`.
 
 After you have these tools installed, run the following commands to check out
-Mailspring,install dependencies, and launch the app:
+UnifyMail,install dependencies, and launch the app:
 
 ```
-git clone https://github.com/foundry376/mailspring
-cd mailspring
+git clone https://github.com/TheDarkSkyXD/UnifyMail
+cd UnifyMail
 npm install
 npm start
 ```
@@ -99,26 +99,26 @@ npm start
 
 ### App Data
 
-When you're running Mailspring with `npm start`, it runs with the `--dev` flag
-and user data is located in a `Mailspring-dev` folder alongside the regular
+When you're running UnifyMail with `npm start`, it runs with the `--dev` flag
+and user data is located in a `UnifyMail-dev` folder alongside the regular
 settings folder:
 
-- Mac: `~/Library/Application Support/Mailspring-dev`
-- Windows: `C:\Users\<you>\AppData\Roaming\Mailspring-dev`
-- Linux: `~/.config/Mailspring-dev/`
+- Mac: `~/Library/Application Support/UnifyMail-dev`
+- Windows: `C:\Users\<you>\AppData\Roaming\UnifyMail-dev`
+- Linux: `~/.config/UnifyMail-dev/`
 
 ### Developer Tools
 
-From Mailspring, you can open the Developer Tools from the
+From UnifyMail, you can open the Developer Tools from the
 menu: `Menu > Developer > Toggle Developer Tools`. Here are a few tips for
 getting started:
 
 - Errors and warnings will show in the console.
 
-- On the console, `$m` is a shorthand for `mailspring-exports`, and allows you
+- On the console, `$m` is a shorthand for `UnifyMail-exports`, and allows you
   to access global `Stores` and `Model` classes.
 
-- You don't need to stop and restart the development version of Mailspring
+- You don't need to stop and restart the development version of UnifyMail
   after each change. You can just reload the window via `CTRL+R` (Windows/Linux)
   or `CMD+R` (macOS).
 
@@ -132,8 +132,8 @@ submitting a pull request to ensure the CI servers accept your code.
 
 Back in 2015 and 2016, the Nylas Mail team made a huge effort to document
 the codebase. The docs are still
-[available on GitHub pages](https://foundry376.github.io/Mailspring/), and are
-still largely relevant to Mailspring development.
+[available on GitHub pages](https://TheDarkSkyXD.github.io/UnifyMail/), and are
+still largely relevant to UnifyMail development.
 
 ### Testing Localization
 
@@ -143,7 +143,7 @@ to use the `--` argument forwarding syntax: `npm start -- --lang=de`.
 
 # Where to Contribute
 
-Check out our [Discourse](https://community.getmailspring.com/) for all
+Check out our [Discourse](https://community.getunifymail.com/) for all
 potential areas for contributions. Note that just because a topic exists does
 not mean we will accept a contribution to the core mail client for it. There
 are several reasons we may not accepts a pull requests, like:

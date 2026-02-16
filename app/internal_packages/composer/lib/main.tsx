@@ -8,7 +8,7 @@ import {
   WorkspaceStore,
   ComponentRegistry,
   InflatesDraftClientId,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import ComposeButton from './compose-button';
 import ComposerView from './composer-view';
 

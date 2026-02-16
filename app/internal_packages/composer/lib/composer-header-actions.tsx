@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { localized, Actions } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized, Actions } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 import Fields from './fields';
 
 interface ComposerHeaderActionsProps {

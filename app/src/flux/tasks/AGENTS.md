@@ -58,9 +58,9 @@ Background tasks that represent operations to be synced with mail servers via th
 ### Metadata & Model Operations
 | File | Description |
 |------|-------------|
-| `syncback-metadata-task.ts` | Sync plugin metadata for a model to the Mailspring API |
+| `syncback-metadata-task.ts` | Sync plugin metadata for a model to the UnifyMail API |
 | `destroy-model-task.ts` | Generic model deletion task |
-| `send-feature-usage-event-task.ts` | Report feature usage event to Mailspring API |
+| `send-feature-usage-event-task.ts` | Report feature usage event to UnifyMail API |
 
 ## For AI Agents
 
@@ -69,7 +69,7 @@ Background tasks that represent operations to be synced with mail servers via th
 - All task classes must be registered in `SerializableRegistry` for persistence/deserialization
 - Tasks are queued in `TaskQueue` — the queue handles ordering, dependencies, and retries
 - `send-draft-task.ts` is the most complex task (8KB) — handles attachment uploads, validation, error recovery
-- When creating a new task: extend `Task`, implement `performLocal()`, register in serializable registry, add to `mailspring-exports`
+- When creating a new task: extend `Task`, implement `performLocal()`, register in serializable registry, add to `UnifyMail-exports`
 
 ### Testing Requirements
 - Task tests: `app/spec/tasks/`

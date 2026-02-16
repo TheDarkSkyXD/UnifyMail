@@ -3,10 +3,10 @@ const { localized } = require('../src/intl');
 module.exports = {
   menu: [
     {
-      id: 'Mailspring',
-      label: 'Mailspring',
+      id: 'UnifyMail',
+      label: 'UnifyMail',
       submenu: [
-        { label: localized('About Mailspring'), command: 'application:about' },
+        { label: localized('About UnifyMail'), command: 'application:about' },
         { label: localized('View License'), command: 'application:view-license' },
         { type: 'separator' },
         { label: localized('Preferences'), command: 'application:open-preferences' },
@@ -34,7 +34,7 @@ module.exports = {
         { type: 'separator' },
         { label: localized('Services'), submenu: [] },
         { type: 'separator' },
-        { label: localized('Hide Mailspring'), command: 'application:hide' },
+        { label: localized('Hide UnifyMail'), command: 'application:hide' },
         { label: localized('Hide Others'), command: 'application:hide-other-applications' },
         { label: localized('Show All'), command: 'application:unhide-all-applications' },
         { type: 'separator' },
@@ -266,10 +266,10 @@ module.exports = {
       id: 'Help',
       label: localized('Help'),
       submenu: [
-        { label: localized('Mailspring Help'), command: 'application:view-help' },
+        { label: localized('UnifyMail Help'), command: 'application:view-help' },
         { type: 'separator' },
         { label: localized('Getting Started Guide'), command: 'application:view-getting-started' },
-        { label: localized('Mailspring Community'), command: 'application:view-community' },
+        { label: localized('UnifyMail Community'), command: 'application:view-community' },
       ],
     },
   ],

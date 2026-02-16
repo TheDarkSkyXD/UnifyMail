@@ -1,4 +1,4 @@
-import { AccountStore } from 'mailspring-exports';
+import { AccountStore } from 'unifymail-exports';
 import React from 'react';
 
 class AccountColorBar extends React.Component<{ accountId: string }, { color: string | null }> {

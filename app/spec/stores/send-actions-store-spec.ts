@@ -1,4 +1,4 @@
-import { Message, SendActionsStore, ExtensionRegistry } from 'mailspring-exports';
+import { Message, SendActionsStore, ExtensionRegistry } from 'unifymail-exports';
 
 const SendAction1 = {
   title: 'Send Action 1',

@@ -1,4 +1,4 @@
-import { Table } from 'mailspring-component-kit';
+import { Table } from 'unifymail-component-kit';
 
 export const testData = {
   columns: ['col1', 'col2', 'col3'],

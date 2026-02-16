@@ -15,7 +15,7 @@
     "url": ""
   },
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
   "license": "GPL-3.0"
 }

@@ -12,13 +12,13 @@ import {
   Event,
   SyncbackEventTask,
   ICSEventHelpers,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import {
   ScrollRegion,
   ResizableRegion,
   KeyCommandsRegion,
   MiniMonthView,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import { DayView } from './day-view';
 import { WeekView } from './week-view';
 import { MonthView } from './month-view';
@@ -45,8 +45,8 @@ import {
 import { showRecurringEventDialog } from './recurring-event-dialog';
 import { modifyEventWithRecurringSupport, EventTimeChangeOptions } from './recurring-event-actions';
 
-const DISABLED_CALENDARS = 'mailspring.disabledCalendars';
-const CALENDAR_VIEW = 'mailspring.calendarView';
+const DISABLED_CALENDARS = 'UnifyMail.disabledCalendars';
+const CALENDAR_VIEW = 'UnifyMail.calendarView';
 
 const VIEWS = {
   [CalendarView.DAY]: DayView,
@@ -63,7 +63,7 @@ export interface EventRendererProps {
   onEventFocused: (event: EventOccurrence) => void;
 }
 
-export interface MailspringCalendarViewProps extends EventRendererProps {
+export interface UnifyMailCalendarViewProps extends EventRendererProps {
   dataSource: CalendarDataSource;
   disabledCalendars: string[];
   focusedMoment: Moment;
@@ -87,11 +87,11 @@ export interface MailspringCalendarViewProps extends EventRendererProps {
 }
 
 /*
- * Mailspring Calendar
+ * UnifyMail Calendar
  */
-interface MailspringCalendarProps {}
+interface UnifyMailCalendarProps {}
 
-interface MailspringCalendarState {
+interface UnifyMailCalendarState {
   view: CalendarView;
   selectedEvents: EventOccurrence[];
   focusedEvent: FocusedEventInfo | null;
@@ -102,11 +102,11 @@ interface MailspringCalendarState {
   dragState: DragState | null;
 }
 
-export class MailspringCalendar extends React.Component<
-  MailspringCalendarProps,
-  MailspringCalendarState
+export class UnifyMailCalendar extends React.Component<
+  UnifyMailCalendarProps,
+  UnifyMailCalendarState
 > {
-  static displayName = 'MailspringCalendar';
+  static displayName = 'UnifyMailCalendar';
 
   static DayView = DayView;
   static WeekView = WeekView;
@@ -119,7 +119,7 @@ export class MailspringCalendar extends React.Component<
   _unlisten?: () => void;
   _dataSource = new CalendarDataSource();
 
-  constructor(props: MailspringCalendarProps) {
+  constructor(props: UnifyMailCalendarProps) {
     super(props);
     this.state = {
       calendars: [],
@@ -627,7 +627,7 @@ export class MailspringCalendar extends React.Component<
 
     return (
       <KeyCommandsRegion
-        className="mailspring-calendar"
+        className="unifymail-calendar"
         localHandlers={{
           'core:remove-from-view': this._onDeleteSelectedEvents,
           'calendar:move-event-up': () => this._onMoveSelectedEvent('up', false),

@@ -1,4 +1,4 @@
-import { RegExpUtils } from 'mailspring-exports';
+import { RegExpUtils } from 'unifymail-exports';
 import { Value } from 'slate';
 
 function numberOfTrailingBRs(text) {
@@ -26,7 +26,7 @@ export function currentSignatureIdSlate(value: Value) {
     .find(a => a.data.get('html').startsWith('<signature '));
   if (!sigNode) return null;
 
-  const signatureRegex = RegExpUtils.mailspringSignatureRegex();
+  const signatureRegex = RegExpUtils.UnifyMailSignatureRegex();
   const signatureMatch = signatureRegex.exec(sigNode.data.get('html'));
   return signatureMatch && signatureMatch[1];
 }
@@ -37,7 +37,7 @@ export function currentSignatureId(body: string) {
     replyEnd = body.length;
   }
 
-  const signatureRegex = RegExpUtils.mailspringSignatureRegex();
+  const signatureRegex = RegExpUtils.UnifyMailSignatureRegex();
   const signatureMatch = signatureRegex.exec(body.substr(0, replyEnd));
   return signatureMatch && signatureMatch[1];
 }
@@ -48,7 +48,7 @@ export function applySignature(body, signature) {
 
   let newBody = body;
   if (currentSignatureId(body)) {
-    newBody = newBody.replace(RegExpUtils.mailspringSignatureRegex(), '');
+    newBody = newBody.replace(RegExpUtils.UnifyMailSignatureRegex(), '');
     additionalWhitespace = ''; // never add whitespace when switching signatures
   }
 

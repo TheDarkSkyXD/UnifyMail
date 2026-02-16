@@ -446,7 +446,7 @@ export class Contact extends Model {
   // the contact has a populated name, just the email address otherwise.
   toString() {
     // Note: This is used as the drag-drop text of a Contact token, in the
-    // creation of message bylines "From Ben Gotow <ben@mailspring>", and several other
+    // creation of message bylines "From Ben Gotow <ben@UnifyMail>", and several other
     // places. Change with care.
     return this.name && this.name !== this.email ? `${this.name} <${this.email}>` : this.email;
   }

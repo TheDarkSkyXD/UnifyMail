@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import URL from 'url';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 import ReactDOMServer from 'react-dom/server';
 import Templates from './templates';
 
@@ -125,7 +125,7 @@ export const ResolveSignatureData = data => {
     const domain =
       (data.websiteURL && URL.parse(data.websiteURL).hostname) ||
       (data.email && data.email.split('@').pop());
-    data.photoURL = `https://logo.getmailspring.com/company-logo/${domain}?msw=128&msh=128`;
+    data.photoURL = `https://logo.getunifymail.com/company-logo/${domain}?msw=128&msh=128`;
   }
 
   if (data.photoURL === 'custom') {

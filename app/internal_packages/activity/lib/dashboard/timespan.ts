@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 
 export const DEFAULT_TIMESPAN_ID = '14';
 

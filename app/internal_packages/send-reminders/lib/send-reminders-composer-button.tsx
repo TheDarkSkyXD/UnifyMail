@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import ReactDOM from 'react-dom';
-import { localized, Actions, Message, DraftEditingSession } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized, Actions, Message, DraftEditingSession } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 import moment from 'moment';
 
 import SendRemindersPopover from './send-reminders-popover';

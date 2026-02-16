@@ -1,6 +1,6 @@
 import utf7 from 'utf7';
 import React from 'react';
-import { localized, AccountStore, PropTypes } from 'mailspring-exports';
+import { localized, AccountStore, PropTypes } from 'unifymail-exports';
 
 interface SyncActivityProps {
   syncState: {

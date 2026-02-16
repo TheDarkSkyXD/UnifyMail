@@ -3,8 +3,8 @@ import _ from 'underscore';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { localized, PropTypes, Utils, RegExpUtils } from 'mailspring-exports';
-import { Menu } from 'mailspring-component-kit';
+import { localized, PropTypes, Utils, RegExpUtils } from 'unifymail-exports';
+import { Menu } from 'unifymail-component-kit';
 
 import { RetinaImg } from './retina-img';
 import { KeyCommandsRegion } from './key-commands-region';
@@ -475,11 +475,11 @@ export class TokenizingTextField<T> extends React.Component<
   };
 
   _onDrop = event => {
-    if (!event.dataTransfer.types.includes('mailspring-token-items')) {
+    if (!event.dataTransfer.types.includes('UnifyMail-token-items')) {
       return;
     }
 
-    const data = event.dataTransfer.getData('mailspring-token-items');
+    const data = event.dataTransfer.getData('UnifyMail-token-items');
     this._onAddItemsFromJSON(data);
   };
 
@@ -730,7 +730,7 @@ export class TokenizingTextField<T> extends React.Component<
       tokens = [token];
     }
     const json = JSON.stringify(tokens);
-    event.dataTransfer.setData('mailspring-token-items', json);
+    event.dataTransfer.setData('UnifyMail-token-items', json);
     event.dataTransfer.setData('text/plain', tokens.map(t => t.toString()).join(', '));
     event.dataTransfer.dropEffect = 'move';
     event.dataTransfer.effectAllowed = 'move';
@@ -827,22 +827,22 @@ export class TokenizingTextField<T> extends React.Component<
     if (event.clipboardData) {
       const json = JSON.stringify(this._selectedTokens());
       event.clipboardData.setData('text/plain', text);
-      event.clipboardData.setData('mailspring-token-items', json);
+      event.clipboardData.setData('UnifyMail-token-items', json);
 
       const range = (this.refs.input as SizeToFitInput).selectionRange();
       if (range.end > 0) {
         const inputSelection = this.state.inputValue.substr(range.start, range.end - range.start);
-        event.clipboardData.setData('mailspring-token-input', inputSelection);
+        event.clipboardData.setData('UnifyMail-token-input', inputSelection);
       } else {
-        event.clipboardData.setData('mailspring-token-input', 'null');
+        event.clipboardData.setData('UnifyMail-token-input', 'null');
       }
     }
     event.preventDefault();
   };
 
   _onPaste = event => {
-    const json = event.clipboardData.getData('mailspring-token-items');
-    const inputValue = event.clipboardData.getData('mailspring-token-input');
+    const json = event.clipboardData.getData('UnifyMail-token-items');
+    const inputValue = event.clipboardData.getData('UnifyMail-token-input');
     if (json) {
       this._onAddItemsFromJSON(json);
       if (inputValue && inputValue !== 'null') {

@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The Mailspring calendar is currently a **read-only preview** with a notice stating: *"Calendar is launching later this year! This preview is read-only and only supports Google calendar."*
+The UnifyMail calendar is currently a **read-only preview** with a notice stating: *"Calendar is launching later this year! This preview is read-only and only supports Google calendar."*
 
 The calendar functions well as a viewer with excellent email RSVP integration, but lacks all write capabilities. The architecture and data models are solid - the main gap is the write path and additional UI views.
 
@@ -110,7 +110,7 @@ Until this is implemented, no event creation, modification, or deletion can occu
 
 ### 2. Sync Engine Calendar Write Support
 
-The C++ Mailspring-Sync engine would need to support calendar write operations, handling the JSON task messages from Electron and syncing changes to remote calendar APIs.
+The C++ UnifyMail-Sync engine would need to support calendar write operations, handling the JSON task messages from Electron and syncing changes to remote calendar APIs.
 
 ### 3. Provider API Integration
 
@@ -152,7 +152,7 @@ app/
 │   │   │   ├── quick-event-button.tsx      # Toolbar "+" button
 │   │   │   ├── quick-event-popover.tsx     # Natural language event creation
 │   │   │   └── core/
-│   │   │       ├── mailspring-calendar.tsx # Root calendar component
+│   │   │       ├── UnifyMail-calendar.tsx # Root calendar component
 │   │   │       ├── calendar-data-source.ts # RxJS data observable
 │   │   │       ├── calendar-constants.ts   # Enums (CalendarView)
 │   │   │       ├── calendar-helpers.tsx    # Color calculation utilities
@@ -195,18 +195,18 @@ Every internal package follows this pattern:
 
 ```typescript
 // app/internal_packages/main-calendar/lib/main.tsx
-import { WorkspaceStore, ComponentRegistry } from 'mailspring-exports';
-import { MailspringCalendar } from './core/mailspring-calendar';
+import { WorkspaceStore, ComponentRegistry } from 'UnifyMail-exports';
+import { UnifyMailCalendar } from './core/UnifyMail-calendar';
 
 export function activate() {
   // Register components at specific UI locations
-  ComponentRegistry.register(MailspringCalendar, {
+  ComponentRegistry.register(UnifyMailCalendar, {
     location: WorkspaceStore.Location.Center,
   });
 }
 
 export function deactivate() {
-  ComponentRegistry.unregister(MailspringCalendar);
+  ComponentRegistry.unregister(UnifyMailCalendar);
 }
 ```
 
@@ -258,7 +258,7 @@ export function deactivate() {
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      Mailspring-Sync (C++)                          │
+│                      UnifyMail-Sync (C++)                          │
 │              External process per account                            │
 │         Executes tasks, syncs with remote APIs                       │
 └─────────────────────────────────────────────────────────────────────┘
@@ -460,14 +460,14 @@ selfParticipant(icsEvent: ICALEvent, accountId: string): ICSParticipant | undefi
 
 | Feature | Location | Notes |
 |---------|----------|-------|
-| **New calendar view (e.g., day view)** | `app/internal_packages/main-calendar/lib/core/day-view.tsx` | Follow `week-view.tsx` pattern; register in `calendar-constants.ts` and `mailspring-calendar.tsx` |
+| **New calendar view (e.g., day view)** | `app/internal_packages/main-calendar/lib/core/day-view.tsx` | Follow `week-view.tsx` pattern; register in `calendar-constants.ts` and `UnifyMail-calendar.tsx` |
 | **Event write operations** | `app/src/flux/tasks/syncback-event-task.ts` | Implement Task class; requires sync engine support |
 | **New event UI component** | `app/internal_packages/main-calendar/lib/core/` | Add to `core/` directory; import in parent component |
 | **Event search** | `app/internal_packages/main-calendar/lib/core/event-search-bar.tsx` | Currently stubbed; implement search logic |
 | **Calendar model changes** | `app/src/flux/models/calendar.ts` | Database schema changes require sync engine updates |
 | **ICS parsing enhancements** | `app/src/calendar-utils.ts` | Shared utility functions |
 | **New email integration** | `app/internal_packages/events/lib/` | Follow `event-header.tsx` pattern |
-| **Keyboard shortcuts** | Register in `KeyCommandsRegion` in `mailspring-calendar.tsx` | Define handlers in the component |
+| **Keyboard shortcuts** | Register in `KeyCommandsRegion` in `UnifyMail-calendar.tsx` | Define handlers in the component |
 | **Drag-and-drop** | `app/internal_packages/main-calendar/lib/core/calendar-event.tsx` | Add drag handlers to event component |
 | **New toolbar button** | `app/internal_packages/main-calendar/lib/` | Register at `WorkspaceStore.Location.Center.Toolbar` |
 | **Styles** | `app/internal_packages/main-calendar/styles/` | Use LESS; follows BEM-like naming |
@@ -492,7 +492,7 @@ The calendar provides injection points for plugins:
 1. **Create the component:**
    ```typescript
    // app/internal_packages/main-calendar/lib/core/day-view.tsx
-   export class DayView extends React.Component<MailspringCalendarViewProps, State> {
+   export class DayView extends React.Component<UnifyMailCalendarViewProps, State> {
      // Follow week-view.tsx patterns for:
      // - Subscribing to CalendarDataSource
      // - Rendering events
@@ -509,7 +509,7 @@ The calendar provides injection points for plugins:
      DAY = 'day',  // Add new view
    }
 
-   // In mailspring-calendar.tsx
+   // In UnifyMail-calendar.tsx
    const VIEWS = {
      [CalendarView.WEEK]: WeekView,
      [CalendarView.MONTH]: MonthView,
@@ -582,7 +582,7 @@ The calendar provides injection points for plugins:
   - Communicate with sync engine via stdin JSON messages
 
 - [ ] **Update sync engine for calendar writes**
-  - Add calendar sync write handlers in Mailspring-Sync (C++)
+  - Add calendar sync write handlers in UnifyMail-Sync (C++)
   - Implement Google Calendar API write operations
 
 - [ ] **Enable event creation flow**

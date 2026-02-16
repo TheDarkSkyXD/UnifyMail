@@ -6,9 +6,9 @@ import {
   Actions,
   QuotedHTMLTransformer,
   RegExpUtils,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import path from 'path';
 import fs from 'fs';
 
@@ -16,7 +16,7 @@ import fs from 'fs';
 // https://regex101.com/r/nD3eY8/1
 const INVALID_TEMPLATE_NAME_REGEX = /[^a-zA-Z\u00C0-\u017F0-9_\- ]+/g;
 
-class TemplateStore extends MailspringStore {
+class TemplateStore extends UnifyMailStore {
   private _items = [];
   private _templatesDir = path.join(AppEnv.getConfigDirPath(), 'templates');
   private _watcher = null;
@@ -82,7 +82,7 @@ class TemplateStore extends MailspringStore {
         AppEnv.showErrorDialog({
           title: localized('Cannot scan templates directory'),
           message: localized(
-            'Mailspring was unable to read the contents of your templates directory (%@). You may want to delete this folder or ensure filesystem permissions are set correctly.',
+            'UnifyMail was unable to read the contents of your templates directory (%@). You may want to delete this folder or ensure filesystem permissions are set correctly.',
             this._templatesDir
           ),
         });
@@ -129,7 +129,7 @@ class TemplateStore extends MailspringStore {
     const draftName = draft.subject.replace(INVALID_TEMPLATE_NAME_REGEX, '');
 
     let draftContents = QuotedHTMLTransformer.removeQuotedHTML(draft.body);
-    const sigIndex = draftContents.search(RegExpUtils.mailspringSignatureRegex());
+    const sigIndex = draftContents.search(RegExpUtils.UnifyMailSignatureRegex());
     draftContents = sigIndex > -1 ? draftContents.substr(0, sigIndex) : draftContents;
 
     if (!draftName || draftName.length === 0) {

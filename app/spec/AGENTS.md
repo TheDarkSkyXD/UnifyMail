@@ -4,13 +4,13 @@
 # spec
 
 ## Purpose
-Jasmine 2.x test specifications for the Mailspring application. Tests run inside the Electron process to have access to the full application environment (DOM, IPC, native modules). Organized to mirror the `src/` directory structure.
+Jasmine 2.x test specifications for the UnifyMail application. Tests run inside the Electron process to have access to the full application environment (DOM, IPC, native modules). Organized to mirror the `src/` directory structure.
 
 ## Key Files
 
 | File | Description |
 |------|-------------|
-| `mailspring-test-utils.ts` | Shared test utilities: mock factories, test helpers, spy setup |
+| `UnifyMail-test-utils.ts` | Shared test utilities: mock factories, test helpers, spy setup |
 | `action-bridge-spec.ts` | Tests for the IPC action bridge between main/renderer processes |
 | `autoupdate-manager-spec.ts` | Tests for the auto-update system |
 | `database-object-registry-spec.ts` | Tests for the database object type registry |
@@ -18,7 +18,7 @@ Jasmine 2.x test specifications for the Mailspring application. Tests run inside
 | `list-selection-spec.ts` | Tests for list selection logic (multi-select, range-select) |
 | `mail-rules-processor-spec.ts` | Tests for the mail rules processing engine |
 | `mailbox-perspective-spec.ts` | Tests for mailbox perspective query building |
-| `mailspring-protocol-handler-spec.ts` | Tests for `mailspring://` protocol handler |
+| `UnifyMail-protocol-handler-spec.ts` | Tests for `UnifyMail://` protocol handler |
 | `menu-manager-spec.ts` | Tests for application menu construction |
 | `spellchecker-spec.ts` | Tests for spellchecker integration |
 | `async-test-spec.ts` | Tests for async/promise test utilities |
@@ -44,7 +44,7 @@ Jasmine 2.x test specifications for the Mailspring application. Tests run inside
 - Run all tests: `npm test` from the root directory
 - Run specific window tests: `npm run test-window`
 - Tests execute inside Electron — they have access to the full app environment
-- Use `mailspring-test-utils.ts` for creating mock objects and test helpers
+- Use `UnifyMail-test-utils.ts` for creating mock objects and test helpers
 - Name test files with `-spec.ts` suffix matching the source file they test
 
 ### Testing Requirements
@@ -54,7 +54,7 @@ Jasmine 2.x test specifications for the Mailspring application. Tests run inside
 - Use `beforeEach` for test setup, `afterEach` for cleanup
 
 ### Common Patterns
-- Import from `mailspring-exports` for models, stores, actions
+- Import from `UnifyMail-exports` for models, stores, actions
 - Use `waitsForPromise` for async test assertions
 - Fixtures in `fixtures/` provide sample data for complex test scenarios
 - Component tests use React test renderer or direct DOM assertions
@@ -63,7 +63,7 @@ Jasmine 2.x test specifications for the Mailspring application. Tests run inside
 
 ### Internal
 - `app/src/` — Source code under test
-- `app/src/global/mailspring-exports` — Test imports
+- `app/src/global/UnifyMail-exports` — Test imports
 
 ### External
 - Jasmine 2.x — Test framework (assertions, spies, suites)

@@ -8,7 +8,7 @@ This document outlines the implementation plan for:
 
 ### Current State
 
-When calendar events are dragged, the persistence flow in `mailspring-calendar.tsx:495-543` only updates `recurrenceStart` and `recurrenceEnd` on the Event model. The underlying ICS data (stored in `event.ics`) is not modified. This creates a mismatch between the cached time fields and the actual ICS calendar data.
+When calendar events are dragged, the persistence flow in `UnifyMail-calendar.tsx:495-543` only updates `recurrenceStart` and `recurrenceEnd` on the Event model. The underlying ICS data (stored in `event.ics`) is not modified. This creates a mismatch between the cached time fields and the actual ICS calendar data.
 
 The existing ICS utilities in `app/src/calendar-utils.ts` provide:
 - `parseICSString(ics)` - Parse ICS string into ical.js objects
@@ -99,7 +99,7 @@ export function createICSString(options: CreateEventOptions): string {
 
   // Create VCALENDAR component
   const calendar = new ICAL.Component(['vcalendar', [], []]);
-  calendar.updatePropertyWithValue('prodid', '-//Mailspring//Calendar//EN');
+  calendar.updatePropertyWithValue('prodid', '-//UnifyMail//Calendar//EN');
   calendar.updatePropertyWithValue('version', '2.0');
   calendar.updatePropertyWithValue('calscale', 'GREGORIAN');
 
@@ -173,7 +173,7 @@ export function createICSString(options: CreateEventOptions): string {
 function generateUID(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 15);
-  return `${timestamp}-${random}@mailspring`;
+  return `${timestamp}-${random}@UnifyMail`;
 }
 ```
 
@@ -273,7 +273,7 @@ export function createRecurrenceException(
 
   // Create exception VCALENDAR
   const exceptionCal = new ICAL.Component(['vcalendar', [], []]);
-  exceptionCal.updatePropertyWithValue('prodid', '-//Mailspring//Calendar//EN');
+  exceptionCal.updatePropertyWithValue('prodid', '-//UnifyMail//Calendar//EN');
   exceptionCal.updatePropertyWithValue('version', '2.0');
 
   // Clone the VEVENT for the exception
@@ -413,15 +413,15 @@ export function getRecurrenceInfo(ics: string): {
 }
 ```
 
-### 1.3 Export from `mailspring-exports`
+### 1.3 Export from `UnifyMail-exports`
 
-Update `app/src/global/mailspring-exports.ts` to export the new module:
+Update `app/src/global/UnifyMail-exports.ts` to export the new module:
 
 ```typescript
 export * as ICSEventHelpers from '../ics-event-helpers';
 ```
 
-Update `app/src/global/mailspring-exports.d.ts`:
+Update `app/src/global/UnifyMail-exports.d.ts`:
 
 ```typescript
 export type ICSEventHelpers = typeof import('../ics-event-helpers');
@@ -440,7 +440,7 @@ Create a reusable dialog component for recurring event modifications.
 
 ```typescript
 import React from 'react';
-import { localized } from 'mailspring-exports';
+import { localized } from 'UnifyMail-exports';
 
 export type RecurringEventChoice = 'this-occurrence' | 'all-occurrences' | 'cancel';
 
@@ -496,7 +496,7 @@ export function showRecurringEventDialog(
 
 ### 2.2 Integration with Drag Persistence
 
-Update `mailspring-calendar.tsx` `_persistDragChange` method:
+Update `UnifyMail-calendar.tsx` `_persistDragChange` method:
 
 ```typescript
 import {
@@ -505,7 +505,7 @@ import {
   DatabaseStore,
   Actions,
   SyncbackEventTask
-} from 'mailspring-exports';
+} from 'UnifyMail-exports';
 import { showRecurringEventDialog, RecurringEventChoice } from './recurring-event-dialog';
 
 async _persistDragChange(dragState: DragState) {
@@ -755,7 +755,7 @@ _onSave = async () => {
 
 1. Create `app/src/ics-event-helpers.ts` with core functions
 2. Add comprehensive unit tests in `app/spec/ics-event-helpers-spec.ts`
-3. Export from `mailspring-exports`
+3. Export from `UnifyMail-exports`
 4. Verify ical.js API compatibility with existing usage
 
 ### Phase 2: Recurring Event Dialog
@@ -766,7 +766,7 @@ _onSave = async () => {
 
 ### Phase 3: Integration
 
-1. Update `_persistDragChange` in `mailspring-calendar.tsx`
+1. Update `_persistDragChange` in `UnifyMail-calendar.tsx`
 2. Update `_onSave` in `calendar-event-popover.tsx`
 3. Add integration tests for drag persistence
 4. Test with various calendar providers (Google, Exchange, CalDAV)
@@ -815,9 +815,9 @@ _onSave = async () => {
 - `app/internal_packages/main-calendar/lib/core/recurring-event-dialog.tsx`
 
 ### Modified Files
-- `app/src/global/mailspring-exports.ts` - Add ICSEventHelpers export
-- `app/src/global/mailspring-exports.d.ts` - Add type definitions
-- `app/internal_packages/main-calendar/lib/core/mailspring-calendar.tsx` - Update persistence
+- `app/src/global/UnifyMail-exports.ts` - Add ICSEventHelpers export
+- `app/src/global/UnifyMail-exports.d.ts` - Add type definitions
+- `app/internal_packages/main-calendar/lib/core/UnifyMail-calendar.tsx` - Update persistence
 - `app/internal_packages/main-calendar/lib/core/calendar-event-popover.tsx` - Update save method
 
 ---

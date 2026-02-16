@@ -20,7 +20,7 @@ class SoundRegistry {
     const { resourcePath } = AppEnv.getLoadSettings();
 
     if (typeof src === 'string') {
-      if (src.indexOf('mailspring://') === 0) {
+      if (src.indexOf('UnifyMail://') === 0) {
         a.src = src;
       } else {
         a.src = path.join(resourcePath, 'static', 'sounds', src);

@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { Actions, Utils, AttachmentStore, File } from 'mailspring-exports';
-import { AttachmentItem, ImageAttachmentItem } from 'mailspring-component-kit';
+import { Actions, Utils, AttachmentStore, File } from 'unifymail-exports';
+import { AttachmentItem, ImageAttachmentItem } from 'unifymail-component-kit';
 
 interface MessageAttachmentsProps {
   files: File[];

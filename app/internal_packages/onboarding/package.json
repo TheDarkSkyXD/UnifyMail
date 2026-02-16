@@ -6,7 +6,7 @@
   "license": "GPL-3.0",
   "private": true,
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
   "windowTypes": {
     "onboarding": true

@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { Thread } from 'mailspring-exports';
-import { MultiselectToolbar } from 'mailspring-component-kit';
+import { Thread } from 'unifymail-exports';
+import { MultiselectToolbar } from 'unifymail-component-kit';
 import InjectsToolbarButtons, { ToolbarRole } from './injects-toolbar-buttons';
 
 interface ThreadListToolbarProps {

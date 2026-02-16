@@ -12,7 +12,7 @@ Electron main (browser) process code. This is the entry point of the application
 |------|-------------|
 | `main.js` | **Application entry point**: Electron bootstrapping, single-instance lock, crash reporter, command-line parsing |
 | `application.ts` | Core `Application` class: window lifecycle, IPC handlers, global state, protocol registration |
-| `mailspring-window.ts` | `MailspringWindow` class: wraps `BrowserWindow`, manages loading, devtools, web preferences |
+| `UnifyMail-window.ts` | `UnifyMailWindow` class: wraps `BrowserWindow`, manages loading, devtools, web preferences |
 | `window-manager.ts` | Manages multiple windows: main, composer popout, onboarding, preferences |
 | `window-launcher.ts` | Factory for launching new windows with correct configuration |
 | `application-menu.ts` | Constructs native application menu from templates (darwin/win32/linux) |
@@ -28,7 +28,7 @@ Electron main (browser) process code. This is the entry point of the application
 | `config-persistence-manager.ts` | Saves and loads application config (JSON) with debouncing and error recovery |
 | `config-migrator.ts` | Migrates configuration from older versions |
 | `file-list-cache.ts` | Caches file lists for performance |
-| `mailspring-protocol-handler.ts` | Handles `mailspring://` protocol URLs (deep linking) |
+| `UnifyMail-protocol-handler.ts` | Handles `UnifyMail://` protocol URLs (deep linking) |
 | `move-to-applications.ts` | macOS: prompts user to move app to /Applications |
 | `is-wayland.ts` | Linux: detects Wayland display server |
 
@@ -45,7 +45,7 @@ Electron main (browser) process code. This is the entry point of the application
 - **`application.ts` is the god object** — it coordinates everything in the main process. Changes here are high-risk.
 - IPC handlers defined here are called from renderer via `ipcRenderer.send()` / `ipcRenderer.invoke()`
 - Main process code runs in Node.js context (no DOM) — use Electron APIs only
-- Window lifecycle events (close, focus, blur) are handled in `mailspring-window.ts`
+- Window lifecycle events (close, focus, blur) are handled in `UnifyMail-window.ts`
 - Auto-update behavior differs per platform — test on the target OS
 
 ### Testing Requirements

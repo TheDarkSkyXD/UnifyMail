@@ -4,7 +4,7 @@ import path from 'path';
 const { TouchBarGroup, TouchBarButton, TouchBarSpacer } = TouchBar;
 
 /*
-Mailspring's touch bar implementation leverages the existing `menu templating`
+UnifyMail's touch bar implementation leverages the existing `menu templating`
 system. When the menu template is updated to enable/disable items, the template
 is also provided to the ApplicationTouchBar. The currently available menu
 commands are used to hide/show relevant touch bar items.

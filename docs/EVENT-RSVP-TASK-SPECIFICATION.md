@@ -1,6 +1,6 @@
 # EventRSVPTask Sync Engine Specification
 
-This document specifies exactly how the C++ sync engine (Mailspring-Sync) should handle the `EventRSVPTask` to properly format and send an iMIP RSVP reply according to RFC 5546 (iTIP) and RFC 6047 (iMIP).
+This document specifies exactly how the C++ sync engine (UnifyMail-Sync) should handle the `EventRSVPTask` to properly format and send an iMIP RSVP reply according to RFC 5546 (iTIP) and RFC 6047 (iMIP).
 
 ## Overview
 
@@ -40,7 +40,7 @@ Example ICS content:
 ```
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Mailspring//Calendar//EN
+PRODID:-//UnifyMail//Calendar//EN
 METHOD:REPLY
 BEGIN:VEVENT
 UID:unique-event-id@example.com
@@ -290,7 +290,7 @@ Test RSVP replies against:
 ```
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Mailspring//EN
+PRODID:-//UnifyMail//EN
 METHOD:REPLY
 BEGIN:VEVENT
 UID:040000008200E00074C5B7101A82E00800000000B0635B7

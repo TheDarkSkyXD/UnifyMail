@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized, PropTypes, DateUtils, Thread } from 'mailspring-exports';
-import { ScrollRegionTooltipComponentProps } from 'mailspring-component-kit';
+import { localized, PropTypes, DateUtils, Thread } from 'unifymail-exports';
+import { ScrollRegionTooltipComponentProps } from 'unifymail-component-kit';
 import ThreadListStore from './thread-list-store';
 
 class ThreadListScrollTooltip extends React.Component<

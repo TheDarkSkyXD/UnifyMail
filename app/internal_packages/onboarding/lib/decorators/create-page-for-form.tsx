@@ -1,8 +1,8 @@
 import { shell } from 'electron';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { RetinaImg } from 'mailspring-component-kit';
-import { localized, Account } from 'mailspring-exports';
+import { RetinaImg } from 'unifymail-component-kit';
+import { localized, Account } from 'unifymail-exports';
 
 import * as OnboardingActions from '../onboarding-actions';
 import { finalizeAndValidateAccount } from '../onboarding-helpers';
@@ -153,7 +153,7 @@ const CreatePageForForm = FormComponent => {
           buttons: [localized('Go Back'), localized('Continue')],
           message: localized('Are you sure?'),
           detail: localized(
-            `This looks like a Gmail account! While it's possible to setup an App Password and connect to Gmail via IMAP, Mailspring also supports Google OAuth. Go back and select "Gmail & Google Apps" from the provider screen.`
+            `This looks like a Gmail account! While it's possible to setup an App Password and connect to Gmail via IMAP, UnifyMail also supports Google OAuth. Go back and select "Gmail & Google Apps" from the provider screen.`
           ),
         });
         if (buttonIndex === 0) {
@@ -257,11 +257,11 @@ const CreatePageForForm = FormComponent => {
       if (account.emailAddress.includes('@yahoo.com')) {
         message = localized('Have you enabled access through Yahoo?');
         articleURL =
-          'http://support.getmailspring.com//hc/en-us/articles/115001882372-Authorizing-Use-with-Yahoo';
+          'https://github.com/TheDarkSkyXD/UnifyMail/issues';
       } else {
         message = localized('Some providers require an app password.');
         articleURL =
-          'http://support.getmailspring.com/hc/en-us/articles/115001876051-App-Passwords';
+          'https://github.com/TheDarkSkyXD/UnifyMail/issues';
       }
       // We don't use a FormErrorMessage component because the content
       // we need to display has HTML.

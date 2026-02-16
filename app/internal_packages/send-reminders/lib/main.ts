@@ -1,5 +1,5 @@
-import { localized, ComponentRegistry, ExtensionRegistry } from 'mailspring-exports';
-import { HasTutorialTip } from 'mailspring-component-kit';
+import { localized, ComponentRegistry, ExtensionRegistry } from 'unifymail-exports';
+import { HasTutorialTip } from 'unifymail-component-kit';
 import SendRemindersThreadTimestamp from './send-reminders-thread-timestamp';
 import SendRemindersComposerButton from './send-reminders-composer-button';
 import SendRemindersToolbarButton from './send-reminders-toolbar-button';

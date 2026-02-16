@@ -1,5 +1,5 @@
-import { MailspringAPIRequest, Utils } from 'mailspring-exports';
-const { makeRequest } = MailspringAPIRequest;
+import { UnifyMailAPIRequest, Utils } from 'unifymail-exports';
+const { makeRequest } = UnifyMailAPIRequest;
 
 const CACHE_SIZE = 200;
 const CACHE_INDEX_KEY = 'pp-cache-v3-keys';

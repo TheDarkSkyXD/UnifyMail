@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized, PropTypes, Actions, TaskFactory, ExtensionRegistry } from 'mailspring-exports';
+import { localized, PropTypes, Actions, TaskFactory, ExtensionRegistry } from 'unifymail-exports';
 import { ThreadWithMessagesMetadata } from './types';
 
 class ThreadListIcon extends React.Component<{ thread: ThreadWithMessagesMetadata }> {

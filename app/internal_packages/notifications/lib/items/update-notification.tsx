@@ -1,6 +1,6 @@
-import { localized, React } from 'mailspring-exports';
+import { localized, React } from 'unifymail-exports';
 import { ipcRenderer, shell } from 'electron';
-import { Notification } from 'mailspring-component-kit';
+import { Notification } from 'unifymail-component-kit';
 import { Disposable } from 'event-kit';
 
 interface UpdateNotificationState {
@@ -48,7 +48,7 @@ export default class UpdateNotification extends React.Component<
   };
 
   _onViewChangelog = () => {
-    shell.openExternal('https://github.com/Foundry376/Mailspring/releases/latest');
+    shell.openExternal('https://github.com/TheDarkSkyXD/UnifyMail/releases/latest');
   };
 
   render() {
@@ -61,8 +61,8 @@ export default class UpdateNotification extends React.Component<
       <Notification
         priority="4"
         title={localized(
-          `An update to Mailspring is available %@`,
-          version ? `(${version.replace('Mailspring', '').trim()})` : ''
+          `An update to UnifyMail is available %@`,
+          version ? `(${version.replace('UnifyMail', '').trim()})` : ''
         )}
         subtitle={localized('View changelog')}
         subtitleAction={this._onViewChangelog}

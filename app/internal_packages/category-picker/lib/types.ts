@@ -1,4 +1,4 @@
-import { Category } from 'mailspring-exports';
+import { Category } from 'unifymail-exports';
 
 export type CategoryData =
   | {

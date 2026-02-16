@@ -26,12 +26,12 @@ if (typeof process.setFdLimit === 'function') {
 }
 
 const setupConfigDir = args => {
-  let dirname = 'Mailspring';
+  let dirname = 'UnifyMail';
   if (args.devMode) {
-    dirname = 'Mailspring-dev';
+    dirname = 'UnifyMail-dev';
   }
   if (args.specMode) {
-    dirname = 'Mailspring-spec';
+    dirname = 'UnifyMail-spec';
   }
   
   // Check if a custom config dir was provided via --config-dir-path
@@ -72,7 +72,7 @@ const declareOptions = argv => {
   const optimist = require('optimist');
   const options = optimist(argv);
   options.usage(
-    `Mailspring\n\nUsage: mailspring [options] [recipient] [attachment]\n\nRun Mailspring: The open source extensible email client\n\n\`mailspring mailto:johndoe@example.com\` to compose an e-mail to johndoe@example.com.\n\`mailspring ./attachment.txt\` to compose an e-mail with a text file attached.\n\`mailspring --dev\` to start the client in dev mode.\n\`mailspring --test\` to run unit tests.`
+    `UnifyMail\n\nUsage: UnifyMail [options] [recipient] [attachment]\n\nRun UnifyMail: The open source extensible email client\n\n\`UnifyMail mailto:johndoe@example.com\` to compose an e-mail to johndoe@example.com.\n\`UnifyMail ./attachment.txt\` to compose an e-mail with a text file attached.\n\`UnifyMail --dev\` to start the client in dev mode.\n\`UnifyMail --test\` to run unit tests.`
   );
   options
     .alias('d', 'dev')
@@ -88,9 +88,9 @@ const declareOptions = argv => {
       'safe',
       'Do not load packages from the settings `packages` or `dev/packages` folders.'
     );
-  // The options --enable-crashpad and --allow-file-access-from-files are added to the command line options by electron when opening a second instance of Mailspring.
+  // The options --enable-crashpad and --allow-file-access-from-files are added to the command line options by electron when opening a second instance of UnifyMail.
   // If they are not defined as boolean options here, they will "swallow" every argument that is passed after them. This leads to the "Send To" functionality not working
-  // if mailspring is already running.
+  // if UnifyMail is already running.
   options.boolean('enable-crashpad');
   options.boolean('allow-file-access-from-files');
   options.boolean('source-app-id');
@@ -105,7 +105,7 @@ const declareOptions = argv => {
   options
     .alias('c', 'config-dir-path')
     .string('c')
-    .describe('c', 'Override the path to the Mailspring configuration directory');
+    .describe('c', 'Override the path to the UnifyMail configuration directory');
   options
     .alias('s', 'spec-directory')
     .string('s')
@@ -124,7 +124,7 @@ const declareOptions = argv => {
   options
     .alias('b', 'background')
     .boolean('b')
-    .describe('b', 'Start Mailspring in the background');
+    .describe('b', 'Start UnifyMail in the background');
   return options;
 };
 
@@ -159,7 +159,7 @@ const parseCommandLine = argv => {
   let mailtoLink;
 
   // On Windows and Linux, mailto and file opens are passed in argv. Go through
-  // the items and pluck out things that look like mailto:, mailspring:, file paths
+  // the items and pluck out things that look like mailto:, UnifyMail:, file paths
   let ignoreNext = false;
   // args._ is all of the non-hyphenated options.
   for (const arg of args._) {
@@ -175,7 +175,7 @@ const parseCommandLine = argv => {
     if (path.resolve(arg) === resourcePath) {
       continue;
     }
-    if (arg.startsWith('mailto:') || arg.startsWith('mailspring:')) {
+    if (arg.startsWith('mailto:') || arg.startsWith('UnifyMail:')) {
       // Handle nautilus-sendto links correctly
       mailtoLink = extractMailtoLink(arg);
       urlsToOpen = urlsToOpen.concat(mailtoLink.urlsToOpen);
@@ -275,7 +275,7 @@ const handleStartupEventWithSquirrel = () => {
       return true;
     case '--squirrel-updated':
       // Restart the app after update
-      WindowsUpdater.restartMailspring(app);
+      WindowsUpdater.restartUnifyMail(app);
       return true;
     case '--squirrel-uninstall':
       // Handle uninstall with fast exit - spawns detached processes and quits immediately
@@ -290,14 +290,14 @@ const handleStartupEventWithSquirrel = () => {
 };
 
 const start = () => {
-  app.setAppUserModelId('com.squirrel.mailspring.mailspring');
+  app.setAppUserModelId('com.squirrel.unifymail.unifymail');
 
   // Set the app name explicitly for Linux to ensure the system tray icon
   // gets a unique ID. Without this, all Electron apps share the same
   // StatusNotifierItem ID on Linux, causing their tray visibility settings
   // to be synchronized. See: https://github.com/electron/electron/issues/40936
   if (process.platform === 'linux') {
-    app.setName('Mailspring');
+    app.setName('UnifyMail');
   }
 
   if (handleStartupEventWithSquirrel()) {
@@ -305,8 +305,8 @@ const start = () => {
   }
 
   // On Windows, register the AppUserModelId with a display name so notifications
-  // show "Mailspring" instead of "com.squirrel.mailspring.mailspring".
-  // Also register mailto: protocol handler so Windows knows Mailspring can handle
+  // show "UnifyMail" instead of "com.squirrel.unifymail.unifymail".
+  // Also register mailto: protocol handler so Windows knows UnifyMail can handle
   // mailto: links (this doesn't make it the default, just registers it as an option).
   // This handles existing installations and ensures registration completes even if
   // the Squirrel install hook's detached processes didn't finish in time.
@@ -401,7 +401,7 @@ const start = () => {
         responseHeaders: {
           ...details.responseHeaders,
           'Content-Security-Policy': [
-            "default-src * mailspring:; script-src 'self' 'unsafe-inline' chrome-extension://react-developer-tools; style-src * 'unsafe-inline' mailspring:; img-src * data: mailspring: file:; object-src none; media-src mailspring:; manifest-src none;",
+            "default-src * UnifyMail:; script-src 'self' 'unsafe-inline' chrome-extension://react-developer-tools; style-src * 'unsafe-inline' UnifyMail:; img-src * data: UnifyMail: file:; object-src none; media-src UnifyMail:; manifest-src none;",
           ],
         },
       });

@@ -58,7 +58,7 @@ function getMailsyncURL(callback) {
 
   if (!distDir) {
     console.error(
-      `\nSorry, a Mailspring Mailsync build for your machine (${distKey}) is not yet available.`
+      `\nSorry, a UnifyMail Mailsync build for your machine (${distKey}) is not yet available.`
     );
     return;
   }
@@ -95,7 +95,7 @@ function downloadMailsync() {
         });
       } else {
         console.error(
-          `Sorry, an error occurred while fetching the Mailspring Mailsync build for your machine\n(${distS3URL})\n`
+          `Sorry, an error occurred while fetching the UnifyMail Mailsync build for your machine\n(${distS3URL})\n`
         );
         if (process.env.CI) {
           throw new Error('Mailsync build not available.');
@@ -168,13 +168,13 @@ async function run() {
   // if the user hasn't cloned the mailsync module, download
   // the binary for their operating system that was shipped to S3.
   if (!fs.existsSync('./mailsync/build.sh')) {
-    console.log(`\n-- Downloading the last released version of Mailspring mailsync --`);
+    console.log(`\n-- Downloading the last released version of UnifyMail mailsync --`);
     downloadMailsync();
   } else {
     console.log(
-      `\n-- You have the Mailspring mailsync submodule. If you'd prefer ` +
-        `to develop with a pre-built binary, remove the submodule and re-run ` +
-        `'npm run postinstall' to download the latest binary for your machine. --`
+      `\n-- You have the UnifyMail mailsync submodule. If you'd prefer ` +
+      `to develop with a pre-built binary, remove the submodule and re-run ` +
+      `'npm run postinstall' to download the latest binary for your machine. --`
     );
   }
 }

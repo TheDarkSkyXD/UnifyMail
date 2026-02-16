@@ -6,7 +6,7 @@ import DatabaseStore from '../flux/stores/database-store';
 import { QuerySubscription } from '../flux/models/query-subscription';
 import { Model } from '../flux/models/model';
 import ModelQuery from '../flux/models/query';
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 import { Category } from '../flux/models/category';
 import { QueryResultSet } from '../flux/models/query-result-set';
 
@@ -173,8 +173,8 @@ Rx.Observable.fromNamedQuerySubscription = <T extends Model>(
 declare global {
   namespace Rx {
     export interface ObservableStatic {
-      fromStore<T extends MailspringStore>(store: T): Observable<T>;
-      fromListSelection<T>(store: MailspringStore & { dataSource(): any }): Observable<T[]>;
+      fromStore<T extends UnifyMailStore>(store: T): Observable<T>;
+      fromListSelection<T>(store: UnifyMailStore & { dataSource(): any }): Observable<T[]>;
       fromConfig<T>(configKey: string): Observable<T>;
       fromAction<T>(action: any): Observable<T>;
       fromQuery<T extends Model | Model[]>(query: ModelQuery<T>): Observable<T>;

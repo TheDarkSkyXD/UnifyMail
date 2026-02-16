@@ -3,8 +3,8 @@ import PropTypes from 'prop-types';
 import path from 'path';
 import fs from 'fs';
 
-import { Flexbox } from 'mailspring-component-kit';
-import { localized } from 'mailspring-exports';
+import { Flexbox } from 'unifymail-component-kit';
+import { localized } from 'unifymail-exports';
 
 import displayedKeybindings from './keymaps/displayed-keybindings';
 import CommandItem from './keymaps/command-item';

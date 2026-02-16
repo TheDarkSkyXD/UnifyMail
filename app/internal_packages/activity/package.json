@@ -7,7 +7,7 @@
     "url": ""
   },
   "engines": {
-    "mailspring": "*"
+    "UnifyMail": "*"
   },
 
   "isOptional": true,

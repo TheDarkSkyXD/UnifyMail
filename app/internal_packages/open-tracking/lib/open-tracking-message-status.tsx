@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { localized, Actions, PropTypes, Message } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { localized, Actions, PropTypes, Message } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 import OpenTrackingMessagePopover from './open-tracking-message-popover';
 import { PLUGIN_ID } from './open-tracking-constants';
 
@@ -63,7 +63,7 @@ export default class OpenTrackingMessageStatus extends React.Component<{ message
           <RetinaImg
             className={opened ? 'opened' : 'unopened'}
             style={{ position: 'relative', top: -1 }}
-            url="mailspring://open-tracking/assets/InMessage-opened@2x.png"
+            url="UnifyMail://open-tracking/assets/InMessage-opened@2x.png"
             mode={RetinaImg.Mode.ContentIsMask}
           />
         }&nbsp;&nbsp;{text}

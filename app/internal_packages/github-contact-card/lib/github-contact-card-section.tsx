@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized, PropTypes } from 'mailspring-exports';
+import { localized, PropTypes } from 'unifymail-exports';
 import GithubUserStore from './github-user-store';
 
 // Small React component that renders a single Github repository
@@ -36,7 +36,7 @@ const GithubProfile = function GithubProfile(props) {
       <img
         className="logo"
         alt="github logo"
-        src="mailspring://github-contact-card/assets/github.png"
+        src="UnifyMail://github-contact-card/assets/github.png"
       />
       <a href={profile.html_url}>{profile.login}</a>
       <div>{repoElements}</div>

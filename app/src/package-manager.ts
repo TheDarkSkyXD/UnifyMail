@@ -32,7 +32,7 @@ export default class PackageManager {
 
     this.discoverPackages();
 
-    // If the user starts without a Mailspring ID and then links one, immediately turn on the
+    // If the user starts without a UnifyMail ID and then links one, immediately turn on the
     // packages that require it. (Note: When you log OUT we currently just reboot the app, so
     // this only goes one way, which is also convenient because unloading the built-in packages
     // hasn't been tested much.)
@@ -117,9 +117,9 @@ export default class PackageManager {
       // don't use AppEnv.reportError, I don't want to know about these.
       console.error(
         localized(
-          `This plugin or theme %@ does not list "mailspring" in it's package.json's "engines" field. Ask the developer to test the plugin with Mailspring and add it, or follow the instructions here: %@`,
+          `This plugin or theme %@ does not list "UnifyMail" in it's package.json's "engines" field. Ask the developer to test the plugin with UnifyMail and add it, or follow the instructions here: %@`,
           pkg.name,
-          `http://support.getmailspring.com/hc/en-us/articles/115001918391`
+          `https://github.com/TheDarkSkyXD/UnifyMail/issues
         )
       );
       return;
@@ -194,12 +194,12 @@ export default class PackageManager {
       );
     }
 
-    if (!json.engines || !json.engines.mailspring) {
+    if (!json.engines || !json.engines.UnifyMail) {
       return callback(
         new Error(
           localized(
-            `The plugin or theme you selected has not been upgraded to support Mailspring. If you're the developer, update the package.json's engines field to include "mailspring".\n\nFor more information, see this migration guide: %@`,
-            `http://support.getmailspring.com/hc/en-us/articles/115001918391`
+            `The plugin or theme you selected has not been upgraded to support UnifyMail. If you're the developer, update the package.json's engines field to include "UnifyMail".\n\nFor more information, see this migration guide: %@`,
+            `https://github.com/TheDarkSkyXD/UnifyMail/issues
           )
         )
       );
@@ -221,6 +221,6 @@ export default class PackageManager {
   }
 
   createPackageManually() {
-    shell.openExternal('https://github.com/Foundry376/Mailspring-Plugin-Starter');
+    shell.openExternal('https://github.com/TheDarkSkyXD/UnifyMail-Plugin-Starter');
   }
 }

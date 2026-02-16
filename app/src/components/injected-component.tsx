@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { PropTypes, Utils, ComponentRegistry } from 'mailspring-exports';
+import { PropTypes, Utils, ComponentRegistry } from 'unifymail-exports';
 
 import InjectedComponentErrorBoundary from './injected-component-error-boundary';
 import InjectedComponentLabel from './injected-component-label';

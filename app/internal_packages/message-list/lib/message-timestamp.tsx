@@ -1,5 +1,5 @@
 import React from 'react';
-import { DateUtils } from 'mailspring-exports';
+import { DateUtils } from 'unifymail-exports';
 
 interface MessageTimestampProps {
   date: Date;

@@ -1,5 +1,5 @@
 import React, { CSSProperties, useRef } from 'react';
-import { Contact, localized, CanvasUtils, AccountStore } from 'mailspring-exports';
+import { Contact, localized, CanvasUtils, AccountStore } from 'unifymail-exports';
 import {
   FocusContainer,
   MultiselectList,
@@ -7,7 +7,7 @@ import {
   RetinaImg,
   ListensToFluxStore,
   ListDataSource,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import { ContactsPerspective, Store } from './Store';
 import _ from 'underscore';
 
@@ -62,8 +62,8 @@ class ContactListWithData extends React.Component<ContactListProps> {
 
     const canvas = CanvasUtils.canvasForDragging('contacts', data.ids.length);
     event.dataTransfer.setDragImage(canvas, 10, 10);
-    event.dataTransfer.setData('mailspring-contacts-data', JSON.stringify(data));
-    event.dataTransfer.setData(`mailspring-accounts=${data.accountIds.join(',')}`, '1');
+    event.dataTransfer.setData('UnifyMail-contacts-data', JSON.stringify(data));
+    event.dataTransfer.setData(`UnifyMail-accounts=${data.accountIds.join(',')}`, '1');
   };
 
   render() {

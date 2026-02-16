@@ -10,7 +10,7 @@ import {
   MatchQueryExpression,
   QueryExpression,
 } from './search-query-ast';
-import { DateUtils } from 'mailspring-exports';
+import { DateUtils } from 'unifymail-exports';
 
 /*
  * This class visits a match-compatible subtree and condenses it into a single

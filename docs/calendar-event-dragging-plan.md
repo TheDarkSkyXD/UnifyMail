@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the implementation plan for adding drag-and-drop interactions to calendar events in Mailspring's calendar views. The goal is to allow users to:
+This document outlines the implementation plan for adding drag-and-drop interactions to calendar events in UnifyMail's calendar views. The goal is to allow users to:
 
 1. **Week View**: Drag event center to move, drag top edge to adjust start time, drag bottom edge to adjust end time
 2. **Month View**: Drag event center to move, drag left edge to adjust start date, drag right edge to adjust end date
@@ -10,7 +10,7 @@ This document outlines the implementation plan for adding drag-and-drop interact
 ## Current Architecture
 
 ### Key Files
-- `app/internal_packages/main-calendar/lib/core/mailspring-calendar.tsx` - Root component with empty mouse handlers ready for implementation
+- `app/internal_packages/main-calendar/lib/core/UnifyMail-calendar.tsx` - Root component with empty mouse handlers ready for implementation
 - `app/internal_packages/main-calendar/lib/core/calendar-event-container.tsx` - Mouse event delegation with time calculation from position
 - `app/internal_packages/main-calendar/lib/core/calendar-event.tsx` - Event rendering component
 - `app/internal_packages/main-calendar/lib/core/week-view.tsx` - Week view with vertical time layout
@@ -23,7 +23,7 @@ This document outlines the implementation plan for adding drag-and-drop interact
   - `time` - Calculated time from mouse Y position
   - `x`, `y` - Mouse coordinates
   - `mouseIsDown` - Mouse button state tracking
-- Mouse handlers in `MailspringCalendar` are currently no-ops, ready for implementation
+- Mouse handlers in `UnifyMailCalendar` are currently no-ops, ready for implementation
 
 ---
 
@@ -457,7 +457,7 @@ For events spanning multiple days in month view, update `MonthViewEvent` to:
 
 #### 5.1 Event Update Logic
 
-**File: `lib/core/mailspring-calendar.tsx`**
+**File: `lib/core/UnifyMail-calendar.tsx`**
 
 When a drag completes successfully:
 
@@ -570,7 +570,7 @@ Add keyboard alternatives for drag operations:
 - Shift+Arrow keys to resize selected event
 
 ```typescript
-// In MailspringCalendar
+// In UnifyMailCalendar
 _onKeyDown = (e: React.KeyboardEvent) => {
   if (!this.state.selectedEvents.length) return;
 
@@ -591,7 +591,7 @@ _onKeyDown = (e: React.KeyboardEvent) => {
 
 #### 7.2 Undo Support
 
-Integrate with Mailspring's undo system:
+Integrate with UnifyMail's undo system:
 
 ```typescript
 // After successful drag
@@ -638,7 +638,7 @@ UndoStack.push({
 | `lib/core/week-view.tsx` | Integrate drag hook, render preview |
 | `lib/core/month-view.tsx` | Integrate drag hook, render preview |
 | `lib/core/month-view-event.tsx` | Add resize handles for multi-day events |
-| `lib/core/mailspring-calendar.tsx` | Handle drag completion, persist changes |
+| `lib/core/UnifyMail-calendar.tsx` | Handle drag completion, persist changes |
 | `lib/core/calendar-event-container.tsx` | Minor updates to mouse event handling |
 | `lib/styles/nylas-calendar.less` | Drag preview styles, cursor styles, resize affordances |
 

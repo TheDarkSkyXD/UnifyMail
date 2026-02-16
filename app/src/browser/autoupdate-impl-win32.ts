@@ -38,6 +38,6 @@ export default class AutoupdateImplWin32 extends AutoupdateImplBase {
   }
 
   quitAndInstall() {
-    WindowsUpdater.restartMailspring(require('electron').app);
+    WindowsUpdater.restartUnifyMail(require('electron').app);
   }
 }

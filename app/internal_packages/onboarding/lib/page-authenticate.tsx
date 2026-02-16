@@ -1,7 +1,7 @@
 import React from 'react';
 import qs from 'querystring';
-import { PropTypes, MailspringAPIRequest, IdentityAuthResponse } from 'mailspring-exports';
-import { Webview } from 'mailspring-component-kit';
+import { PropTypes, UnifyMailAPIRequest, IdentityAuthResponse } from 'unifymail-exports';
+import { Webview } from 'unifymail-component-kit';
 import * as OnboardingActions from './onboarding-actions';
 
 export default class AuthenticatePage extends React.Component {
@@ -12,7 +12,7 @@ export default class AuthenticatePage extends React.Component {
   };
 
   _src() {
-    return `${MailspringAPIRequest.rootURLForServer('identity')}/onboarding?${qs.stringify({
+    return `${UnifyMailAPIRequest.rootURLForServer('identity')}/onboarding?${qs.stringify({
       version: AppEnv.getVersion(),
       skipSupported: true,
     })}`;

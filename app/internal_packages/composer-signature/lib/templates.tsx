@@ -5,7 +5,7 @@ import querystring from 'querystring';
 
 const FB_SHARE = (
   <img
-    src="https://www.getmailspring.com/signature-assets/fb.gif"
+    src="https://github.com/TheDarkSkyXD/UnifyMail"
     width="13"
     height="13"
     alt="Facebook"
@@ -14,7 +14,7 @@ const FB_SHARE = (
 
 const MEDIUM_SHARE = (
     <img
-        src="https://www.getmailspring.com/signature-assets/medium.gif"
+        src="https://github.com/TheDarkSkyXD/UnifyMail"
         width="13"
         height="13"
         alt="Medium"
@@ -23,7 +23,7 @@ const MEDIUM_SHARE = (
 
 const GITHUB_SHARE = (
     <img
-        src="https://www.getmailspring.com/signature-assets/github.gif"
+        src="https://github.com/TheDarkSkyXD/UnifyMail"
         width="13"
         height="13"
         alt="Github"
@@ -32,7 +32,7 @@ const GITHUB_SHARE = (
 
 const YOUTUBE_SHARE = (
     <img
-        src="https://www.getmailspring.com/signature-assets/youtube.gif"
+        src="https://github.com/TheDarkSkyXD/UnifyMail"
         width="13"
         height="13"
         alt="YouTube"
@@ -41,7 +41,7 @@ const YOUTUBE_SHARE = (
 
 const TWITTER_SHARE = (
   <img
-    src="https://www.getmailspring.com/signature-assets/twitter.gif"
+    src="https://github.com/TheDarkSkyXD/UnifyMail"
     width="13"
     height="13"
     alt="Twitter"
@@ -49,7 +49,7 @@ const TWITTER_SHARE = (
 );
 const LINKEDIN_SHARE = (
   <img
-    src="https://www.getmailspring.com/signature-assets/linkedin.gif"
+    src="https://github.com/TheDarkSkyXD/UnifyMail"
     width="13"
     height="13"
     alt="LinkedIn"
@@ -58,7 +58,7 @@ const LINKEDIN_SHARE = (
 
 const INSTAGRAM_SHARE = (
   <img
-    src="https://www.getmailspring.com/signature-assets/instagram.gif"
+    src="https://github.com/TheDarkSkyXD/UnifyMail"
     width="13"
     height="13"
     alt="Instagram"

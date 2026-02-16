@@ -4,7 +4,7 @@
 # build
 
 ## Purpose
-Grunt-based build system for compiling, packaging, and documenting the Mailspring application. Contains Grunt task definitions, build resources (icons, platform configs), and documentation generation source files.
+Grunt-based build system for compiling, packaging, and documenting the UnifyMail application. Contains Grunt task definitions, build resources (icons, platform configs), and documentation generation source files.
 
 ## Key Files
 

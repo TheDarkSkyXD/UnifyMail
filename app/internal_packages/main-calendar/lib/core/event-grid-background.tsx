@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Utils } from 'mailspring-exports';
+import { Utils } from 'unifymail-exports';
 import { tickGenerator } from './week-view-helpers';
 
 interface EventGridBackgroundProps {

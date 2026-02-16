@@ -6,7 +6,7 @@ import {
   FolderSyncProgressStore,
   TaskQueue,
   SendDraftTask,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import { SyncActivity } from './sync-activity';
 import { SyncbackActivity } from './syncback-activity';

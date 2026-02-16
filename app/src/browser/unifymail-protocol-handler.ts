@@ -2,10 +2,10 @@ import { protocol } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-// Handles requests with 'mailspring' protocol.
+// Handles requests with 'UnifyMail' protocol.
 //
 // It's created by {Application} upon instantiation and is used to create a
-// custom resource loader for 'mailspring://' URLs.
+// custom resource loader for 'UnifyMail://' URLs.
 //
 // The following directories are searched in order:
 //   * <config-dir>/assets
@@ -13,7 +13,7 @@ import path from 'path';
 //   * <config-dir>/packages
 //   * RESOURCE_PATH/node_modules
 //
-export default class MailspringProtocolHandler {
+export default class UnifyMailProtocolHandler {
   loadPaths: string[] = [];
 
   constructor({ configDirPath, resourcePath, safeMode }) {
@@ -26,9 +26,9 @@ export default class MailspringProtocolHandler {
     this.registerProtocol();
   }
 
-  // Creates the 'Mailspring' custom protocol handler.
+  // Creates the 'UnifyMail' custom protocol handler.
   registerProtocol() {
-    const scheme = 'mailspring';
+    const scheme = 'UnifyMail';
     protocol.registerFileProtocol(scheme, (request, callback) => {
       const relativePath = path.normalize(request.url.substr(scheme.length + 1));
 

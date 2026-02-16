@@ -15,11 +15,11 @@ import {
   SyncbackCategoryTask,
   FocusedPerspectiveStore,
   MailboxPerspective,
-  MailspringTestUtils,
+  UnifyMailTestUtils,
   TaskQueue,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
-import { Categories } from 'mailspring-observables';
+import { Categories } from 'unifymail-observables';
 
 describe('MovePickerPopover', function() {
   beforeEach(() => (CategoryStore._categoryCache = {}));
@@ -48,7 +48,7 @@ describe('MovePickerPopover', function() {
       accountId: TEST_ACCOUNT_ID,
     });
 
-    const observable = MailspringTestUtils.mockObservable([
+    const observable = UnifyMailTestUtils.mockObservable([
       this.inboxCategory,
       this.archiveCategory,
       this.userCategory,

@@ -7,14 +7,14 @@ import {
   Event,
   localized,
   Autolink,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import {
   DatePicker,
   RetinaImg,
   ScrollRegion,
   TabGroupRegion,
   TimePicker,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import { EventAttendeesInput } from './event-attendees-input';
 import { EventOccurrence, EventAttendee } from './calendar-data-source';
 import { EventPropertyRow } from './event-property-row';

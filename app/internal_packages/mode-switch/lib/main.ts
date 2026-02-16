@@ -1,12 +1,12 @@
-import { localized, ComponentRegistry, WorkspaceStore } from 'mailspring-exports';
-import { HasTutorialTip } from 'mailspring-component-kit';
+import { localized, ComponentRegistry, WorkspaceStore } from 'unifymail-exports';
+import { HasTutorialTip } from 'unifymail-component-kit';
 
 import ModeToggle from './mode-toggle';
 
 const ToggleWithTutorialTip = HasTutorialTip(ModeToggle, {
   title: localized('Compose with context'),
   instructions: localized(
-    'Mailspring shows you everything about your contacts right inside your inbox. See LinkedIn profiles, Twitter bios, message history, and more.'
+    'UnifyMail shows you everything about your contacts right inside your inbox. See LinkedIn profiles, Twitter bios, message history, and more.'
   ),
 });
 

@@ -1,12 +1,12 @@
 import _ from 'underscore';
-import MailspringStore from 'mailspring-store';
-import { MessageStore } from 'mailspring-exports';
+import UnifyMailStore from 'unifymail-store';
+import { MessageStore } from 'unifymail-exports';
 
-class GithubStore extends MailspringStore {
+class GithubStore extends UnifyMailStore {
   _link: string = null;
   _lastItemIds: string[];
 
-  // It's very common practive for {MailspringStore}s to listen to other parts of N1.
+  // It's very common practive for {UnifyMailStore}s to listen to other parts of N1.
   // Since Stores are singletons and constructed once on `require`, there is no
   // teardown step to turn off listeners.
   constructor() {
@@ -15,7 +15,7 @@ class GithubStore extends MailspringStore {
   }
 
   // This is the only public method on `GithubStore` and it's read only.
-  // All {MailspringStore}s ONLY have reader methods. No setter methods. Use an
+  // All {UnifyMailStore}s ONLY have reader methods. No setter methods. Use an
   // `Action` instead!
   //
   // This is the computed & cached value that our `ViewOnGithubButton` will
@@ -74,7 +74,7 @@ class GithubStore extends MailspringStore {
 /*
 IMPORTANT NOTE:
 
-All {MailspringStore}s are constructed upon their first `require` by another
+All {UnifyMailStore}s are constructed upon their first `require` by another
 module.  Since `require` is cached, they are only constructed once and
 are therefore singletons.
 */

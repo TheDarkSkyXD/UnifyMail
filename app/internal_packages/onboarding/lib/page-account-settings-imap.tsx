@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import { localized, Account } from 'mailspring-exports';
+import { localized, Account } from 'unifymail-exports';
 import CreatePageForForm from './decorators/create-page-for-form';
 import FormField from './form-field';
 

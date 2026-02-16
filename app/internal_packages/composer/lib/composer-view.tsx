@@ -8,7 +8,7 @@ import {
   DraftStore,
   DraftEditingSession,
   MessageWithEditorState,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import { webUtils } from 'electron';
 import {
   DropZone,
@@ -20,7 +20,7 @@ import {
   ComposerEditor,
   ComposerEditorPlaintext,
   ComposerSupport,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import { ComposerHeader } from './composer-header';
 import { SendActionButton } from './send-action-button';
 import { ActionBarPlugins } from './action-bar-plugins';
@@ -283,8 +283,8 @@ export default class ComposerView extends React.Component<ComposerViewProps, Com
   };
 
   _nonNativeFilePathForDrop = event => {
-    if (event.dataTransfer.types.includes('text/mailspring-file-url')) {
-      const downloadURL = event.dataTransfer.getData('text/mailspring-file-url');
+    if (event.dataTransfer.types.includes('text/UnifyMail-file-url')) {
+      const downloadURL = event.dataTransfer.getData('text/UnifyMail-file-url');
       const downloadFilePath = downloadURL.split('file://')[1];
       if (downloadFilePath) {
         return downloadFilePath;

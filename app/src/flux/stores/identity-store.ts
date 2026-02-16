@@ -1,4 +1,4 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 
 import url from 'url';
 import querystring from 'querystring';
@@ -6,11 +6,11 @@ import querystring from 'querystring';
 import * as Utils from '../models/utils';
 import * as Actions from '../actions';
 import KeyManager from '../../key-manager';
-import { makeRequest, rootURLForServer } from '../mailspring-api-request';
+import { makeRequest, rootURLForServer } from '../unifymail-api-request';
 import { Disposable } from 'event-kit';
 
-// Note this key name is used when migrating to Mailspring Pro accounts from old N1.
-const PASSWORD_NAME = 'Mailspring Account';
+// Note this key name is used when migrating to UnifyMail Pro accounts from old N1.
+const PASSWORD_NAME = 'UnifyMail Account';
 
 export interface IIdentity {
   id: string;
@@ -39,7 +39,7 @@ export const EMPTY_FEATURE_USAGE = {
   quota: 0,
 };
 
-class _IdentityStore extends MailspringStore {
+class _IdentityStore extends UnifyMailStore {
   _identity: IIdentity = null;
   _displayedPasswordError = false;
   _disp: Disposable;
@@ -61,7 +61,7 @@ class _IdentityStore extends MailspringStore {
     AppEnv.config.onDidChange('identity', this._onIdentityChanged);
     this._onIdentityChanged();
 
-    this.listenTo(Actions.logoutMailspringIdentity, this._onLogoutMailspringIdentity);
+    this.listenTo(Actions.logoutUnifyMailIdentity, this._onLogoutUnifyMailIdentity);
     this._fetchAndPollRemoteIdentity();
   }
 
@@ -137,7 +137,7 @@ class _IdentityStore extends MailspringStore {
       : null;
 
     if (this._identity && !this._identity.token) {
-      const message = `Your Mailspring ID password could not be loaded from your keychain. Please visit Preferences > Subscription and click "Setup Mailspring ID" to sign in to your Mailspring account again.\n\nYour Mailspring ID email address is ${this._identity.emailAddress}.`;
+      const message = `Your UnifyMail ID password could not be loaded from your keychain. Please visit Preferences > Subscription and click "Setup UnifyMail ID" to sign in to your UnifyMail account again.\n\nYour UnifyMail ID email address is ${this._identity.emailAddress}.`;
       console.warn(message);
 
       if (!this._displayedPasswordError) {
@@ -150,17 +150,17 @@ class _IdentityStore extends MailspringStore {
     this.trigger();
   };
 
-  _onLogoutMailspringIdentity = async () => {
+  _onLogoutUnifyMailIdentity = async () => {
     await this.saveIdentity(null);
     // We need to relaunch the app to clear the webview session
-    // and prevent the webview from re signing in with the same MailspringID
+    // and prevent the webview from re signing in with the same UnifyMailID
     require('@electron/remote').app.relaunch();
     require('@electron/remote').app.quit();
   };
 
   /**
    * This passes utm_source, utm_campaign, and utm_content params to the
-   * Mailspring billing site. Please reference:
+   * UnifyMail billing site. Please reference:
    * https://paper.dropbox.com/doc/Analytics-ID-Unification-oVDTkakFsiBBbk9aeuiA3
    * for the full list of utm_ labels.
    */

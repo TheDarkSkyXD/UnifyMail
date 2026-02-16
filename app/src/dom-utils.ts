@@ -199,7 +199,7 @@ const DOMUtils = {
   },
 
   getWorkspaceCssNumberProperty(property, defaultValue) {
-    const workspaceElement = document.querySelector('mailspring-workspace');
+    const workspaceElement = document.querySelector('UnifyMail-workspace');
     if (workspaceElement) {
       const value = getComputedStyle(workspaceElement).getPropertyValue(`--${property}`);
       if (value.length > 0) {

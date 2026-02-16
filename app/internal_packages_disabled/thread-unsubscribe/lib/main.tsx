@@ -1,4 +1,4 @@
-import { ComponentRegistry } from 'mailspring-exports';
+import { ComponentRegistry } from 'unifymail-exports';
 import ThreadUnsubscribeButton from './thread-unsubscribe-button';
 
 export function activate() {

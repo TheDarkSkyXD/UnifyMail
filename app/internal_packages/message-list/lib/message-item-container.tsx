@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import React from 'react';
-import { Utils, DraftStore, ComponentRegistry, Thread, Message } from 'mailspring-exports';
+import { Utils, DraftStore, ComponentRegistry, Thread, Message } from 'unifymail-exports';
 
 import MessageItem from './message-item';
 

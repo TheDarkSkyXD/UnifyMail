@@ -1,6 +1,6 @@
 import React from 'react';
-import { PropTypes, Utils } from 'mailspring-exports';
-import { AccountColorBar } from 'mailspring-component-kit';
+import { PropTypes, Utils } from 'unifymail-exports';
+import { AccountColorBar } from 'unifymail-component-kit';
 import { ThreadWithMessagesMetadata } from './types';
 
 class ThreadListParticipants extends React.Component<{ thread: ThreadWithMessagesMetadata }> {

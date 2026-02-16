@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { DisclosureTriangle, Flexbox, RetinaImg } from 'mailspring-component-kit';
-import { localized, DateUtils } from 'mailspring-exports';
+import { DisclosureTriangle, Flexbox, RetinaImg } from 'unifymail-component-kit';
+import { localized, DateUtils } from 'unifymail-exports';
 
 import ActivityEventStore from '../activity-event-store';
 import { configForPluginId } from '../plugin-helpers';

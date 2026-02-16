@@ -2,7 +2,7 @@ import React from 'react';
 import ReactTestUtils from 'react-dom/test-utils';
 
 import _ from 'underscore';
-import { AccountStore, Thread, Contact, Message } from 'mailspring-exports';
+import { AccountStore, Thread, Contact, Message } from 'unifymail-exports';
 import ThreadListParticipants from '../lib/thread-list-participants';
 
 describe('ThreadListParticipants', function() {

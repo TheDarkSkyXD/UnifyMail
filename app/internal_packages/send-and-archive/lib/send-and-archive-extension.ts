@@ -1,4 +1,4 @@
-import { Actions, Thread, DatabaseStore, TaskFactory, SendDraftTask } from 'mailspring-exports';
+import { Actions, Thread, DatabaseStore, TaskFactory, SendDraftTask } from 'unifymail-exports';
 
 export const name = 'SendAndArchiveExtension';
 
@@ -6,7 +6,7 @@ export function sendActions() {
   return [
     {
       title: 'Send and Archive',
-      iconUrl: 'mailspring://send-and-archive/images/composer-archive@2x.png',
+      iconUrl: 'UnifyMail://send-and-archive/images/composer-archive@2x.png',
       isAvailableForDraft({ draft }) {
         return draft.threadId;
       },

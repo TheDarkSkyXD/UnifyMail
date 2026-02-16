@@ -4,7 +4,7 @@ import {
   PreferencesUIStore,
   ComponentRegistry,
   ExtensionRegistry,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import TemplatePicker from './template-picker';
 import TemplateStatusBar from './template-status-bar';
 import TemplateComposerExtension from './template-composer-extension';

@@ -5,7 +5,7 @@ import { QueryExpression } from '../../services/search/search-query-ast';
 import * as Utils from './utils';
 import { Model } from './model';
 
-type DB = typeof import('mailspring-exports').DatabaseStore;
+type DB = typeof import('unifymail-exports').DatabaseStore;
 
 /*
 Public: ModelQuery exposes an ActiveRecord-style syntax for building database queries

@@ -4,7 +4,7 @@
 # src
 
 ## Purpose
-Core application source code for the Mailspring email client. Contains the Electron main/browser process bootstrap, the renderer process UI (React components), the Flux-based state management system (actions, stores, models, tasks), platform services, extension APIs, registries for dependency injection, and utility modules.
+Core application source code for the UnifyMail email client. Contains the Electron main/browser process bootstrap, the renderer process UI (React components), the Flux-based state management system (actions, stores, models, tasks), platform services, extension APIs, registries for dependency injection, and utility modules.
 
 ## Key Files
 
@@ -60,7 +60,7 @@ Core application source code for the Mailspring email client. Contains the Elect
 | `components/` | Reusable React UI components: buttons, lists, modals, editors, popovers (see `components/AGENTS.md`) |
 | `flux/` | Flux architecture: actions, stores, models, tasks, database, attributes (see `flux/AGENTS.md`) |
 | `services/` | Application services: search, undo manager, inline transformers (see `services/AGENTS.md`) |
-| `global/` | Global module exports: `mailspring-exports`, `mailspring-component-kit`, `mailspring-store` (see `global/AGENTS.md`) |
+| `global/` | Global module exports: `UnifyMail-exports`, `UnifyMail-component-kit`, `UnifyMail-store` (see `global/AGENTS.md`) |
 | `registries/` | Dependency injection registries: component, command, extension, sound, service (see `registries/AGENTS.md`) |
 | `extensions/` | Extension point APIs: composer, message-view, thread-list, account-sidebar (see `extensions/AGENTS.md`) |
 | `types/` | TypeScript type declaration files for global extensions |
@@ -75,14 +75,14 @@ Core application source code for the Mailspring email client. Contains the Elect
 ### Working In This Directory
 - **DO NOT modify `app-env.ts` casually** — it defines the global `AppEnv` that all code depends on
 - When adding new utilities, follow the existing pattern of focused, single-purpose `.ts` files
-- The `global/` directory defines the public API surface — `mailspring-exports` and `mailspring-component-kit` are what plugins import
+- The `global/` directory defines the public API surface — `UnifyMail-exports` and `UnifyMail-component-kit` are what plugins import
 - New registries or services should be registered in the appropriate registry file
 - Platform-specific code should be gated with `process.platform` checks
 
 ### Testing Requirements
 - Unit tests for src files go in `app/spec/` mirroring this directory structure
 - Complex logic (mail rules, date utils, regex) should have thorough test coverage
-- Test utilities are in `app/spec/mailspring-test-utils.ts`
+- Test utilities are in `app/spec/UnifyMail-test-utils.ts`
 
 ### Common Patterns
 - **Global singleton**: `AppEnv` (from `app-env.ts`) is the application root — access config, packages, windows, etc.

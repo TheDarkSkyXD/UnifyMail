@@ -1,6 +1,6 @@
-import MailspringStore from 'mailspring-store';
+import UnifyMailStore from 'unifymail-store';
 
-class EmailFrameStylesStore extends MailspringStore {
+class EmailFrameStylesStore extends UnifyMailStore {
   _styles?: string;
   _mutationObserver: MutationObserver;
 

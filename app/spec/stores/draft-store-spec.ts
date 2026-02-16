@@ -11,7 +11,7 @@ import {
   ComposerExtension,
   ExtensionRegistry,
   FocusedContentStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 
 import DraftFactory from '../../src/flux/stores/draft-factory';
@@ -396,7 +396,7 @@ xdescribe('DraftStore', function draftStore() {
       runs(() => {
         return DraftStore._onSendDraft(this.draft.headerMessageId);
       });
-      waitsFor('Mailspring to close', () => AppEnv.close.calls.length > 0);
+      waitsFor('UnifyMail to close', () => AppEnv.close.calls.length > 0);
     });
 
     it("doesn't close the window if it's inline", () => {

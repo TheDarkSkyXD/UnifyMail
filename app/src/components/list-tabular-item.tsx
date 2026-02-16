@@ -1,6 +1,6 @@
 import SwipeContainer from './swipe-container';
 import React from 'react';
-import { PropTypes, Utils } from 'mailspring-exports';
+import { PropTypes, Utils } from 'unifymail-exports';
 import { ListTabularColumn } from './list-tabular';
 
 type ListTabularItemProps = {

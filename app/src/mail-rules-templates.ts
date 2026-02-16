@@ -1,4 +1,4 @@
-import { Categories } from 'mailspring-observables';
+import { Categories } from 'unifymail-observables';
 import { Template } from './components/scenario-editor-models';
 import { localized } from './intl';
 

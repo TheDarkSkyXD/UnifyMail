@@ -5,7 +5,7 @@ import {
   DatabaseStore,
   Actions,
   Thread,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 import { MessageListHiddenMessagesToggle } from './message-list-hidden-messages-toggle';
 import MessageList from './message-list';

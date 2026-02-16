@@ -1,10 +1,10 @@
-# Undo/Redo Task Pattern in Mailspring
+# Undo/Redo Task Pattern in UnifyMail
 
-This document explains how to implement undoable tasks in Mailspring following the established patterns.
+This document explains how to implement undoable tasks in UnifyMail following the established patterns.
 
 ## Overview
 
-Mailspring uses a task-based architecture where operations are represented as `Task` objects that get queued and executed by the sync engine. The `UndoRedoStore` automatically tracks tasks that can be undone and provides undo/redo functionality.
+UnifyMail uses a task-based architecture where operations are represented as `Task` objects that get queued and executed by the sync engine. The `UndoRedoStore` automatically tracks tasks that can be undone and provides undo/redo functionality.
 
 ## How It Works
 

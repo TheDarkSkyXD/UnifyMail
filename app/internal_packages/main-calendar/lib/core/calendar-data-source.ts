@@ -6,7 +6,7 @@ import {
   AndCompositeMatcher,
   OrCompositeMatcher,
   Contact,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import IcalExpander from 'ical-expander';
 
 /** Participation status values from iCalendar spec */

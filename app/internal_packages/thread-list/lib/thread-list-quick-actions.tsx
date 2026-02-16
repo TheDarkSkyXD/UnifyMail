@@ -6,7 +6,7 @@ import {
   Thread,
   TaskFactory,
   FocusedPerspectiveStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 export class ThreadArchiveQuickAction extends React.Component<{ thread: Thread }> {
   static displayName = 'ThreadArchiveQuickAction';

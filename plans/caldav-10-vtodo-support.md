@@ -244,12 +244,12 @@ export class CalendarTask extends Model {
 | `mailsync/MailSync/Models/Calendar.hpp/cpp` | Add supportsEvents/supportsTasks |
 | `mailsync/MailSync/DAVWorker.hpp/cpp` | Add runForCalendarTasks |
 | `mailsync/MailSync/TaskProcessor.hpp/cpp` | Add task syncback handlers |
-| `app/src/global/mailspring-exports.js` | Register new task types |
+| `app/src/global/UnifyMail-exports.js` | Register new task types |
 
 ## Scope Consideration
 
 This is a significant feature addition. Consider:
-- Is task management in scope for Mailspring?
+- Is task management in scope for UnifyMail?
 - Would a separate "Tasks" view be needed?
 - Integration with email (task from email)?
 

@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import { shell } from 'electron';
 import { localized } from './intl';
 
-const bundleIdentifier = 'com.mailspring.mailspring';
+const bundleIdentifier = 'com.UnifyMail.UnifyMail';
 
 interface DCH {
   available(): boolean;
@@ -34,7 +34,7 @@ export class DefaultClientHelperWindows implements DCH {
               callback(err1 || err2);
               return;
             }
-            callback(output.includes('Mailspring'));
+            callback(output.includes('UnifyMail'));
           }
         );
       }
@@ -42,10 +42,10 @@ export class DefaultClientHelperWindows implements DCH {
   }
 
   async resetURLScheme() {
-    // On Windows 11 21H2+ (with April 2023 update), we can deep link directly to Mailspring's
+    // On Windows 11 21H2+ (with April 2023 update), we can deep link directly to UnifyMail's
     // default app settings page. On older Windows versions, this falls back to the main
     // Default Apps page, which is still better than opening a web browser.
-    shell.openExternal('ms-settings:defaultapps?registeredAppUser=Mailspring');
+    shell.openExternal('ms-settings:defaultapps?registeredAppUser=UnifyMail');
   }
 
   registerForURLScheme(scheme: string, callback = (error?: Error) => {}) {
@@ -73,16 +73,16 @@ export class DefaultClientHelperWindows implements DCH {
             buttons: [localized('Open Settings'), localized('Cancel')],
             defaultId: 0,
             message: localized(
-              'Visit Windows Settings to finish making Mailspring your mail client'
+              'Visit Windows Settings to finish making UnifyMail your mail client'
             ),
             detail: localized(
-              "Click 'Open Settings' to open Windows Settings where you can set Mailspring as your default email app."
+              "Click 'Open Settings' to open Windows Settings where you can set UnifyMail as your default email app."
             ),
           });
           if (response === 0) {
             // On Windows 11 21H2+ (with April 2023 update), this deep links directly to
-            // Mailspring's default app settings. On older versions, falls back to Default Apps.
-            shell.openExternal('ms-settings:defaultapps?registeredAppUser=Mailspring');
+            // UnifyMail's default app settings. On older versions, falls back to Default Apps.
+            shell.openExternal('ms-settings:defaultapps?registeredAppUser=UnifyMail');
           }
         }
         callback(null);
@@ -101,7 +101,7 @@ export class DefaultClientHelperLinux implements DCH {
       throw new Error('isRegisteredForURLScheme is async, provide a callback');
     }
     exec(`xdg-mime query default x-scheme-handler/${scheme}`, (err, stdout) =>
-      err ? callback(err) : callback(stdout.trim() === 'Mailspring.desktop')
+      err ? callback(err) : callback(stdout.trim() === 'UnifyMail.desktop')
     );
   }
 
@@ -111,7 +111,7 @@ export class DefaultClientHelperLinux implements DCH {
     );
   }
   registerForURLScheme(scheme: string, callback = (error?: Error) => {}) {
-    exec(`xdg-mime default Mailspring.desktop x-scheme-handler/${scheme}`, err =>
+    exec(`xdg-mime default UnifyMail.desktop x-scheme-handler/${scheme}`, err =>
       err ? callback(err) : callback(null)
     );
   }

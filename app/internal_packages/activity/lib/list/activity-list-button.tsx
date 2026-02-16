@@ -1,6 +1,6 @@
 import React from 'react';
-import { Actions, ReactDOM, localized } from 'mailspring-exports';
-import { RetinaImg } from 'mailspring-component-kit';
+import { Actions, ReactDOM, localized } from 'unifymail-exports';
+import { RetinaImg } from 'unifymail-component-kit';
 
 import ActivityList from './activity-list';
 import ActivityEventStore from '../activity-event-store';

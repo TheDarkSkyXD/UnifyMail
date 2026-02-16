@@ -1,12 +1,12 @@
 import { isWaylandSession } from './is-wayland';
-import MailspringWindow from './mailspring-window';
-import { MailspringWindowSettings } from './mailspring-window';
+import UnifyMailWindow from './unifymail-window';
+import { UnifyMailWindowSettings } from './unifymail-window';
 
 const DEBUG_SHOW_HOT_WINDOW = process.env.SHOW_HOT_WINDOW === 'true';
 let winNum = 0;
 
 /**
- * It takes a full second or more to bootup a Mailspring window. Most of this
+ * It takes a full second or more to bootup a UnifyMail window. Most of this
  * is due to sheer amount of time it takes to parse all of the javascript
  * and follow the require tree.
  *
@@ -18,11 +18,11 @@ let winNum = 0;
 export default class WindowLauncher {
   static EMPTY_WINDOW = 'emptyWindow';
 
-  public hotWindow?: MailspringWindow;
+  public hotWindow?: UnifyMailWindow;
 
-  private _defaultWindowOpts: MailspringWindowSettings;
+  private _defaultWindowOpts: UnifyMailWindowSettings;
   private config: import('../config').default;
-  private onCreatedHotWindow: (win: MailspringWindow) => void;
+  private onCreatedHotWindow: (win: UnifyMailWindow) => void;
 
   constructor({
     devMode,
@@ -75,7 +75,7 @@ export default class WindowLauncher {
 
     // On Wayland, always use cold windows - see createHotWindow comment above
     if (this._mustUseColdWindow(opts) || isWaylandSession()) {
-      win = new MailspringWindow(opts);
+      win = new UnifyMailWindow(opts);
     } else {
       // Check if the hot window has been deleted. This may happen when we are
       // relaunching the app
@@ -135,7 +135,7 @@ export default class WindowLauncher {
     // windows instead and show them immediately when loaded.
     if (isWaylandSession()) return;
 
-    this.hotWindow = new MailspringWindow(this._hotWindowOpts());
+    this.hotWindow = new UnifyMailWindow(this._hotWindowOpts());
     this.onCreatedHotWindow(this.hotWindow);
     if (DEBUG_SHOW_HOT_WINDOW) {
       this.hotWindow.showWhenLoaded();
@@ -145,7 +145,7 @@ export default class WindowLauncher {
   // Note: This method calls `browserWindow.destroy()` which closes
   // windows without waiting for them to load or firing window lifecycle
   // events.  This is necessary for the app to quit promptly on Linux.
-  // https://phab.mailspring.com/T1282
+  // https://phab.UnifyMail.com/T1282
   cleanupBeforeAppQuit() {
     if (this.hotWindow != null) {
       this.hotWindow.browserWindow.destroy();
@@ -155,7 +155,7 @@ export default class WindowLauncher {
 
   // Some properties, like the `frame` or `toolbar` can't be updated once
   // a window has been setup. If we detect this case we have to bootup a
-  // plain MailspringWindow instead of using a hot window.
+  // plain UnifyMailWindow instead of using a hot window.
   _mustUseColdWindow(opts) {
     const { bootstrapScript, frame } = this.createDefaultWindowOpts();
 

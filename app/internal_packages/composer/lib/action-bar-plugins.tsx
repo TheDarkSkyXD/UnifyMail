@@ -1,7 +1,7 @@
 import classnames from 'classnames';
 import React from 'react';
-import { PropTypes, ComponentRegistry, Message, DraftEditingSession } from 'mailspring-exports';
-import { InjectedComponentSet } from 'mailspring-component-kit';
+import { PropTypes, ComponentRegistry, Message, DraftEditingSession } from 'unifymail-exports';
+import { InjectedComponentSet } from 'unifymail-component-kit';
 
 const ROLE = 'Composer:ActionButton';
 

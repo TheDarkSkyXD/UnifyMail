@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderIntoDocument } from 'react-dom/test-utils';
-import { Account } from 'mailspring-exports';
+import { Account } from 'unifymail-exports';
 
 import PreferencesAccountDetails from '../lib/tabs/preferences-account-details';
 

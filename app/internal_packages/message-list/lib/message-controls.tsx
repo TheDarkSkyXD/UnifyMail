@@ -9,8 +9,8 @@ import {
   GetMessageRFC2822Task,
   Thread,
   Message,
-} from 'mailspring-exports';
-import { RetinaImg, ButtonDropdown, Menu } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { RetinaImg, ButtonDropdown, Menu } from 'unifymail-component-kit';
 
 interface MessageControlsProps {
   thread: Thread;

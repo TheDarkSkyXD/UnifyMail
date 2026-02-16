@@ -6,8 +6,8 @@ import {
   Thread,
   DraftFactory,
   DatabaseChangeRecord,
-} from 'mailspring-exports';
-import MailspringStore from 'mailspring-store';
+} from 'unifymail-exports';
+import UnifyMailStore from 'unifymail-store';
 
 import { PLUGIN_ID } from './send-reminders-constants';
 import {
@@ -15,7 +15,7 @@ import {
   transferReminderMetadataFromDraftToThread,
 } from './send-reminders-utils';
 
-class SendRemindersStore extends MailspringStore {
+class SendRemindersStore extends UnifyMailStore {
   _lastFocusedThread = null;
   _unsubscribers: (() => void)[] = [];
 
@@ -33,9 +33,9 @@ class SendRemindersStore extends MailspringStore {
 
   _sendReminderEmail = async (thread, sentHeaderMessageId) => {
     const body = `
-      <strong>Mailspring Reminder:</strong> This thread has been moved to the top of
-      your inbox by Mailspring because no one has replied to your message.</p>
-      <p>--The Mailspring Team</p>`;
+      <strong>UnifyMail Reminder:</strong> This thread has been moved to the top of
+      your inbox by UnifyMail because no one has replied to your message.</p>
+      <p>--The UnifyMail Team</p>`;
 
     const draft = await DraftFactory.createDraftForResurfacing(thread, sentHeaderMessageId, body);
     Actions.queueTask(SendDraftTask.forSending(draft, { silent: true }));

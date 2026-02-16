@@ -6,7 +6,7 @@
 // TranslateButton is a simple React component that allows you to select
 // a language from a popup menu and translates draft text into that language.
 
-import { ComponentRegistry, ExtensionRegistry } from 'mailspring-exports';
+import { ComponentRegistry, ExtensionRegistry } from 'unifymail-exports';
 import { TranslateComposerButton } from './composer-button';
 import { TranslateMessageHeader, TranslateMessageExtension } from './message-header';
 /*
@@ -14,7 +14,7 @@ All packages must export a basic object that has at least the following 3
 methods:
 
 1. `activate` - Actions to take once the package gets turned on.
-Pre-enabled packages get activated on Mailspring bootup. They can also be
+Pre-enabled packages get activated on UnifyMail bootup. They can also be
 activated manually by a user.
 
 2. `deactivate` - Actions to take when a package gets turned off. This can

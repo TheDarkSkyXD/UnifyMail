@@ -6,9 +6,9 @@ import {
   MailImportantIcon,
   InjectedComponent,
   InjectedComponentSet,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 
-import { localized, FocusedPerspectiveStore, Utils, DateUtils } from 'mailspring-exports';
+import { localized, FocusedPerspectiveStore, Utils, DateUtils } from 'unifymail-exports';
 
 import { ThreadArchiveQuickAction, ThreadTrashQuickAction } from './thread-list-quick-actions';
 import ThreadListParticipants from './thread-list-participants';

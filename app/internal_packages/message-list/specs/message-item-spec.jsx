@@ -10,7 +10,7 @@ import {
   Thread,
   AttachmentStore,
   MessageBodyProcessor,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 
 class MessageItemBody extends React.Component {
   render() {
@@ -18,7 +18,7 @@ class MessageItemBody extends React.Component {
   }
 }
 
-import { InjectedComponent } from 'mailspring-component-kit';
+import { InjectedComponent } from 'unifymail-component-kit';
 
 const file = new File({
   id: 'file_1_id',

@@ -1,6 +1,6 @@
 import React, { CSSProperties } from 'react';
 import ReactDOM from 'react-dom';
-import { InjectedComponentSet } from 'mailspring-component-kit';
+import { InjectedComponentSet } from 'unifymail-component-kit';
 import { EventOccurrence } from './calendar-data-source';
 import { calcEventColors, extractMeetingDomain, formatEventTimeRange } from './calendar-helpers';
 import { HitZone, ViewDirection } from './calendar-drag-types';

@@ -1,4 +1,4 @@
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 import SendRemindersMailboxPerspective from './send-reminders-mailbox-perspective';
 
 export const name = 'SendRemindersAccountSidebarExtension';

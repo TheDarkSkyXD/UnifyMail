@@ -1,11 +1,11 @@
 import React from 'react';
-import { Actions } from 'mailspring-exports';
+import { Actions } from 'unifymail-exports';
 import {
   FluxContainer,
   FocusContainer,
   EmptyListState,
   MultiselectList,
-} from 'mailspring-component-kit';
+} from 'unifymail-component-kit';
 import DraftListStore from './draft-list-store';
 import * as DraftListColumns from './draft-list-columns';
 

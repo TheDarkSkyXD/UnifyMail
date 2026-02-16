@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { localized } from 'mailspring-exports';
+import { localized } from 'unifymail-exports';
 import { RetinaImg } from './retina-img';
 
 type NotificationProps = {

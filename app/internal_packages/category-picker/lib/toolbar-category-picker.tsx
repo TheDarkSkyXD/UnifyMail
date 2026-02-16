@@ -7,8 +7,8 @@ import {
   AccountStore,
   WorkspaceStore,
   Thread,
-} from 'mailspring-exports';
-import { RetinaImg, KeyCommandsRegion } from 'mailspring-component-kit';
+} from 'unifymail-exports';
+import { RetinaImg, KeyCommandsRegion } from 'unifymail-component-kit';
 
 import MovePickerPopover from './move-picker-popover';
 import LabelPickerPopover from './label-picker-popover';

@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import fs from 'fs-plus';
 import path from 'path';
 
-import { EventedIFrame } from 'mailspring-component-kit';
+import { EventedIFrame } from 'unifymail-component-kit';
 import Package from '../../../src/package';
 import LessCompileCache from '../../../src/less-compile-cache';
 import _ from 'underscore';

@@ -42,8 +42,8 @@ export function rootURLForServer(server: 'identity') {
   if (server === 'identity') {
     return {
       development: 'http://localhost:5101',
-      staging: 'https://id-staging.getmailspring.com',
-      production: 'https://id.getmailspring.com',
+      staging: 'http://localhost:5101',
+      production: 'http://localhost:5101',
     }[env];
   }
   throw new Error('rootURLForServer: You must provide a valid `server` value');
@@ -105,7 +105,7 @@ export async function makeRequest({
   IdentityStore = IdentityStore || require('./stores/identity-store').IdentityStore;
   const identity = IdentityStore.identity();
   if (!identity) {
-    throw new Error('makeRequest: A Mailspring identity is required.');
+    throw new Error('makeRequest: A UnifyMail identity is required.');
   }
 
   const init: RequestInit = { ...rest };

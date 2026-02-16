@@ -1,6 +1,6 @@
 import React from 'react';
-import { localized, Actions, AccountStore, IdentityStore, IIdentity } from 'mailspring-exports';
-import { Notification } from 'mailspring-component-kit';
+import { localized, Actions, AccountStore, IdentityStore, IIdentity } from 'unifymail-exports';
+import { Notification } from 'unifymail-component-kit';
 
 export default class PleaseSubscribeNotification extends React.Component<
   Record<string, unknown>,
@@ -34,10 +34,10 @@ export default class PleaseSubscribeNotification extends React.Component<
 
     let msg = null;
     if (stripePlan === 'Basic' && accountCount > 4) {
-      msg = localized(`Please consider paying for Mailspring Pro!`);
+      msg = localized(`Please consider paying for UnifyMail Pro!`);
     }
     if (stripePlan !== stripePlanEffective) {
-      msg = localized(`We're having trouble billing your Mailspring subscription.`);
+      msg = localized(`We're having trouble billing your UnifyMail subscription.`);
     }
 
     return { msg };

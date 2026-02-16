@@ -1,8 +1,8 @@
 import React from 'react';
 import moment, { Moment } from 'moment-timezone';
-import { ScrollRegion, InjectedComponentSet } from 'mailspring-component-kit';
-import { localized, Actions } from 'mailspring-exports';
-import { MailspringCalendarViewProps } from './mailspring-calendar';
+import { ScrollRegion, InjectedComponentSet } from 'unifymail-component-kit';
+import { localized, Actions } from 'unifymail-exports';
+import { UnifyMailCalendarViewProps } from './unifymail-calendar';
 import { CalendarView } from './calendar-constants';
 import { HeaderControls } from './header-controls';
 import { CalendarEventPopover } from './calendar-event-popover';
@@ -21,13 +21,13 @@ interface AgendaViewState {
   events: EventOccurrence[];
 }
 
-export class AgendaView extends React.Component<MailspringCalendarViewProps, AgendaViewState> {
+export class AgendaView extends React.Component<UnifyMailCalendarViewProps, AgendaViewState> {
   static displayName = 'AgendaView';
 
   _mounted = false;
   _sub?: Disposable;
 
-  constructor(props: MailspringCalendarViewProps) {
+  constructor(props: UnifyMailCalendarViewProps) {
     super(props);
     this.state = {
       events: [],
@@ -39,7 +39,7 @@ export class AgendaView extends React.Component<MailspringCalendarViewProps, Age
     this.updateSubscription();
   }
 
-  componentDidUpdate(prevProps: MailspringCalendarViewProps) {
+  componentDidUpdate(prevProps: UnifyMailCalendarViewProps) {
     if (
       prevProps.focusedMoment !== this.props.focusedMoment ||
       prevProps.disabledCalendars !== this.props.disabledCalendars

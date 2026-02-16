@@ -1,4 +1,4 @@
-import { RetinaImg } from 'mailspring-component-kit';
+import { RetinaImg } from 'unifymail-component-kit';
 
 import React from 'react';
 import fs from 'fs';
@@ -15,7 +15,7 @@ import {
   Event,
   EventRSVPTask,
   DatabaseStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import ICAL from 'ical.js';
 import { findOneIana } from 'windows-iana';
 

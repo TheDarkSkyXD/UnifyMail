@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { ListensToFluxStore, RetinaImg, KeyCommandsRegion } from 'mailspring-component-kit';
+import { ListensToFluxStore, RetinaImg, KeyCommandsRegion } from 'unifymail-component-kit';
 import {
   localized,
   Actions,
@@ -8,7 +8,7 @@ import {
   WorkspaceStore,
   MailboxPerspective,
   AccountStore,
-} from 'mailspring-exports';
+} from 'unifymail-exports';
 import SearchStore from './search-store';
 import TokenizingContenteditable from './tokenizing-contenteditable';
 
