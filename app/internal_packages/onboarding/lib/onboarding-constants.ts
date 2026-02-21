@@ -5,7 +5,7 @@ export const LOCAL_SERVER_PORT = 12141;
 
 export const GMAIL_CLIENT_ID =
   process.env.MS_GMAIL_CLIENT_ID ||
-  '662287800555-pdiq3r3puob8a44locitndbocua7c30f.apps.googleusercontent.com';
+  '400141604862-ceirca79mb14lt7vu06v7ascpo6rj0fr.apps.googleusercontent.com';
 
 // per https://stackoverflow.com/questions/59416326/safely-distribute-oauth-2-0-client-secret-in-desktop-applications-in-python,
 // we really do need to embed this in the application and it's more an extension of the Client ID than a proper Client Secret.
@@ -17,16 +17,7 @@ export const GMAIL_CLIENT_ID =
 // Note: This is not a security risk for the end-user -- it just means someone could "fork" UnifyMail and re-use it's
 // Client ID and Secret. For now, it seems we're on the honor code - Please don't do this.
 //
-export const GMAIL_CLIENT_SECRET =
-  process.env.MS_GMAIL_CLIENT_SECRET ||
-  crypto
-    .createDecipheriv(
-      'aes-256-ctr',
-      "don't-be-ev1l-thanks--Mailspring",
-      Buffer.from('wgvAx+N05nHqhFxJ9I07jw==', 'base64')
-    )
-    .update(Buffer.from('1EyEGYVh3NBNIbYEdpdMvOzCH7+vrSciGeYZ1F+W6W+yShk=', 'base64'))
-    .toString('utf8');
+export const GMAIL_CLIENT_SECRET = process.env.MS_GMAIL_CLIENT_SECRET || '';
 
 export const GMAIL_SCOPES = [
   'https://mail.google.com/', // email

@@ -62,7 +62,7 @@ class OnboardingStore extends UnifyMailStore {
       // Should only happen when the user has "signed out" of their UnifyMail ID,
       // but already has accounts synced. Or is upgrading from a very old build.
       // We used to show "Welcome Back", but now just jump to sign in.
-      this._pageStack = ['authenticate'];
+      this._pageStack = ['account-choose'];
     } else {
       // Standard new user onboarding flow.
       this._pageStack = ['welcome'];
@@ -85,10 +85,10 @@ class OnboardingStore extends UnifyMailStore {
       provider === 'gmail'
         ? 'account-settings-gmail'
         : provider === 'office365'
-        ? 'account-settings-o365'
-        : provider === 'outlook'
-        ? 'account-settings-outlook'
-        : 'account-settings';
+          ? 'account-settings-o365'
+          : provider === 'outlook'
+            ? 'account-settings-outlook'
+            : 'account-settings';
 
     // Don't carry over any type-specific account information
     this._onSetAccount(

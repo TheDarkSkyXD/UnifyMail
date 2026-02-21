@@ -141,7 +141,7 @@ export async function expandAccountWithCommonSettings(account: Account) {
     return populated;
   }
 
-  if (await TryThunderbirdAutoconfig(populated, account)){
+  if (await TryThunderbirdAutoconfig(populated, account)) {
     return populated;
   }
 
@@ -220,36 +220,49 @@ export async function expandAccountWithCommonSettings(account: Account) {
 }
 
 export async function buildGmailAccountFromAuthResponse(code: string) {
-  /// Exchange code for an access token
-  const { access_token, refresh_token } = await fetchPostWithFormBody<TokenResponse>(
-    'https://www.googleapis.com/oauth2/v4/token',
-    {
-      code: code,
-      client_id: GMAIL_CLIENT_ID,
-      client_secret: GMAIL_CLIENT_SECRET,
-      redirect_uri: `http://127.0.0.1:${LOCAL_SERVER_PORT}`,
-      grant_type: 'authorization_code',
-    }
-  );
+  // Use our Cloudflare Worker to exchange the code for tokens securely.
+  // This keeps the Client Secret out of the client-side code.
+  const workerUrl = 'https://unifymail.leveluptogetherbiz.workers.dev/auth/gmail/token';
 
-  // get the user's email address
+  const tokenResponse = await fetch(workerUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code: code,
+      redirect_uri: `http://127.0.0.1:${LOCAL_SERVER_PORT}`
+    })
+  });
+
+  if (!tokenResponse.ok) {
+    const errData = await tokenResponse.json();
+    throw new Error(`Token exchange failed via worker: ${JSON.stringify(errData)}`);
+  }
+
+  const { access_token, refresh_token, id_token } = await tokenResponse.json();
+
+  // get the user's email address using the access token
   const meResp = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
     headers: { Authorization: `Bearer ${access_token}` },
   });
-  const me = await meResp.json();
+
   if (!meResp.ok) {
+    const me = await meResp.json();
     throw new Error(
-      `Gmail profile request returned ${meResp.status} ${meResp.statusText}: ${JSON.stringify(me)}`
+      `Gmail profile request returned ${meResp.status}: ${JSON.stringify(me)}`
     );
   }
+
+  const me = await meResp.json();
+
   const account = await expandAccountWithCommonSettings(
     new Account({
       name: me.name,
       emailAddress: me.email,
       provider: 'gmail',
       settings: {
-        refresh_client_id: GMAIL_CLIENT_ID,
+        refresh_client_id: GMAIL_CLIENT_ID, // Still needed for context
         refresh_token: refresh_token,
+        id_token: id_token, // Often useful to store
       },
     })
   );
@@ -383,7 +396,7 @@ export async function finalizeAndValidateAccount(account: Account) {
 }
 
 async function TryThunderbirdAutoconfig(populated: Account, account: Account) {
-  function extractServerDetails(server: { hostname: string;port: string;username: string;socketType: string; }, account: Account) {
+  function extractServerDetails(server: { hostname: string; port: string; username: string; socketType: string; }, account: Account) {
     const details = {
       host: server.hostname,
       port: server.port,
@@ -439,7 +452,7 @@ async function TryThunderbirdAutoconfig(populated: Account, account: Account) {
       }
     }
 
-    if(provider.incomingServer === undefined || provider.outgoingServer === undefined)
+    if (provider.incomingServer === undefined || provider.outgoingServer === undefined)
       return false;
 
     let imapDetails = null;

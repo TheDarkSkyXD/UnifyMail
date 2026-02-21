@@ -97,7 +97,7 @@ export default class TutorialPage extends React.Component<
     if (nextItem) {
       this.setState({ current: nextItem, seen: nextSeen });
     } else {
-      OnboardingActions.moveToPage('authenticate');
+      OnboardingActions.moveToPage('account-choose');
     }
   };
 
@@ -123,9 +123,8 @@ export default class TutorialPage extends React.Component<
                 <div
                   key={step.id}
                   id={step.id}
-                  className={`overlay ${seen.includes(step) ? 'seen' : ''} ${
-                    current === step ? 'expanded' : ''
-                  }`}
+                  className={`overlay ${seen.includes(step) ? 'seen' : ''} ${current === step ? 'expanded' : ''
+                    }`}
                   style={{ left: `${step.xDot}%`, top: `${step.yDot}%` }}
                   onMouseOver={this._onMouseOverOverlay}
                 >

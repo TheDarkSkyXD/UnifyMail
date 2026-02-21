@@ -248,37 +248,8 @@ export default class UnifyMailWindow extends EventEmitter {
         return;
       }
 
-      const isLastWindow = global.application.windowManager.getVisibleWindowCount() === 1;
-      // The configuration value may be `undefined` when it has not been manually set to true in the preferences
-      // This check against false prevents that UnifyMail is closed when configuring the first mail account
-      const isTrayEnabled = global.application.config.get('core.workspace.systemTray') !== false;
-      const runWithoutWindowsOpen = isTrayEnabled || process.platform === 'darwin';
-
-      if (isLastWindow && !runWithoutWindowsOpen) {
-        // Tray indicator is switched off, closing the last window should quit the application.
-        app.quit();
-        return;
-      }
-
-      if (this.neverClose) {
-        // For neverClose windows (like the main window) simply hide and
-        // take out of full screen as long as the tray indicator is switched on.
-        // Tray indicator is switched on therefore hiding the main window only.
-        event.preventDefault();
-        if (this.browserWindow.isFullScreen()) {
-          this.browserWindow.once('leave-full-screen', () => {
-            this.browserWindow.hide();
-          });
-          this.browserWindow.setFullScreen(false);
-        } else {
-          this.browserWindow.hide();
-        }
-        // HOWEVER! If the neverClose window is broken and is not actually loaded and
-        // no other windows are visible, quit because the user may not be able to.
-        if (!this.isSpec) {
-          global.application.windowManager.quitWinLinuxIfNoWindows();
-        }
-      }
+      // Force quit the application when the main window is closed
+      app.quit();
     });
 
     this.browserWindow.on('focus', () => {
