@@ -1,5 +1,5 @@
 import React from 'react';
-import Switch from '../../../../src/components/switch';
+import Switch from '../../../../unifymail-frontend/src/components/switch';
 import { localized } from 'unifymail-exports';
 import { EventPropertyRow } from './event-property-row';
 

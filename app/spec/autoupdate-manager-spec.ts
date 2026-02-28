@@ -1,4 +1,4 @@
-import AutoUpdateManager from '../src/browser/autoupdate-manager';
+import AutoUpdateManager from '../unifymail-backend/src/autoupdate-manager';
 
 describe('AutoUpdateManager', function() {
   beforeEach(function() {

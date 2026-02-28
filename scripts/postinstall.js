@@ -2,10 +2,8 @@
 /* eslint global-require: 0 */
 /* eslint quote-props: 0 */
 const path = require('path');
-const https = require('https');
 const fs = require('fs');
 const rimraf = require('rimraf');
-const targz = require('targz');
 const { safeExec } = require('./utils/child-process-wrapper.js');
 const { execSync } = require('child_process');
 
@@ -106,8 +104,8 @@ async function run() {
 
   // if the user hasn't cloned the mailsync module, alert them!
   const mailsyncParams = process.platform === 'win32'
-    ? { exe: 'mailsync.exe', cmd: 'Open mailsync/Windows/mailsync.sln in Visual Studio, build Release configuration, and copy the output exe to app/mailsync.exe' }
-    : { exe: 'mailsync', cmd: 'cd mailsync && make && cp mailsync ../app/' };
+    ? { exe: 'mailsync.exe', cmd: 'Open app\\mailsync\\Windows\\mailsync.sln in Visual Studio, build Release configuration, and copy the output exe to app\\mailsync.exe' }
+    : { exe: 'mailsync.bin', cmd: 'cd app/mailsync && cmake . && make && cp mailsync ../mailsync.bin' };
 
   if (!fs.existsSync(path.join(appPath, mailsyncParams.exe))) {
     console.error(
@@ -117,14 +115,27 @@ async function run() {
       `We no longer distribute pre-built binaries via S3.\n` +
       `You must build 'mailsync' from source and place it in the 'app' folder.\n\n` +
       `INSTRUCTIONS:\n` +
-      `1. Initialize submodule: git submodule update --init --recursive\n` +
-      `2. Build it:\n` +
+      `1. Build it:\n` +
       `   ${mailsyncParams.cmd}\n` +
       `---------------------------------------------------------------\n`
     );
   } else {
     console.log(
       `\n-- Mailsync binary detected in ./app. Good to go! --`
+    );
+  }
+
+  // Check for optional mailcore-napi addon
+  const napiAddonPath = path.join(appPath, 'mailcore', 'build', 'Release', 'mailcore_napi.node');
+  if (!fs.existsSync(napiAddonPath)) {
+    console.log(
+      `\n-- Note: mailcore-napi addon not built (optional). --\n` +
+      `   The app will use the mailsync process for all operations.\n` +
+      `   To build it: cd app/mailcore && npm run build\n`
+    );
+  } else {
+    console.log(
+      `\n-- mailcore-napi addon detected. N-API fast path available! --`
     );
   }
 }

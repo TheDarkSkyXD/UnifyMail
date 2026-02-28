@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import InlineStyleTransformer from '../../src/services/inline-style-transformer';
+import InlineStyleTransformer from '../../unifymail-frontend/src/services/inline-style-transformer';
 
 describe('InlineStyleTransformer', function specs() {
   describe('run', () => {

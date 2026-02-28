@@ -34,7 +34,45 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      # --- C++ Native Build (mailcore2 + libetpan + mailsync) ---
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '2024.09.30'
+          vcpkgDirectory: '${{ runner.temp }}/vcpkg'
 
+      - name: Install vcpkg dependencies (x64)
+        run: vcpkg install --triplet x64-windows
+        working-directory: app/mailsync
+
+      - name: Generate mailcore2 public headers
+        run: |
+          cd app\mailcore\build-windows
+          build_headers.bat
+        shell: cmd
+
+      - name: Build libetpan (Release|x64)
+        run: |
+          msbuild app\mailsync\Vendor\libetpan\build-windows\libetpan\libetpan.vcxproj /p:Configuration=Release /p:Platform=x64 /p:VcpkgTriplet=x64-windows
+
+      - name: Build mailcore2 (Release|x64)
+        run: |
+          msbuild app\mailcore\build-windows\mailcore2\mailcore2\mailcore2.vcxproj /p:Configuration=Release /p:Platform=x64 /p:VcpkgTriplet=x64-windows
+
+      - name: Build mailsync (Release|x64)
+        run: |
+          msbuild app\mailsync\Windows\mailsync.vcxproj /p:Configuration=Release /p:Platform=x64 /p:VcpkgTriplet=x64-windows
+
+      - name: Copy mailsync binaries to Electron resources
+        run: |
+          $outDir = "app\mailsync\Windows\x64\Release"
+          $destDir = "app\dist\resources"
+          New-Item -ItemType Directory -Force -Path $destDir
+          Copy-Item "$outDir\mailsync.exe" -Destination $destDir -Force
+          Copy-Item "$outDir\*.dll" -Destination $destDir -Force -ErrorAction SilentlyContinue
+        shell: pwsh
+
+      # --- End C++ Native Build ---
 
       - name: Lint
         run: npm run lint

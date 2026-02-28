@@ -3,9 +3,9 @@
  * DS102: Remove unnecessary code created because of implicit returns
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-import { Model } from '../../src/flux/models/model';
-import { Category } from '../../src/flux/models/category';
-import * as Attributes from '../../src/flux/attributes';
+import { Model } from '../../unifymail-frontend/src/flux/models/model';
+import { Category } from '../../unifymail-frontend/src/flux/models/category';
+import * as Attributes from '../../unifymail-frontend/src/flux/attributes';
 
 class TestModel extends Model {
   static attributes = {

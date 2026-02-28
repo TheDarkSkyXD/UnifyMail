@@ -14,7 +14,7 @@ import {
   InlineStyleTransformer,
 } from 'unifymail-exports';
 
-import DraftFactory from '../../src/flux/stores/draft-factory';
+import DraftFactory from '../../unifymail-frontend/src/flux/stores/draft-factory';
 
 let msgFromMe = null;
 let fakeThread = null;

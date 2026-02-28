@@ -1,5 +1,5 @@
 import { execFile } from 'child_process';
-import { getDoNotDisturb, clearDoNotDisturbCache } from '../src/linux-dnd-utils';
+import { getDoNotDisturb, clearDoNotDisturbCache } from '../unifymail-frontend/src/linux-dnd-utils';
 
 // Mock child_process.execFile
 jest.mock('child_process', () => ({

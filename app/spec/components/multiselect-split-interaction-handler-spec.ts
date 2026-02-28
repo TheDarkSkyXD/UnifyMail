@@ -1,6 +1,6 @@
-import MultiselectSplitInteractionHandler from '../../src/components/multiselect-split-interaction-handler';
-import WorkspaceStore from '../../src/flux/stores/workspace-store';
-import { Thread } from '../../src/flux/models/thread';
+import MultiselectSplitInteractionHandler from '../../unifymail-frontend/src/components/multiselect-split-interaction-handler';
+import WorkspaceStore from '../../unifymail-frontend/src/flux/stores/workspace-store';
+import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
 import _ from 'underscore';
 
 describe('MultiselectSplitInteractionHandler', function() {

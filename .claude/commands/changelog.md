@@ -15,7 +15,7 @@ Build a changelog entry for a new UnifyMail release by analyzing git history.
    git log <previous-tag>..HEAD --pretty=format:"%h %s (%an)" --no-merges
    ```
 
-3. **Get the mailsync submodule commits**. The user must provide the previous mailsync commit hash, or you can find it by checking out the previous tag and looking at the submodule:
+3. **Get the mailsync commits**. The user must provide the previous mailsync commit hash, or you can find it by checking out the previous tag and looking at the mailsync directory:
    ```bash
    cd mailsync && git log <previous-mailsync-commit>..HEAD --pretty=format:"%h %s (%an)" --no-merges
    ```
@@ -69,7 +69,7 @@ Developer:
 
 ## Mailsync Changes
 
-The `mailsync` directory is a git submodule containing the C++ sync engine. Changes there should be categorized into the same sections:
+The `mailsync` directory contains the C++ sync engine. Changes there should be categorized into the same sections:
 
 - Sync fixes (IMAP, SMTP, CardDAV, CalDAV) go in **Bug Fixes**
 - New sync capabilities go in **Features**

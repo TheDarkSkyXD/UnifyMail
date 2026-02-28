@@ -1,13 +1,13 @@
-import { Thread } from '../../src/flux/models/thread';
-import { Folder } from '../../src/flux/models/folder';
-import { Label } from '../../src/flux/models/label';
-import { Message } from '../../src/flux/models/message';
-import FocusedContentStore from '../../src/flux/stores/focused-content-store';
-import FocusedPerspectiveStore from '../../src/flux/stores/focused-perspective-store';
-import { MessageStore } from '../../src/flux/stores/message-store';
-import DatabaseStore from '../../src/flux/stores/database-store';
-import { ChangeUnreadTask } from '../../src/flux/tasks/change-unread-task';
-import * as Actions from '../../src/flux/actions';
+import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
+import { Folder } from '../../unifymail-frontend/src/flux/models/folder';
+import { Label } from '../../unifymail-frontend/src/flux/models/label';
+import { Message } from '../../unifymail-frontend/src/flux/models/message';
+import FocusedContentStore from '../../unifymail-frontend/src/flux/stores/focused-content-store';
+import FocusedPerspectiveStore from '../../unifymail-frontend/src/flux/stores/focused-perspective-store';
+import { MessageStore } from '../../unifymail-frontend/src/flux/stores/message-store';
+import DatabaseStore from '../../unifymail-frontend/src/flux/stores/database-store';
+import { ChangeUnreadTask } from '../../unifymail-frontend/src/flux/tasks/change-unread-task';
+import * as Actions from '../../unifymail-frontend/src/flux/actions';
 
 const testThread = new Thread({ id: '123', accountId: TEST_ACCOUNT_ID });
 const testMessage1 = new Message({

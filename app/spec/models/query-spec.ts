@@ -1,9 +1,9 @@
 /* eslint quote-props: 0 */
-import ModelQuery from '../../src/flux/models/query';
-import * as Attributes from '../../src/flux/attributes';
-import { Message } from '../../src/flux/models/message';
-import { Thread } from '../../src/flux/models/thread';
-import { Account } from '../../src/flux/models/account';
+import ModelQuery from '../../unifymail-frontend/src/flux/models/query';
+import * as Attributes from '../../unifymail-frontend/src/flux/attributes';
+import { Message } from '../../unifymail-frontend/src/flux/models/message';
+import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
+import { Account } from '../../unifymail-frontend/src/flux/models/account';
 
 describe('ModelQuery', function ModelQuerySpecs() {
   beforeEach(() => {

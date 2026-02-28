@@ -1,5 +1,5 @@
-import { SearchQueryParser } from '../../../src/services/search/search-query-parser';
-import IMAPSearchQueryBackend from '../../../src/services/search/search-query-backend-imap';
+import { SearchQueryParser } from '../../../unifymail-frontend/src/services/search/search-query-parser';
+import IMAPSearchQueryBackend from '../../../unifymail-frontend/src/services/search/search-query-backend-imap';
 
 describe('IMAPSearchQueryBackend', () => {
   it('correctly codegens TEXT', () => {

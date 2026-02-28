@@ -14,7 +14,7 @@ import {
 } from 'unifymail-exports';
 
 
-import DraftFactory from '../../src/flux/stores/draft-factory';
+import DraftFactory from '../../unifymail-frontend/src/flux/stores/draft-factory';
 
 class TestExtension extends ComposerExtension {
   static prepareNewDraft({ draft }) {

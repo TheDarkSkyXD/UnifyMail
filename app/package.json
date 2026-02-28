@@ -13,7 +13,7 @@
     "tailwind:dev": "tailwindcss -i ./static/style/tailwind.src.css -o ./static/style/tailwind.css --watch",
     "tailwind:build": "tailwindcss -i ./static/style/tailwind.src.css -o ./static/style/tailwind.css --minify"
   },
-  "main": "./src/browser/main.js",
+  "main": "./unifymail-backend/src/main.js",
   "dependencies": {
     "@bengotow/slate-edit-list": "github:bengotow/slate-edit-list#b868e108",
     "@electron/remote": "^2.1.2",
@@ -92,6 +92,7 @@
     "electron": "39.2.7"
   },
   "optionalDependencies": {
+    "mailcore-napi": "file:mailcore",
     "macos-notification-state": "github:bengotow/macos-notification-state#77e9e825"
   },
   "devDependencies": {

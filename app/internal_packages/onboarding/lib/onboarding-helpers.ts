@@ -14,7 +14,7 @@ import MailcoreProviderSettings from './mailcore-provider-settings.json';
 import dns from 'dns';
 import {
   GMAIL_CLIENT_ID,
-  GMAIL_CLIENT_SECRET,
+  GMAIL_OAUTH_PROXY_URL,
   LOCAL_SERVER_PORT,
   O365_SCOPES,
   O365_CLIENT_ID,
@@ -98,23 +98,57 @@ export async function expandAccountWithCommonSettings(account: Account) {
     return undefined;
   };
 
-  // find matching template using new Mailcore lookup tables. These match against the
-  // email's domain and the mx records for the domain, which means it will identify that
-  // "foundry376.com" uses Google Apps, for example.
-  const template = Object.values(MailcoreProviderSettings).find(p => {
-    for (const test of p['domain-match'] || []) {
-      if (new RegExp(`^${test}$`).test(domain)) {
-        return true;
-      }
+  // Try N-API provider detection first (direct mailcore2 in-process lookup)
+  let template = null;
+  try {
+    const { providerForEmail } = require('mailcore-napi');
+    const napiProvider = providerForEmail(account.emailAddress);
+    if (napiProvider) {
+      console.log(`Using N-API Mailcore Provider: ${JSON.stringify(napiProvider, null, 2)}`);
+      // Convert N-API result to the template format expected by the rest of this function
+      template = {
+        servers: {
+          imap: (napiProvider.servers.imap || []).map(s => ({
+            hostname: s.hostname,
+            port: s.port,
+            ssl: s.connectionType === 'tls',
+            tls: s.connectionType === 'tls',
+            starttls: s.connectionType === 'starttls',
+          })),
+          smtp: (napiProvider.servers.smtp || []).map(s => ({
+            hostname: s.hostname,
+            port: s.port,
+            ssl: s.connectionType === 'tls',
+            tls: s.connectionType === 'tls',
+            starttls: s.connectionType === 'starttls',
+          })),
+        },
+        'domain-match': napiProvider.domainMatch,
+        'mx-match': napiProvider.mxMatch,
+      };
     }
-    for (const test of p['mx-match'] || []) {
-      const reg = new RegExp(`^${test}$`);
-      if (mxRecords.some(record => reg.test(record))) {
-        return true;
+  } catch (napiErr) {
+    // N-API addon not available — fall back to static JSON lookup
+    console.warn('N-API providerForEmail unavailable, using static JSON:', napiErr.message);
+  }
+
+  // Fall back to static Mailcore JSON lookup tables if N-API didn't find a match
+  if (!template) {
+    template = Object.values(MailcoreProviderSettings).find(p => {
+      for (const test of p['domain-match'] || []) {
+        if (new RegExp(`^${test}$`).test(domain)) {
+          return true;
+        }
       }
-    }
-    return false;
-  });
+      for (const test of p['mx-match'] || []) {
+        const reg = new RegExp(`^${test}$`);
+        if (mxRecords.some(record => reg.test(record))) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }
 
   if (template) {
     console.log(`Using Mailcore Template: ${JSON.stringify(template, null, 2)}`);
@@ -222,7 +256,7 @@ export async function expandAccountWithCommonSettings(account: Account) {
 export async function buildGmailAccountFromAuthResponse(code: string) {
   // Use our Cloudflare Worker to exchange the code for tokens securely.
   // This keeps the Client Secret out of the client-side code.
-  const workerUrl = 'https://unifymail.leveluptogetherbiz.workers.dev/auth/gmail/token';
+  const workerUrl = `${GMAIL_OAUTH_PROXY_URL}/auth/gmail/token`;
 
   const tokenResponse = await fetch(workerUrl, {
     method: 'POST',

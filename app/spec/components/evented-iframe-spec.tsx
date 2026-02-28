@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactTestUtils from 'react-dom/test-utils';
-const EventedIFrame = require('../../src/components/evented-iframe').EventedIFrame;
+const EventedIFrame = require('../../unifymail-frontend/src/components/evented-iframe').EventedIFrame;
 
 describe('EventedIFrame', () =>
   describe('link clicking behavior', function() {

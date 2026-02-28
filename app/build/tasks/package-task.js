@@ -62,7 +62,7 @@ module.exports = grunt => {
    */
   function resolveRealSymlinkPaths(appDir) {
     console.log('---> Resolving symlinks');
-    const dirs = ['internal_packages', 'src', 'spec', 'node_modules'];
+    const dirs = ['internal_packages', 'unifymail-frontend', 'unifymail-backend', 'spec', 'node_modules'];
 
     dirs.forEach(dir => {
       const absoluteDir = path.join(appDir, dir);
@@ -168,8 +168,8 @@ module.exports = grunt => {
             '*.node',
             '**/vendor/**',
             'examples/**',
-            '**/src/tasks/**',
-            '**/src/quickpreview/**',
+            '**/unifymail-frontend/src/tasks/**',
+            '**/unifymail-frontend/src/quickpreview/**',
             '**/static/all_licenses.html',
             '**/static/extensions/**',
             '**/node_modules/spellchecker/**',
@@ -183,6 +183,7 @@ module.exports = grunt => {
         /^\/dist.*/,
         /^\/docs.*/,
         /^\/docs_src.*/,
+        /^\/mailsync\/.*/,
         /^\/script.*/,
         /^\/spec.*/,
 
@@ -219,32 +220,32 @@ module.exports = grunt => {
       // using the `security find-identity` command.
       osxSign: process.env.SIGN_BUILD
         ? {
-            platform: 'darwin',
-            provisioningProfile: process.env.APPLE_PROVISIONING_PROFILE_PATH,
-            optionsForFile: filePath => {
-              // Here, we keep it simple and return a single entitlements.plist file.
-              // You can use this callback to map different sets of entitlements
-              // to specific files in your packaged app.
-              return {
-                hardenedRuntime: true,
-                entitlements: path.resolve(
-                  grunt.config('appDir'),
-                  'build',
-                  'resources',
-                  'mac',
-                  'entitlements.plist'
-                ),
-              };
-            },
-          }
+          platform: 'darwin',
+          provisioningProfile: process.env.APPLE_PROVISIONING_PROFILE_PATH,
+          optionsForFile: filePath => {
+            // Here, we keep it simple and return a single entitlements.plist file.
+            // You can use this callback to map different sets of entitlements
+            // to specific files in your packaged app.
+            return {
+              hardenedRuntime: true,
+              entitlements: path.resolve(
+                grunt.config('appDir'),
+                'build',
+                'resources',
+                'mac',
+                'entitlements.plist'
+              ),
+            };
+          },
+        }
         : undefined,
       osxNotarize: process.env.APPLE_ID
         ? {
-            appleId: process.env.APPLE_ID,
-            appleIdPassword: process.env.APPLE_ID_PASSWORD,
-            ascProvider: process.env.APPLE_ID_ASC_PROVIDER,
-            teamId: process.env.APPLE_TEAM_ID,
-          }
+          appleId: process.env.APPLE_ID,
+          appleIdPassword: process.env.APPLE_ID_PASSWORD,
+          ascProvider: process.env.APPLE_ID_ASC_PROVIDER,
+          teamId: process.env.APPLE_TEAM_ID,
+        }
         : undefined,
       win32metadata: {
         CompanyName: 'Foundry 376, LLC',

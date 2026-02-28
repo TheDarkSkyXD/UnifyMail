@@ -2,7 +2,7 @@ import React from 'react';
 import { mount } from 'enzyme';
 
 import { DateUtils } from 'unifymail-exports';
-import DateInput from '../../src/components/date-input';
+import DateInput from '../../unifymail-frontend/src/components/date-input';
 
 describe('DateInput', function dateInput() {
   describe('onInputKeyDown', () => {

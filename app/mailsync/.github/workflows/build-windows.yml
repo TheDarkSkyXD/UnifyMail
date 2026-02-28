@@ -1,0 +1,267 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  create:
+    tags:
+      - '*'
+
+env:
+  VCPKG_DEFAULT_TRIPLET: x86-windows
+  VCPKG_DEFAULT_HOST_TRIPLET: x86-windows
+  # Use overlay port for cyrus-sasl without krb5 (krb5 doesn't support x86-windows)
+  VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/vcpkg-overlay-ports
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '84bab45d415d22042bd0b9081aea57f362da3f35'
+          # Don't run vcpkg install here - let MSBuild handle it with manifest mode
+          runVcpkgInstall: false
+          # Disable deprecated x-gha binary caching (was removed from vcpkg)
+          doNotCache: true
+
+      - name: Enable vcpkg MSBuild integration
+        run: vcpkg integrate install
+
+      # Cache packages installed by MSBuild's vcpkg manifest mode
+      # MSBuild with VcpkgEnableManifest=true installs to vcpkg_installed/ next to vcpkg.json
+      - name: Restore vcpkg packages cache
+        uses: actions/cache@v4
+        with:
+          path: vcpkg_installed
+          key: vcpkg-msbuild-x86-windows-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay-ports/**') }}
+
+      - name: Set commit hash
+        shell: pwsh
+        run: |
+          $commit = $env:GITHUB_SHA.Substring(0,8)
+          echo "COMMIT=$commit" >> $env:GITHUB_ENV
+
+      - name: Create app directory
+        shell: pwsh
+        run: mkdir ..\app
+
+      - name: Install VC2010 as we need msvcr100.dll
+        shell: cmd
+        run: choco install -y vcredist2010
+
+      - name: Build with MSBuild
+        shell: cmd
+        run: |
+          cd Windows
+          REM VcpkgEnableManifest=true tells MSBuild to install packages from vcpkg.json to vcpkg_installed/
+          msbuild.exe mailsync.sln /property:Configuration=Release;Platform=Win32 /p:VcpkgEnableManifest=true
+
+      - name: Copy build artifacts and dependencies
+        shell: pwsh
+        run: |
+          if (!(Test-Path "..\app\dist")) { New-Item -ItemType Directory -Path "..\app\dist" }
+
+          # Show what vcpkg auto-deployed to the build output
+          Write-Host "=== DLLs in Windows\Release (vcpkg should have auto-deployed these) ==="
+          Get-ChildItem ".\Windows\Release\*.dll" -ErrorAction SilentlyContinue | Select-Object Name | Sort-Object Name
+
+          # Copy build output (includes vcpkg DLLs via VcpkgAppLocalDeploy)
+          Copy-Item ".\Windows\Release\*" -Destination "..\app\dist" -Recurse -Force
+
+          # Verify libsasl.dll was deployed by vcpkg
+          if (!(Test-Path "..\app\dist\libsasl.dll")) {
+            Write-Host "ERROR: libsasl.dll not found - vcpkg cyrus-sasl build failed!"
+            exit 1
+          }
+
+          # Copy SASL plugin DLLs (PLAIN, LOGIN, etc.) for SMTP authentication
+          # vcpkg MSBuild manifest mode uses nested triplet: x86-windows\x86-windows\bin\sasl2
+          $saslPluginSrc = ".\vcpkg_installed\x86-windows\x86-windows\bin\sasl2"
+          if (Test-Path $saslPluginSrc) {
+            Copy-Item "$saslPluginSrc\sasl*.dll" -Destination "..\app\dist" -Force -ErrorAction SilentlyContinue
+            $copied = Get-ChildItem "..\app\dist\sasl*.dll" -ErrorAction SilentlyContinue
+            Write-Host "Copied $($copied.Count) SASL plugins: $($copied.Name -join ', ')"
+          } else {
+            Write-Host "WARNING: SASL plugins not found at $saslPluginSrc"
+            Write-Host "SMTP authentication may fail with error 296 (SASL_NOMECH)"
+          }
+
+          # Copy MSVC runtime DLLs (older versions needed for some dependencies)
+          Copy-Item "C:\Windows\SysWOW64\msvcr100.dll" "..\app\dist\" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:\Windows\SysWOW64\msvcr120.dll" "..\app\dist\" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:\Windows\SysWOW64\msvcp100.dll" "..\app\dist\" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:\Windows\SysWOW64\msvcp120.dll" "..\app\dist\" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:\Windows\SysWOW64\msvcp140.dll" "..\app\dist\" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:\Windows\SysWOW64\vcruntime140.dll" "..\app\dist\" -Force -ErrorAction SilentlyContinue
+
+          # Copy UCRT DLLs (for Windows 7/8 compatibility)
+          $ucrtPath = "C:\Program Files (x86)\Windows Kits\10\Redist\ucrt\DLLs\x86"
+          if (Test-Path $ucrtPath) {
+            Copy-Item "$ucrtPath\*" "..\app\dist\" -Force -ErrorAction SilentlyContinue
+          }
+
+          # Verify vcpkg auto-deployed the DLLs - fail if not
+          $testDll = "..\app\dist\icuuc78.dll"
+          if (!(Test-Path $testDll)) {
+            Write-Host "ERROR: vcpkg did not auto-deploy DLLs to build output!"
+            Write-Host "Expected to find: $testDll"
+            Write-Host "Contents of Windows\Release:"
+            Get-ChildItem ".\Windows\Release\*" -ErrorAction SilentlyContinue | Select-Object Name
+            exit 1
+          }
+
+          # vcpkg's zlib provides zlib1.dll but the import library causes dependents to look for zlib.dll
+          # This is a known vcpkg issue - copy zlib1.dll to zlib.dll as a workaround
+          if (Test-Path "..\app\dist\zlib1.dll") {
+            Copy-Item "..\app\dist\zlib1.dll" "..\app\dist\zlib.dll" -Force
+            Write-Host "Copied zlib1.dll to zlib.dll (vcpkg naming workaround)"
+          }
+
+      - name: List build artifacts
+        shell: pwsh
+        run: |
+          Write-Host "=== Build output (app\dist) ==="
+          Get-ChildItem "..\app\dist\*.dll" | Select-Object Name | Sort-Object Name
+
+          Write-Host ""
+          Write-Host "=== Checking for expected DLLs ==="
+          $expectedDlls = @(
+            "libcrypto-3.dll",
+            "libssl-3.dll",
+            "libcurl.dll",
+            "libxml2.dll",
+            "zlib1.dll",
+            "zlib.dll",
+            "tidy.dll",
+            "libctemplate.dll",
+            "pthreadVC3.dll",
+            "mailcore2.dll",
+            "libetpan.dll",
+            "libsasl.dll",
+            "iconv-2.dll"
+          )
+          foreach ($dll in $expectedDlls) {
+            $path = "..\app\dist\$dll"
+            if (Test-Path $path) {
+              Write-Host "OK: $dll"
+            } else {
+              Write-Host "MISSING: $dll"
+            }
+          }
+
+          Write-Host ""
+          Write-Host "=== Full listing ==="
+          (Get-ChildItem -Force -Path ..\app).FullName
+          (Get-ChildItem -Force -Path ..\app\dist).FullName
+
+      - name: Create archive
+        shell: cmd
+        run: |
+          cd Windows
+          REM SASL plugin DLLs (saslPLAIN.dll, etc.) are now in dist alongside other DLLs
+          7z -ttar a dummy ..\..\app\dist\*.dll ..\..\app\dist\*.pdb ..\..\app\dist\mailsync.exe -so | 7z -si -tgzip a .\mailsync.tar.gz
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-ia32-mailsync
+          path: Windows/mailsync.tar.gz
+
+      - name: Deploy to S3
+        if: github.ref == 'refs/heads/master'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        shell: pwsh
+        run: |
+          # Upload to S3
+          $archivePath = "Windows/mailsync.tar.gz"
+          $s3Key = "mailsync/$env:COMMIT/win-ia32/mailsync.tar.gz"
+
+          aws s3 cp $archivePath s3://mailspring-builds/$s3Key --acl public-read
+
+  # Run install-check in a separate job to verify SSL/TLS connectivity.
+  # This validates that curl, OpenSSL, and mailcore2 are all working correctly.
+  # Separated from build so that caching works even if validation fails.
+  test-windows:
+    needs: build-windows
+    runs-on: windows-2022
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: win-ia32-mailsync
+
+      - name: Extract archive
+        shell: pwsh
+        run: |
+          # Create a directory with 'mailspring' in the path (required by branding check in main.cpp)
+          $testDir = "$env:TEMP\mailspring"
+          New-Item -ItemType Directory -Force -Path $testDir | Out-Null
+
+          # Extract the archive
+          tar -xzf mailsync.tar.gz -C $testDir
+
+          # List extracted files
+          Write-Host "=== Extracted files ==="
+          Get-ChildItem $testDir | Select-Object Name
+
+      - name: Run install-check
+        shell: pwsh
+        run: |
+          Write-Host "=== Running mailsync install-check on Windows ==="
+
+          $testDir = "$env:TEMP\mailspring"
+
+          # Set environment variables for install-check
+          # Note: SASL plugin path is configured in libetpan at runtime
+          $env:CONFIG_DIR_PATH = $env:TEMP
+          $env:IDENTITY_SERVER = "https://id.getmailspring.com"
+
+          Write-Host "Running mailsync --mode install-check..."
+          $process = Start-Process -FilePath "$testDir\mailsync.exe" `
+            -ArgumentList "--mode", "install-check" `
+            -PassThru -Wait -NoNewWindow `
+            -RedirectStandardOutput "$env:TEMP\output.txt" `
+            -RedirectStandardError "$env:TEMP\error.txt"
+
+          $exitCode = $process.ExitCode
+
+          Write-Host "Output:"
+          if (Test-Path "$env:TEMP\output.txt") { Get-Content "$env:TEMP\output.txt" }
+          if (Test-Path "$env:TEMP\error.txt") {
+            $errorContent = Get-Content "$env:TEMP\error.txt" -ErrorAction SilentlyContinue
+            if ($errorContent) {
+              Write-Host "Stderr:"
+              Write-Host $errorContent
+            }
+          }
+
+          # Check for failure indicators in output
+          $output = ""
+          if (Test-Path "$env:TEMP\output.txt") {
+            $output = Get-Content "$env:TEMP\output.txt" -Raw
+          }
+
+          if ($output -match "One or more checks failed") {
+            Write-Host "X mailsync install-check failed on Windows"
+            exit 1
+          } elseif ($exitCode -ne 0) {
+            Write-Host "X mailsync install-check failed with exit code $exitCode"
+            exit 1
+          } else {
+            Write-Host "OK mailsync install-check passed on Windows"
+          }

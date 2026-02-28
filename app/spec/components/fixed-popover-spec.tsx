@@ -1,5 +1,5 @@
 import React from 'react';
-import FixedPopover from '../../src/components/fixed-popover';
+import FixedPopover from '../../unifymail-frontend/src/components/fixed-popover';
 import MTestUtils from '../unifymail-test-utils';
 
 const { Directions: { Up, Down, Left, Right } } = FixedPopover;

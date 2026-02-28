@@ -207,10 +207,156 @@ if (mode === 'migrate') {
     }
     console.log(JSON.stringify({ log: "Migration successful (MOCKED)" }));
     process.exit(0);
+} else if (mode === 'test') {
+    // Test mode: validate account settings (mock always succeeds)
+    console.log(JSON.stringify({ log: "Account validation successful (MOCKED)" }));
+    process.exit(0);
+
 } else {
-    // Sync mode mock
-    console.log(JSON.stringify({ log: `Mock Mailsync Started in ${mode} mode` }));
-    setInterval(() => { }, 10000); // Keep alive
-    process.stdin.resume();
+    // Sync mode: stay alive and handle stdin commands from MailsyncBridge
+    let accountJSON = null;
+    let identityJSON = null;
+    let initialLineCount = 0;
+    let stdinBuffer = '';
+
+    // Emit a ready signal so mailsync-process.ts sends account/identity data.
+    // The parent waits for the first stdout data before piping account JSON to stdin.
+    process.stdout.write(JSON.stringify({ log: "Mock mailsync ready" }) + '\n');
+
+    const send = (obj) => {
+        process.stdout.write(JSON.stringify(obj) + '\n');
+    };
+
+    // Emit initial "online" state so the UI knows sync is connected
+    const emitOnlineState = () => {
+        send({
+            type: 'persist',
+            modelClass: 'ProcessState',
+            modelJSONs: [{ accountId: accountJSON ? accountJSON.id : 'unknown', connectionError: false }],
+        });
+    };
+
+    // Load provider settings for detect-provider command
+    let providerSettings = null;
+    const providersPath = path.join(__dirname, '..', 'app', 'mailcore', 'resources', 'providers.json');
+    try {
+        if (fs.existsSync(providersPath)) {
+            providerSettings = JSON.parse(fs.readFileSync(providersPath, 'utf-8'));
+        }
+    } catch (e) {
+        // providers.json not available, detect-provider will return null
+    }
+
+    const handleCommand = (packet) => {
+        const type = packet.type;
+
+        if (type === 'queue-task') {
+            // Simulate task completion: emit persisted task with status=complete
+            const task = packet.task;
+            if (task) {
+                task.status = 'complete';
+                send({
+                    type: 'persist',
+                    modelClass: task.__cls || task.constructorName || 'Task',
+                    modelJSONs: [task],
+                });
+            }
+        } else if (type === 'detect-provider') {
+            // Look up provider from providers.json
+            const email = packet.email || '';
+            const domain = email.split('@').pop().toLowerCase();
+            let provider = null;
+
+            if (providerSettings) {
+                for (const [key, p] of Object.entries(providerSettings)) {
+                    const domainMatch = p['domain-match'] || [];
+                    for (const test of domainMatch) {
+                        if (new RegExp(`^${test}$`).test(domain)) {
+                            provider = { identifier: key, ...p };
+                            break;
+                        }
+                    }
+                    if (provider) break;
+                }
+            }
+
+            send({
+                type: 'provider-result',
+                requestId: packet.requestId,
+                provider: provider,
+            });
+        } else if (type === 'query-capabilities') {
+            send({
+                type: 'capabilities-result',
+                requestId: packet.requestId,
+                capabilities: {
+                    idle: true,
+                    condstore: false,
+                    qresync: false,
+                    syncState: 'mock',
+                },
+            });
+        } else if (type === 'subscribe-folder-status') {
+            send({
+                type: 'folder-status',
+                requestId: packet.requestId,
+                statuses: [],
+            });
+        } else if (type === 'cancel-task') {
+            // No-op in mock
+        } else if (type === 'wake-workers') {
+            // No-op in mock
+        } else if (type === 'need-bodies') {
+            // No-op in mock — would fetch message bodies in real mailsync
+        } else if (type === 'sync-calendar') {
+            // No-op in mock
+        }
+    };
+
+    process.stdin.setEncoding('utf-8');
+    process.stdin.on('data', (chunk) => {
+        stdinBuffer += chunk;
+
+        // Process complete lines
+        const lines = stdinBuffer.split('\n');
+        stdinBuffer = lines.pop(); // Keep incomplete last line in buffer
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            // First two lines are account JSON and identity JSON (sent by mailsync-process.ts)
+            if (initialLineCount < 2) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (initialLineCount === 0) {
+                        accountJSON = parsed;
+                    } else {
+                        identityJSON = parsed;
+                        // Now that we have account info, emit online state
+                        emitOnlineState();
+                    }
+                } catch (e) {
+                    // Not valid JSON, skip
+                }
+                initialLineCount++;
+                continue;
+            }
+
+            // All subsequent lines are commands from the bridge
+            try {
+                const packet = JSON.parse(trimmed);
+                handleCommand(packet);
+            } catch (e) {
+                // Ignore unparseable input
+            }
+        }
+    });
+
+    process.stdin.on('end', () => {
+        process.exit(0);
+    });
+
     process.on('SIGINT', () => process.exit(0));
+    process.on('SIGTERM', () => process.exit(0));
 }

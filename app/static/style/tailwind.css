@@ -275,6 +275,9 @@
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
   }
+  .\!hidden {
+    display: none !important;
+  }
   .block {
     display: block;
   }
@@ -745,6 +748,15 @@
   .select-all {
     -webkit-user-select: all;
     user-select: all;
+  }
+  .\[abi\:cxx11\] {
+    abi: cxx11;
+  }
+  .\[dateof\:3\.3\.8\] {
+    dateof: 3.3.8;
+  }
+  .\[dateof\:3\.6\.0\] {
+    dateof: 3.6.0;
   }
   .\[mailto\:mail-noreply\@google\.com\] {
     mailto: mail-noreply@google.com;

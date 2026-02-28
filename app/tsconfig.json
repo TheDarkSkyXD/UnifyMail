@@ -7,7 +7,11 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "lib": ["es2017", "dom", "esnext.array"],
+    "lib": [
+      "es2017",
+      "dom",
+      "esnext.array"
+    ],
     "removeComments": true,
     "resolveJsonModule": true,
     "inlineSourceMap": true,
@@ -15,8 +19,15 @@
     "baseUrl": ".",
     "skipLibCheck": true,
     "paths": {
-      "*": ["node_modules/*", "src/global/*"]
+      "*": [
+        "node_modules/*",
+        "unifymail-frontend/src/global/*"
+      ]
     }
   },
-  "include": ["src/**/*", "internal_packages/**/*"]
+  "include": [
+    "unifymail-frontend/src/**/*",
+    "unifymail-backend/src/**/*",
+    "internal_packages/**/*"
+  ]
 }

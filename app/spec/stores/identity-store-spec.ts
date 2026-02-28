@@ -1,6 +1,6 @@
 import { Utils, KeyManager } from 'unifymail-exports';
-import { IdentityStore } from '../../src/flux/stores/identity-store';
-import * as UnifyMailAPIRequest from '../../src/flux/unifymail-api-request';
+import { IdentityStore } from '../../unifymail-frontend/src/flux/stores/identity-store';
+import * as UnifyMailAPIRequest from '../../unifymail-frontend/src/flux/unifymail-api-request';
 
 const TEST_NYLAS_ID = 'icihsnqh4pwujyqihlrj70vh';
 

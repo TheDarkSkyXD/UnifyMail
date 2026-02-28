@@ -3,12 +3,12 @@
  * DS102: Remove unnecessary code created because of implicit returns
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-import { Folder } from '../../src/flux/models/folder';
-import { MailboxPerspective } from '../../src/mailbox-perspective';
+import { Folder } from '../../unifymail-frontend/src/flux/models/folder';
+import { MailboxPerspective } from '../../unifymail-frontend/src/mailbox-perspective';
 
-import CategoryStore from '../../src/flux/stores/category-store';
-import { AccountStore } from '../../src/flux/stores/account-store';
-import FocusedPerspectiveStore from '../../src/flux/stores/focused-perspective-store';
+import CategoryStore from '../../unifymail-frontend/src/flux/stores/category-store';
+import { AccountStore } from '../../unifymail-frontend/src/flux/stores/account-store';
+import FocusedPerspectiveStore from '../../unifymail-frontend/src/flux/stores/focused-perspective-store';
 
 describe('FocusedPerspectiveStore', function() {
   beforeEach(function() {

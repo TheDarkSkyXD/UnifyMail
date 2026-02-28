@@ -7,24 +7,13 @@ export const GMAIL_CLIENT_ID =
   process.env.MS_GMAIL_CLIENT_ID ||
   '400141604862-ceirca79mb14lt7vu06v7ascpo6rj0fr.apps.googleusercontent.com';
 
-// per https://stackoverflow.com/questions/59416326/safely-distribute-oauth-2-0-client-secret-in-desktop-applications-in-python,
-// we really do need to embed this in the application and it's more an extension of the Client ID than a proper Client Secret.
-//
-// We could run a small web app that receives the code and exchanges it for the refresh token (storing this on the server), but
-// that web flow would still hand the resulting client secret to the desktop app, whose authenticity it can't verify.
-// (It can verify the connection is secure, but not that the receiving party is /this/ copy of UnifyMail.)
-//
-// Note: This is not a security risk for the end-user -- it just means someone could "fork" UnifyMail and re-use it's
-// Client ID and Secret. For now, it seems we're on the honor code - Please don't do this.
-//
-export const GMAIL_CLIENT_SECRET = process.env.MS_GMAIL_CLIENT_SECRET || '';
+export const GMAIL_OAUTH_PROXY_URL = 'https://unifymail-site.leveluptogetherbiz.workers.dev';
 
 export const GMAIL_SCOPES = [
   'https://mail.google.com/', // email
   'https://www.googleapis.com/auth/userinfo.email', // email address
   'https://www.googleapis.com/auth/userinfo.profile', // G+ profile
   'https://www.googleapis.com/auth/contacts', // contacts
-  'https://www.googleapis.com/auth/calendar', // calendar
 ];
 
 export const O365_CLIENT_ID =

@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import ReactTestUtils from 'react-dom/test-utils';
 
-import Package from '../../../src/package';
+import Package from '../../../unifymail-frontend/src/package';
 import ThemePicker from '../lib/theme-picker';
 
 const { resourcePath } = AppEnv.getLoadSettings();

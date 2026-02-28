@@ -1,6 +1,6 @@
 import _ from 'underscore';
-import { Contact } from '../../src/flux/models/contact';
-import ContactStore from '../../src/flux/stores/contact-store';
+import { Contact } from '../../unifymail-frontend/src/flux/models/contact';
+import ContactStore from '../../unifymail-frontend/src/flux/stores/contact-store';
 
 xdescribe('ContactStore', function() {
   beforeEach(function() {

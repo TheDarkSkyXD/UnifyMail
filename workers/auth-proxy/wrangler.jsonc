@@ -1,6 +1,6 @@
 {
     "$schema": "../../node_modules/wrangler/config-schema.json",
-    "name": "unifymail",
+    "name": "unifymail-site",
     "main": "src/index.ts",
     "compatibility_date": "2024-02-15",
     "compatibility_flags": [

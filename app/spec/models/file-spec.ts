@@ -1,4 +1,4 @@
-import { File } from '../../src/flux/models/file';
+import { File } from '../../unifymail-frontend/src/flux/models/file';
 
 const test_file_path = '/path/to/file.jpg';
 

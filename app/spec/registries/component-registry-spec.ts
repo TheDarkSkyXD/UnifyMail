@@ -4,7 +4,7 @@
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
 import React from 'react';
-import ComponentRegistry from '../../src/registries/component-registry';
+import ComponentRegistry from '../../unifymail-frontend/src/registries/component-registry';
 
 class TestComponent extends React.Component {
   static displayName = 'TestComponent';

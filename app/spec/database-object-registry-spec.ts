@@ -1,8 +1,8 @@
 /* eslint quote-props: 0 */
 import _ from 'underscore';
-import { Model } from '../src/flux/models/model';
-import * as Attributes from '../src/flux/attributes';
-import DatabaseObjectRegistry from '../src/registries/database-object-registry';
+import { Model } from '../unifymail-frontend/src/flux/models/model';
+import * as Attributes from '../unifymail-frontend/src/flux/attributes';
+import DatabaseObjectRegistry from '../unifymail-frontend/src/registries/database-object-registry';
 
 class GoodTest extends Model {
   static attributes = {

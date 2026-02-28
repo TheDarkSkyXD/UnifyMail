@@ -9,8 +9,8 @@ import {
 } from 'unifymail-exports';
 import { clipboard } from 'electron';
 
-import Config from '../../src/config';
-import * as configUtils from '../../src/config-utils';
+import Config from '../../unifymail-frontend/src/config';
+import * as configUtils from '../../unifymail-frontend/src/config-utils';
 import TimeOverride from './time-override';
 import TestConstants from './test-constants';
 import * as jasmineExtensions from './jasmine-extensions';

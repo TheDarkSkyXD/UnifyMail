@@ -64,8 +64,8 @@ class OnboardingStore extends UnifyMailStore {
       // We used to show "Welcome Back", but now just jump to sign in.
       this._pageStack = ['account-choose'];
     } else {
-      // Standard new user onboarding flow.
-      this._pageStack = ['welcome'];
+      // Skip welcome/tutorial, go directly to account sign-in.
+      this._pageStack = ['account-choose'];
     }
   }
 

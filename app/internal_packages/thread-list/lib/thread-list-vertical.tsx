@@ -1,7 +1,7 @@
 import React from 'react';
 import { InjectedComponentSet } from 'unifymail-component-kit';
 import { WorkspaceStore } from 'unifymail-exports';
-import { ResizableRegion, ResizableHandle } from '../../../src/components/resizable-region';
+import { ResizableRegion, ResizableHandle } from '../../../unifymail-frontend/src/components/resizable-region';
 
 class ThreadListVertical extends React.Component<
   Record<string, unknown>,

@@ -49,32 +49,35 @@ electron.on('error', (err) => {
 // 3. Handle Cleanup
 electron.on('close', (code) => {
     log(COLORS.cyan, `Electron exited with code ${code}. Cleaning up...`);
-    cleanup();
-    process.exit(code);
+    cleanup(() => process.exit(code));
 });
 
-function cleanup() {
+function cleanup(done) {
     try {
         if (process.platform === 'win32') {
-            spawn('taskkill', ['/pid', String(tailwind.pid), '/f', '/t']);
+            const kill = spawn('taskkill', ['/pid', String(tailwind.pid), '/f', '/t'], { stdio: 'ignore' });
+            kill.on('close', () => done && done());
+            kill.on('error', () => done && done());
         } else {
-            process.kill(-tailwind.pid);
+            try { process.kill(-tailwind.pid); } catch (e) { /* already dead */ }
+            if (done) done();
         }
     } catch (e) {
         log(COLORS.red, `Cleanup error: ${e.message}`);
+        if (done) done();
     }
 }
 
 // Handle script termination
 process.on('SIGINT', () => {
     log(COLORS.red, 'Script terminated (SIGINT). Cleaning up...');
-    cleanup();
 
     if (process.platform === 'win32') {
-        try { spawn('taskkill', ['/pid', String(electron.pid), '/f', '/t']); } catch (e) { }
+        const killElectron = spawn('taskkill', ['/pid', String(electron.pid), '/f', '/t'], { stdio: 'ignore' });
+        killElectron.on('close', () => cleanup(() => process.exit()));
+        killElectron.on('error', () => cleanup(() => process.exit()));
     } else {
         try { electron.kill(); } catch (e) { }
+        cleanup(() => process.exit());
     }
-
-    process.exit();
 });

@@ -4,7 +4,7 @@ import { RetinaImg, Flexbox } from 'unifymail-component-kit';
 import { localized } from 'unifymail-exports';
 import { ConfigLike } from '../types';
 import SystemTrayIconStore from '../../../system-tray/lib/system-tray-icon-store';
-import AppEnv from '../../../app-env';
+declare const AppEnv: any;
 
 // -- Reusable UI Components for Settings --
 

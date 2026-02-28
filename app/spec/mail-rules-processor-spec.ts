@@ -8,7 +8,7 @@ import {
   Actions,
 } from 'unifymail-exports';
 
-const MailRulesProcessor = require('../src/mail-rules-processor');
+const MailRulesProcessor = require('../unifymail-frontend/src/mail-rules-processor');
 
 const Tests = [
   {

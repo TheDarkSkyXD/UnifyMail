@@ -1,6 +1,6 @@
 import { Actions, TaskQueue } from 'unifymail-exports';
-import { FeatureUsageStore } from '../../src/flux/stores/feature-usage-store';
-import { IdentityStore } from '../../src/flux/stores/identity-store';
+import { FeatureUsageStore } from '../../unifymail-frontend/src/flux/stores/feature-usage-store';
+import { IdentityStore } from '../../unifymail-frontend/src/flux/stores/identity-store';
 
 describe('FeatureUsageStore', function featureUsageStoreSpec() {
   beforeEach(() => {

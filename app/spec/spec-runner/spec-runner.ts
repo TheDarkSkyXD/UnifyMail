@@ -4,7 +4,7 @@ import Enzyme from 'enzyme';
 import Adapter from 'enzyme-adapter-react-16';
 
 import ReactTestUtils from 'react-dom/test-utils';
-import Config from '../../src/config';
+import Config from '../../unifymail-frontend/src/config';
 import SpecLoader from './spec-loader';
 import TimeReporter from './time-reporter';
 import * as GuiReporter from './gui-reporter';

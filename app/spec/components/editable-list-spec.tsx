@@ -6,7 +6,7 @@ import {
   Simulate,
 } from 'react-dom/test-utils';
 
-import EditableList from '../../src/components/editable-list';
+import EditableList from '../../unifymail-frontend/src/components/editable-list';
 import MTestUtils from '../unifymail-test-utils';
 
 const { findDOMNode } = ReactDOM;

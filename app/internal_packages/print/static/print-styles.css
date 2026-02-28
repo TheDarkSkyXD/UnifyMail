@@ -63,22 +63,22 @@ h1,
 #print-header .logo-wrapper {
   display: flex;
   align-items: center;
-  font-family: 'Nylas-Pro', 'Helvetica', 'Lucidia Grande', sans-serif !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.68em;
 }
 #print-header .account {
   margin-left: auto;
-  font-size: 0.8em !important;
+  font-size: 0.8em;
 }
 
 .print-subject {
   margin-left: 15px;
-  font-size: 1.5em !important;
-  font-family: 'Nylas-Pro', 'Helvetica', 'Lucidia Grande', sans-serif !important;
+  font-size: 1.5em;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 .print-participants .participant {
   font-size: 0.7em;
-  font-family: 'Nylas-Pro', 'Helvetica', 'Lucidia Grande', sans-serif !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 /* Elements to hide */

@@ -1,0 +1,16 @@
+{
+  "name": "mailcore-napi",
+  "version": "1.0.0",
+  "description": "Node.js N-API bindings for mailcore2 (provider detection, account validation, connection testing)",
+  "main": "build/Release/mailcore_napi.node",
+  "types": "types/index.d.ts",
+  "private": true,
+  "scripts": {
+    "install": "echo mailcore-napi: Skipping native build during npm install (build manually with npm run build)",
+    "build": "node-gyp rebuild --arch=x64",
+    "build:debug": "node-gyp rebuild --arch=x64 --debug"
+  },
+  "dependencies": {
+    "node-addon-api": "^7.1.0"
+  }
+}

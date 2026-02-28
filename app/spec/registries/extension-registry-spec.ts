@@ -1,4 +1,4 @@
-const ExtensionRegistry = require('../../src/registries/extension-registry');
+const ExtensionRegistry = require('../../unifymail-frontend/src/registries/extension-registry');
 
 class TestExtension {}
 

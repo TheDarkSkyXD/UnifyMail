@@ -5,8 +5,8 @@ import fs from 'fs-plus';
 import path from 'path';
 
 import { EventedIFrame } from 'unifymail-component-kit';
-import Package from '../../../src/package';
-import LessCompileCache from '../../../src/less-compile-cache';
+import Package from '../../../unifymail-frontend/src/package';
+import LessCompileCache from '../../../unifymail-frontend/src/less-compile-cache';
 import _ from 'underscore';
 
 interface ThemeOptionProps {
