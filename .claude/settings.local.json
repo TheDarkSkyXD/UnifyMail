@@ -33,7 +33,12 @@
       "Bash(gh label create \"sync issue\" --color \"1d76db\" --description \"Problem with email synchronization\")",
       "Bash(gh label create \"text/string issue\" --color \"fef2c0\" --description \"Incorrect or missing text content\")",
       "Bash(gh label create \"usability issue\" --color \"d4c5f9\" --description \"Affects ease of use\")",
-      "Bash(gh label create \"visual bug\" --color \"f9d0c4\" --description \"Visual or cosmetic defect\")"
+      "Bash(gh label create \"visual bug\" --color \"f9d0c4\" --description \"Visual or cosmetic defect\")",
+      "Bash(gh repo view --json nameWithOwner --jq .nameWithOwner)",
+      "Bash(grep -l \"CalDAV\\\\|CardDAV\" *.cpp *.hpp)",
+      "Bash(xargs grep -l \"mailsync\")",
+      "Bash(gh repo view --json nameWithOwner -q .nameWithOwner)",
+      "Bash(gh repo view --json nameWithOwner,url --jq '.nameWithOwner + \"\" \"\" + .url')"
     ]
   }
 }
