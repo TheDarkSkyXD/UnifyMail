@@ -8,7 +8,17 @@
       "Bash(git mv app/mailsync/Vendor/mailcore2 app/mailcore)",
       "Bash(grep -r \"Vendor/mailcore2\\\\|Vendor\\\\\\\\mailcore2\" \"/f/My Github Repos/Open Source Repos/UnifyMail - Email Mobile-Desktop Client/UnifyMail/app/mailsync/\" --include=\"*.txt\" --include=\"*.sh\" --include=\"*.vcxproj\" --include=\"*.pbxproj\" --include=\"*.cmd\" --include=\"*.bat\")",
       "Bash(find F:\\\\My Github Repos\\\\Open Source Repos\\\\UnifyMail - Email Mobile-Desktop Client\\\\UnifyMail:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(gh api repos/TheDarkSkyXD/Auto-Claude/contents/.github/ISSUE_TEMPLATE)",
+      "Bash(python -c \"import sys,json; [print\\(f[''name'']\\) for f in json.loads\\(sys.stdin.read\\(\\)\\)]\")",
+      "Bash(gh api repos/TheDarkSkyXD/Auto-Claude/git/trees/main?recursive=1)",
+      "Bash(python -c \"import sys,json; [print\\(f[''path'']\\) for f in json.loads\\(sys.stdin.read\\(\\)\\)[''tree''] if ''.github/ISSUE_TEMPLATE'' in f[''path'']]\")",
+      "Bash(node -e \"let d='''';process.stdin.on\\(''data'',c=>d+=c\\);process.stdin.on\\(''end'',\\(\\)=>{JSON.parse\\(d\\).tree.filter\\(f=>f.path.includes\\(''.github/ISSUE_TEMPLATE''\\)\\).forEach\\(f=>console.log\\(f.path\\)\\)}\\)\")",
+      "Bash(gh api repos/TheDarkSkyXD/Auto-Claude/contents/.github/ISSUE_TEMPLATE/bug_report.yml --jq '.content')",
+      "Bash(gh api repos/TheDarkSkyXD/Auto-Claude/contents/.github/ISSUE_TEMPLATE/config.yml --jq '.content')",
+      "Bash(gh api repos/FreeTubeApp/FreeTube/contents/.github/ISSUE_TEMPLATE/feature_request.yaml --jq '.content')",
+      "Bash(gh api repos/FreeTubeApp/FreeTube/contents/.github/ISSUE_TEMPLATE/bug_report.yaml --jq '.content')",
+      "Bash(gh api repos/FreeTubeApp/FreeTube/contents/.github/ISSUE_TEMPLATE/config.yml --jq '.content')"
     ]
   }
 }

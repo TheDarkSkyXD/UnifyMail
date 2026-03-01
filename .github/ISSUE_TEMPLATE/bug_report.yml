@@ -1,0 +1,140 @@
+name: Bug Report
+description: Report an issue or unexpected behavior that occurs within UnifyMail
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before You Submit Your Issue**
+        - Please search existing issues to make sure this hasn't been reported already.
+        - Issues are for bug reports only. For questions or discussions, please use [GitHub Discussions](https://github.com/TheDarkSkyXD/UnifyMail/discussions).
+
+  - type: checkboxes
+    attributes:
+      label: Guidelines
+      description: Please ensure you've completed all of the following.
+      options:
+        - label: I have encountered this bug in the [latest release of UnifyMail](https://github.com/TheDarkSkyXD/UnifyMail/releases).
+          required: true
+        - label: I have [searched the issue tracker](https://github.com/TheDarkSkyXD/UnifyMail/issues?q=is%3Aissue+sort%3Arelevance-desc) for open and closed issues that are similar to this bug report, without success.
+          required: true
+        - label: This issue contains only one bug.
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: What area of the application is affected?
+      options:
+        - Composer / Email Writing
+        - Message List / Thread View
+        - Contacts
+        - Calendar
+        - Search
+        - Sync / Accounts
+        - Preferences / Settings
+        - Notifications
+        - UI / Visual
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what the bug is.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-labels
+    attributes:
+      label: Issue Labels
+      description: Please select a label that fits this bug report. Choose multiple, if applicable.
+      multiple: true
+      options:
+        - accessibility issue
+        - causes crash
+        - data loss
+        - feature stopped working
+        - inconsistent behavior
+        - keyboard shortcut not working
+        - sync issue
+        - text/string issue
+        - usability issue
+        - visual bug
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: UnifyMail Version
+      description: What version of UnifyMail are you using? You can find this in Help > About UnifyMail.
+      placeholder: "e.g., 1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: Operating System Version
+      description: "What is your OS version? (e.g., Windows 10 21H2, macOS Ventura 13.4, Ubuntu 22.04)"
+      placeholder: "e.g., Windows 10 version 22H2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation Method
+      description: How did you install UnifyMail?
+      options:
+        - .exe (Windows Installer)
+        - .msi (Windows)
+        - .dmg (macOS)
+        - .deb (Debian/Ubuntu)
+        - .rpm (Fedora/RHEL)
+        - .AppImage (Linux)
+        - Snap
+        - Flatpak
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: |
+        Add any other context, screenshots, videos, or log files about the bug here.
+        You may drag-and-drop files to attach them.

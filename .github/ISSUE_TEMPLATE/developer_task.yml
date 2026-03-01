@@ -1,0 +1,100 @@
+name: Developer Task
+description: Internal task tracking for contributors only. Do NOT use for bug reports or feature requests.
+title: "[Task]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This template is for contributors and maintainers only.**
+        If you are not a contributor, your issue will be closed. Please use the Bug Report or Feature Request templates instead.
+
+  - type: checkboxes
+    attributes:
+      label: Contributor Acknowledgement
+      options:
+        - label: I am a contributor or maintainer of this project.
+          required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Task Type
+      options:
+        - Feature Implementation
+        - Bug Fix
+        - Refactor / Code Cleanup
+        - Testing / Test Coverage
+        - Build / CI / Infrastructure
+        - Documentation
+        - Performance Optimization
+        - Dependency Update
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Critical - Blocking release or other work
+        - High - Should be done soon
+        - Medium - Normal priority
+        - Low - Nice to have, no rush
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: What area of the codebase does this task involve?
+      multiple: true
+      options:
+        - Main Process (browser/)
+        - Flux Layer (flux/)
+        - React Components (components/)
+        - Internal Packages (internal_packages/)
+        - Sync Engine
+        - Build / Packaging
+        - Tests (spec/)
+        - Styles / Themes
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What needs to be done and why?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this task is complete? List specific, verifiable outcomes.
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Criterion 3
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Notes
+      description: Any insights, approach ideas, or relevant code paths that can assist with this task.
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing Notes
+      description: What specific platforms, scenarios, or edge cases need to be tested?
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Related issues, PRs, discussions, docs, or external links.

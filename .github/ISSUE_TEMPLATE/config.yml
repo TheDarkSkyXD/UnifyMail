@@ -1,17 +1,1 @@
 blank_issues_enabled: false
-contact_links:
-  - name: Report Bug
-    url: https://community.getunifymail.com/c/bugs
-    about: Report a bug in the UnifyMail client.
-  - name: Report Service Issue
-    url: https://community.getunifymail.com/c/service-issues
-    about: Report UnifyMail account and Premium service problems.
-  - name: Report Sync Issue
-    url: https://community.getunifymail.com/c/sync
-    about: Report sync problems between UnifyMail and an email service.
-  - name: Report Packaging Issue
-    url: https://community.getunifymail.com/c/packaging
-    about: Report problems with UnifyMail packaging or installation.
-  - name: Suggest a Feature
-    url: https://community.getunifymail.com/c/features
-    about: Suggest a feature for UnifyMail.

@@ -1,0 +1,179 @@
+name: Sync Issue
+description: Report a problem with email syncing between UnifyMail and your email provider
+title: "[Sync]: "
+labels: ["sync", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before You Submit Your Issue**
+        - Please search existing issues to make sure this hasn't been reported already.
+        - This template is specifically for sync problems (missing emails, delays, duplicates, folder issues, etc.). For general bugs, use the Bug Report template instead.
+
+  - type: checkboxes
+    attributes:
+      label: Guidelines
+      description: Please ensure you've completed all of the following.
+      options:
+        - label: I have encountered this issue in the [latest release of UnifyMail](https://github.com/TheDarkSkyXD/UnifyMail/releases).
+          required: true
+        - label: I have [searched the issue tracker](https://github.com/TheDarkSkyXD/UnifyMail/issues?q=is%3Aissue+sort%3Arelevance-desc) for open and closed issues that are similar to this sync issue, without success.
+          required: true
+        - label: I have verified the issue is not on my email provider's end (e.g., checked webmail to confirm expected state).
+          required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Email Provider
+      description: Which email provider are you experiencing sync issues with?
+      options:
+        - Gmail / Google Workspace
+        - Outlook / Microsoft 365
+        - Yahoo Mail
+        - iCloud Mail
+        - FastMail
+        - ProtonMail (via Bridge)
+        - Zoho Mail
+        - Self-hosted (Dovecot, Postfix, etc.)
+        - Other IMAP
+        - Other Exchange / EWS
+    validations:
+      required: true
+
+  - type: dropdown
+    id: account-type
+    attributes:
+      label: Account Protocol
+      description: What protocol does the account use?
+      options:
+        - IMAP
+        - Exchange / EWS
+        - Microsoft Graph (Office 365)
+        - Gmail API
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sync-type
+    attributes:
+      label: What kind of sync issue?
+      description: Select the type(s) that best describe the problem. Choose multiple, if applicable.
+      multiple: true
+      options:
+        - Emails not appearing / missing messages
+        - Emails appearing with a delay
+        - Duplicate emails
+        - Sent mail not syncing
+        - Drafts not syncing
+        - Folders / Labels not syncing
+        - Contacts not syncing
+        - Calendar not syncing
+        - Read / Unread status not syncing
+        - Starred / Flagged status not syncing
+        - Deleted emails reappearing
+        - Sync stuck / not progressing
+        - Sync errors / error messages
+        - Initial sync not completing
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this happen?
+      options:
+        - Always / Every time
+        - Frequently (most of the time)
+        - Sometimes (intermittent)
+        - Rarely (hard to reproduce)
+        - Happened once
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Sync Issue
+      description: A clear and concise description of what is happening and what you see in UnifyMail vs. your webmail or other email client.
+      placeholder: |
+        Example:
+        - New emails sent to my Gmail account appear in the Gmail web interface but do not show up in UnifyMail.
+        - I've waited 10+ minutes and tried manually refreshing.
+        - Other accounts in UnifyMail sync fine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen? Describe the correct sync behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: If possible, provide steps to reproduce the issue.
+      placeholder: |
+        1. Add account '...'
+        2. Wait for initial sync to complete
+        3. Send an email to the account from another address
+        4. Observe that the email does not appear in UnifyMail
+
+  - type: input
+    id: num-accounts
+    attributes:
+      label: Number of Accounts Configured
+      description: How many email accounts do you have set up in UnifyMail?
+      placeholder: "e.g., 3"
+
+  - type: input
+    id: version
+    attributes:
+      label: UnifyMail Version
+      description: What version of UnifyMail are you using? You can find this in Help > About UnifyMail.
+      placeholder: "e.g., 1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: Operating System Version
+      description: "What is your OS version? (e.g., Windows 10 22H2, macOS Ventura 13.4, Ubuntu 22.04)"
+      placeholder: "e.g., Windows 10 version 22H2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sync Logs / Error Messages
+      description: |
+        Please include any sync-related error messages or logs. You can find logs in Help > Show Logs.
+        You may drag-and-drop log files to attach them.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: |
+        Add any other context, screenshots, or details here.
+        For example: network setup (VPN, proxy, firewall), whether the issue started after an update, etc.

@@ -1,0 +1,93 @@
+name: Feature Request
+description: Suggest a new feature or improvement for UnifyMail
+title: "[Feature Request]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before You Submit Your Feature Request**
+        - Please search existing issues to make sure this hasn't been suggested already.
+        - Issues are for feature requests only. For questions or discussions, please use [GitHub Discussions](https://github.com/TheDarkSkyXD/UnifyMail/discussions).
+
+  - type: checkboxes
+    attributes:
+      label: Guidelines
+      description: Please ensure you've completed all of the following.
+      options:
+        - label: I have [searched the issue tracker](https://github.com/TheDarkSkyXD/UnifyMail/issues?q=is%3Aissue+sort%3Arelevance-desc) for open and closed issues that are similar to this feature request, without success.
+          required: true
+        - label: This issue contains only one feature request.
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: What area of the application does this feature relate to?
+      options:
+        - Composer / Email Writing
+        - Message List / Thread View
+        - Contacts
+        - Calendar
+        - Search
+        - Sync / Accounts
+        - Preferences / Settings
+        - Notifications
+        - UI / Visual
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: A clear and concise description of the problem you are seeking to solve with this feature request.
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like in a clear and concise manner.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-labels
+    attributes:
+      label: Feature Labels
+      description: Please select a label that fits this feature request. Choose multiple, if applicable.
+      multiple: true
+      options:
+        - new feature
+        - improvement to existing feature
+        - new keyboard shortcut
+        - new optional setting
+        - ease of use improvement
+        - visual improvement
+        - accessibility improvement
+        - display more information to user
+        - support for external software/service
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: |
+        Add any other context, mockups, screenshots, or examples about the feature request here.
+        You may drag-and-drop files to attach them.
