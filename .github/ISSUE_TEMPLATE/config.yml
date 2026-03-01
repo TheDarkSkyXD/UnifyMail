@@ -1,5 +1,1 @@
 blank_issues_enabled: false
-contact_links:
-  - name: Report a Security Vulnerability
-    url: https://github.com/TheDarkSkyXD/UnifyMail/security/advisories/new
-    about: Please report security vulnerabilities through GitHub's private security advisory feature.
