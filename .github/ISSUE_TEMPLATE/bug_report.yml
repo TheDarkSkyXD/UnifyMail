@@ -104,15 +104,6 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: os-version
-    attributes:
-      label: Operating System Version
-      description: "What is your OS version? (e.g., Windows 10 21H2, macOS Ventura 13.4, Ubuntu 22.04)"
-      placeholder: "e.g., Windows 10 version 22H2"
-    validations:
-      required: true
-
   - type: dropdown
     id: installation
     attributes:
