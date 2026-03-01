@@ -18,7 +18,22 @@
       "Bash(gh api repos/TheDarkSkyXD/Auto-Claude/contents/.github/ISSUE_TEMPLATE/config.yml --jq '.content')",
       "Bash(gh api repos/FreeTubeApp/FreeTube/contents/.github/ISSUE_TEMPLATE/feature_request.yaml --jq '.content')",
       "Bash(gh api repos/FreeTubeApp/FreeTube/contents/.github/ISSUE_TEMPLATE/bug_report.yaml --jq '.content')",
-      "Bash(gh api repos/FreeTubeApp/FreeTube/contents/.github/ISSUE_TEMPLATE/config.yml --jq '.content')"
+      "Bash(gh api repos/FreeTubeApp/FreeTube/contents/.github/ISSUE_TEMPLATE/config.yml --jq '.content')",
+      "Bash(gh label list --limit 100 --json name,color,description --jq '.[] | \"\"\\\\\\(.name\\) | #\\\\\\(.color\\) | \\\\\\(.description\\)\"\"')",
+      "Bash(gh label create \"needs-triage\" --color \"fbca04\" --description \"Needs initial review and categorization\")",
+      "Bash(gh label create \"security\" --color \"e11d48\" --description \"Security vulnerability report\")",
+      "Bash(gh label create \"sync\" --color \"1d4ed8\" --description \"Email sync related issue\")",
+      "Bash(gh label create \"task\" --color \"6b7280\" --description \"Internal contributor task\")",
+      "Bash(gh label create \"accessibility issue\" --color \"d4c5f9\" --description \"Related to accessibility\")",
+      "Bash(gh label create \"causes crash\" --color \"b60205\" --description \"Causes the application to crash\")",
+      "Bash(gh label create \"data loss\" --color \"b60205\" --description \"Results in loss of user data\")",
+      "Bash(gh label create \"feature stopped working\" --color \"d93f0b\" --description \"A previously working feature is broken\")",
+      "Bash(gh label create \"inconsistent behavior\" --color \"d93f0b\" --description \"Behavior differs from what is expected\")",
+      "Bash(gh label create \"keyboard shortcut not working\" --color \"e99695\" --description \"A keyboard shortcut is broken or unresponsive\")",
+      "Bash(gh label create \"sync issue\" --color \"1d76db\" --description \"Problem with email synchronization\")",
+      "Bash(gh label create \"text/string issue\" --color \"fef2c0\" --description \"Incorrect or missing text content\")",
+      "Bash(gh label create \"usability issue\" --color \"d4c5f9\" --description \"Affects ease of use\")",
+      "Bash(gh label create \"visual bug\" --color \"f9d0c4\" --description \"Visual or cosmetic defect\")"
     ]
   }
 }

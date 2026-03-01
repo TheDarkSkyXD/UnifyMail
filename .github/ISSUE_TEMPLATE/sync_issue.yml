@@ -1,4 +1,4 @@
-name: Sync Issue
+name: 🔄 Report a Sync Issue
 description: Report a problem with email syncing between UnifyMail and your email provider
 title: "[Sync]: "
 labels: ["sync", "needs-triage"]

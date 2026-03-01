@@ -1,4 +1,4 @@
-name: Developer Task
+name: 🛠️ Developer Task
 description: Internal task tracking for contributors only. Do NOT use for bug reports or feature requests.
 title: "[Task]: "
 labels: ["task"]
