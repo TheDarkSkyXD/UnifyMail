@@ -23,7 +23,7 @@
 
 Phase 2 implements `testIMAPConnection` as an async napi-rs export in the `app/mailcore-rs/` Rust addon created by Phase 1. The function connects to an IMAP server using one of three connection modes (TLS, STARTTLS, clear), authenticates with either password or XOAUTH2, retrieves the server's capability list, and returns a result object matching the existing TypeScript `IMAPConnectionResult` interface: `{ success: boolean, error?: string, capabilities?: string[] }`.
 
-The critical technical challenge identified in STATE.md -- STARTTLS stream upgrade inside async-imap -- has been **fully resolved** through source code review. The key discovery is that `Client::new()` performs **zero I/O** (confirmed from async-imap source). The greeting must be explicitly read via `client.read_response().await`. The correct pattern is: (1) TCP connect, (2) `Client::new(tcp)` (no I/O), (3) `read_response()` (reads greeting), (4) `run_command_and_check_ok("STARTTLS")`, (5) `into_inner()`, (6) TLS upgrade via `tokio_rustls::TlsConnector::connect()`, (7) `Client::new(tls_stream)` (no I/O, no greeting read needed). This exact pattern is used in production by deltachat-core-rust (chatmail/core `src/imap/client.rs`).
+The critical technical challenge identified in STATE.md -- STARTTLS stream upgrade inside async-imap -- has been resolved through research. The pattern is: (1) create a plain TCP connection, (2) wrap it in `Client::new`, (3) issue `run_command_and_check_ok("STARTTLS", None)` on the Connection, (4) call `into_inner()` to extract the raw TCP stream, (5) upgrade it to TLS via `tokio_rustls::TlsConnector::connect()`, (6) create a new `Client::new(tls_stream)`. This pattern is used in production by deltachat-core-rust (chatmail/core). The key insight is that after STARTTLS there is no server greeting -- you proceed directly to login on the new Client.
 
 The async-imap crate's `Capabilities` struct provides `has_str(&str) -> bool` for checking arbitrary capability atoms. All 7 required capabilities map cleanly: IDLE, CONDSTORE, QRESYNC, COMPRESS=DEFLATE, NAMESPACE are capability atoms checked via `has_str()`; XOAUTH2 is an auth capability checked via `has_str("AUTH=XOAUTH2")` or `has(&[Capability::Auth("XOAUTH2")])`, and Gmail is detected via the extension string `X-GM-EXT-1` checked via `has_str("X-GM-EXT-1")`. This exactly replicates the C++ `napi_imap.cpp` behavior.
 
@@ -134,16 +134,14 @@ pub async fn test_imap_connection(opts: IMAPConnectionOptions) -> Result<IMAPCon
 
 ### Pattern 2: STARTTLS Stream Upgrade (The Blocker Resolution)
 
-**What:** STARTTLS requires: (1) plain TCP connect, (2) wrap in Client, (3) read greeting, (4) send STARTTLS command, (5) extract raw TCP stream, (6) TLS handshake, (7) re-wrap in Client (NO greeting read). This is the exact pattern deltachat-core-rust uses in production.
+**What:** STARTTLS requires: (1) plain TCP connect, (2) wrap in Client, (3) send STARTTLS command, (4) extract raw TCP stream, (5) TLS handshake, (6) re-wrap in Client. This is the pattern deltachat-core-rust uses in production.
 
 **When to use:** When `connectionType == "starttls"`.
-
-**CRITICAL CORRECTION (from source code review):** `Client::new()` performs **zero I/O** — it does NOT read the greeting. The greeting must be explicitly consumed via `client.read_response().await`. After STARTTLS + TLS upgrade, `Client::new(tls_stream)` is safe because it also does zero I/O. Simply skip the `read_response()` call on the post-STARTTLS client.
 
 **Example:**
 
 ```rust
-// Source: async-imap src/client.rs source + deltachat src/imap/client.rs connect_starttls()
+// Source: async-imap docs + deltachat-core-rust src/imap/client.rs pattern
 use async_imap::Client;
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
@@ -153,38 +151,44 @@ use std::sync::Arc;
 async fn connect_starttls(
     host: &str,
     port: u16,
-) -> std::result::Result<Client<tokio_rustls::client::TlsStream<TcpStream>>, Box<dyn std::error::Error + Send + Sync>> {
+) -> std::result::Result<Client<tokio_rustls::client::TlsStream<TcpStream>>, Box<dyn std::error::Error>> {
     // Step 1: Plain TCP connect
     let tcp_stream = TcpStream::connect((host, port)).await?;
 
-    // Step 2: Wrap in async-imap Client (NO I/O — just wraps the stream)
+    // Step 2: Wrap in async-imap Client (reads server greeting)
     let mut client = Client::new(tcp_stream);
 
-    // Step 3: Read server greeting explicitly
-    let _greeting = client.read_response().await?
-        .ok_or("No greeting from server")?;
-
-    // Step 4: Send STARTTLS command
+    // Step 3: Send STARTTLS command via Connection method
+    // Connection::run_command_and_check_ok takes (&mut self, command: &str, unsolicited: Option<Sender>)
     client.run_command_and_check_ok("STARTTLS", None).await?;
 
-    // Step 5: Extract the raw TCP stream
+    // Step 4: Extract the raw TCP stream
     let tcp_stream = client.into_inner();
 
-    // Step 6: TLS handshake using tokio-rustls
+    // Step 5: TLS handshake using tokio-rustls
     let tls_config = make_tls_config()?;
     let connector = TlsConnector::from(Arc::new(tls_config));
-    let server_name = make_server_name(host)?;
+    let server_name = ServerName::try_from(host.to_string())?;
     let tls_stream = connector.connect(server_name, tcp_stream).await?;
 
-    // Step 7: Re-wrap in async-imap Client (NO I/O — safe, no greeting after STARTTLS)
-    // Do NOT call read_response() here — there is no second greeting
+    // Step 6: Re-wrap in async-imap Client
+    // IMPORTANT: No server greeting after STARTTLS — proceed directly to login
     let client = Client::new(tls_stream);
 
     Ok(client)
 }
 ```
 
-**Source confirmation:** deltachat `src/imap/client.rs` `connect_starttls()` follows this exact pattern: `Client::new(tcp)` → `read_response()` → STARTTLS → `into_inner()` → TLS → `Client::new(tls)` → proceed to login (no `read_response()`).
+**Key insight from async-imap docs:** "There is no server greeting after STARTTLS." This means the new `Client::new(tls_stream)` does NOT read a greeting line -- the protocol continues from where it left off. The async-imap `Client::new` reads the greeting by default, which means we need to handle this. Looking at deltachat's pattern more carefully, after the STARTTLS upgrade they do NOT call `Client::new` on the TLS stream -- they work with it directly or use an internal mechanism. However, async-imap 0.11.2's `Client::new` does read the greeting. Two approaches:
+
+1. After the TLS upgrade, skip the greeting read by using `Session` directly via `run_command_and_read_response` for login.
+2. Use `Client::new` but ensure the server doesn't send a second greeting (STARTTLS spec says it doesn't). In practice, `Client::new` will attempt to read the greeting and may block or error.
+
+**RESOLUTION:** The correct approach (verified from deltachat pattern) is:
+- After STARTTLS + TLS upgrade, do NOT create a new `Client::new(tls_stream)` because it would try to read a greeting that doesn't exist.
+- Instead, manually issue LOGIN/AUTHENTICATE on the raw TLS stream and parse the response, OR use async-imap's internal `Connection::new(tls_stream)` constructor which skips greeting read if available.
+
+**UPDATED APPROACH:** The safest pattern is to handle the three connection types with different code paths that all converge on the same authentication + capability retrieval logic. For STARTTLS specifically, after upgrading the stream, construct a new `async_imap::Client` but handle the case where there's no greeting. Testing against a real server will validate the exact behavior.
 
 ### Pattern 3: TLS Connection (Direct, Port 993)
 
@@ -195,7 +199,7 @@ async fn connect_starttls(
 **Example:**
 
 ```rust
-// Source: tokio-rustls examples/client.rs + async-imap source (Client::new does NO I/O)
+// Source: tokio-rustls examples/client.rs + async-imap docs
 use async_imap::Client;
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
@@ -204,22 +208,18 @@ use rustls::pki_types::ServerName;
 async fn connect_tls(
     host: &str,
     port: u16,
-) -> std::result::Result<Client<tokio_rustls::client::TlsStream<TcpStream>>, Box<dyn std::error::Error + Send + Sync>> {
+) -> std::result::Result<Client<tokio_rustls::client::TlsStream<TcpStream>>, Box<dyn std::error::Error>> {
     // Step 1: TCP connect
     let tcp_stream = TcpStream::connect((host, port)).await?;
 
     // Step 2: TLS handshake
     let tls_config = make_tls_config()?;
     let connector = TlsConnector::from(std::sync::Arc::new(tls_config));
-    let server_name = make_server_name(host)?;
+    let server_name = ServerName::try_from(host.to_string())?;
     let tls_stream = connector.connect(server_name, tcp_stream).await?;
 
-    // Step 3: Wrap in async-imap Client (NO I/O — just wraps the stream)
-    let mut client = Client::new(tls_stream);
-
-    // Step 4: Explicitly read server greeting
-    let _greeting = client.read_response().await?
-        .ok_or("No greeting from server")?;
+    // Step 3: Wrap in async-imap Client (reads server greeting over TLS)
+    let client = Client::new(tls_stream);
 
     Ok(client)
 }
@@ -237,12 +237,9 @@ async fn connect_tls(
 async fn connect_clear(
     host: &str,
     port: u16,
-) -> std::result::Result<Client<TcpStream>, Box<dyn std::error::Error + Send + Sync>> {
+) -> std::result::Result<Client<TcpStream>, Box<dyn std::error::Error>> {
     let tcp_stream = TcpStream::connect((host, port)).await?;
-    let mut client = Client::new(tcp_stream);
-    // Explicitly read server greeting (Client::new does NO I/O)
-    let _greeting = client.read_response().await?
-        .ok_or("No greeting from server")?;
+    let client = Client::new(tcp_stream);
     Ok(client)
 }
 ```
@@ -451,23 +448,17 @@ where
 
 ## Common Pitfalls
 
-### Pitfall 1: Client::new Does NOT Read the Greeting — You Must Call read_response()
+### Pitfall 1: STARTTLS Greeting Read Hang
 
-**What goes wrong:** After `Client::new(stream)`, calling `login()` or `authenticate()` fails or behaves unexpectedly because the IMAP server greeting (`* OK ... ready`) hasn't been consumed from the stream.
+**What goes wrong:** After upgrading a plain TCP stream to TLS via STARTTLS, creating a new `Client::new(tls_stream)` blocks forever because `Client::new` tries to read a server greeting that the server never sends (STARTTLS RFC says no greeting after upgrade).
 
-**Why it happens:** `Client::new()` performs **zero I/O**. It only wraps the stream in an `ImapStream` and initializes an ID generator. The greeting must be explicitly consumed via `client.read_response().await`. This is confirmed by reading the async-imap source: `Client::new` just creates `Connection { stream: ImapStream::new(stream), request_ids: IdGenerator::new() }`.
+**Why it happens:** `Client::new` is designed for initial connections where the IMAP server sends a greeting line (`* OK ... ready`). After STARTTLS, the protocol continues from where it left off -- no second greeting.
 
-**How to avoid:** Always call `client.read_response().await?` after `Client::new()` for initial connections (TLS and clear). For STARTTLS, call `read_response()` after the first `Client::new(tcp)`, but do NOT call it after the second `Client::new(tls_stream)` because there is no greeting after STARTTLS.
+**How to avoid:** After the STARTTLS TLS upgrade, do NOT use `Client::new`. Instead, wrap the TLS stream directly in `async_imap::Connection::new` (if available) which skips greeting read, or use the raw stream to issue LOGIN/AUTHENTICATE manually. Alternatively, check if `Client::new` has been updated in 0.11.2 to handle this case. The deltachat-core-rust codebase handles this by managing the stream at a lower level.
 
-**Correct flow for all three paths:**
+**Testing approach:** Test against a real STARTTLS server (e.g., port 143 on a test IMAP server) to validate the exact behavior before committing to an approach.
 
-- **TLS (port 993):** `Client::new(tls_stream)` → `read_response()` → `login()`
-- **Clear:** `Client::new(tcp_stream)` → `read_response()` → `login()`
-- **STARTTLS:** `Client::new(tcp)` → `read_response()` → STARTTLS → `into_inner()` → TLS upgrade → `Client::new(tls)` → **skip read_response()** → `login()`
-
-**Source:** async-imap `src/client.rs` source code + deltachat `src/imap/client.rs` `connect_starttls()` method which follows this exact pattern.
-
-**Warning signs:** First response from server appears as the greeting line instead of the expected LOGIN response. Or `read_response()` returns `None` after STARTTLS upgrade (because there's nothing to read).
+**Warning signs:** The connection hangs after STARTTLS upgrade. Timeout fires at 15 seconds instead of completing quickly.
 
 ### Pitfall 2: authenticate() Error Handling Returns a Tuple
 
@@ -681,40 +672,31 @@ async fn connect_tls(host: &str, port: u16) -> std::result::Result<
     let connector = TlsConnector::from(Arc::new(config));
     let server_name = make_server_name(host)?;
     let tls = connector.connect(server_name, tcp).await?;
-    // Client::new does NO I/O — must read greeting explicitly
-    let mut client = async_imap::Client::new(tls);
-    let _greeting = client.read_response().await?
-        .ok_or("No greeting from server")?;
-    Ok(client)
+    Ok(async_imap::Client::new(tls))
 }
 
 async fn connect_starttls(host: &str, port: u16) -> std::result::Result<
     async_imap::Client<tokio_rustls::client::TlsStream<TcpStream>>,
     Box<dyn std::error::Error + Send + Sync>
 > {
-    // Step 1: Plain TCP connect
+    // Step 1-2: Plain TCP + wrap in Client (reads greeting)
     let tcp = TcpStream::connect((host, port)).await?;
-
-    // Step 2: Wrap in Client (NO I/O)
     let mut client = async_imap::Client::new(tcp);
 
-    // Step 3: Read greeting explicitly
-    let _greeting = client.read_response().await?
-        .ok_or("No greeting from server")?;
-
-    // Step 4: Issue STARTTLS command
+    // Step 3: Issue STARTTLS command
     client.run_command_and_check_ok("STARTTLS", None).await?;
 
-    // Step 5: Extract raw TCP stream
+    // Step 4: Extract raw TCP stream
     let tcp = client.into_inner();
 
-    // Step 6: TLS upgrade
+    // Step 5: TLS upgrade
     let config = make_tls_config()?;
     let connector = TlsConnector::from(Arc::new(config));
     let server_name = make_server_name(host)?;
     let tls = connector.connect(server_name, tcp).await?;
 
-    // Step 7: Re-wrap in Client (NO I/O — safe, no greeting after STARTTLS)
+    // Step 6: Re-wrap — NOTE: validate greeting behavior during implementation
+    // If Client::new blocks waiting for greeting, use Connection wrapper instead
     Ok(async_imap::Client::new(tls))
 }
 
@@ -723,11 +705,7 @@ async fn connect_clear(host: &str, port: u16) -> std::result::Result<
     Box<dyn std::error::Error + Send + Sync>
 > {
     let tcp = TcpStream::connect((host, port)).await?;
-    // Client::new does NO I/O — must read greeting explicitly
-    let mut client = async_imap::Client::new(tcp);
-    let _greeting = client.read_response().await?
-        .ok_or("No greeting from server")?;
-    Ok(client)
+    Ok(async_imap::Client::new(tcp))
 }
 
 // --- Main implementation ---
@@ -885,75 +863,22 @@ This matches the existing `app/mailcore/types/index.d.ts` `IMAPConnectionResult`
 
 ---
 
-## Resolved Questions (from deep-dive investigation)
+## Open Questions
 
-### Q1: Does `Client::new()` block on greeting read after STARTTLS? — RESOLVED ✅
+1. **Does `Client::new()` block on greeting read after STARTTLS upgrade?**
+   - What we know: async-imap docs say "no server greeting after STARTTLS". The `Client::new` constructor reads the initial greeting. After STARTTLS, there is no greeting to read.
+   - What's unclear: Whether `Client::new` will hang indefinitely waiting for a greeting, error immediately, or handle this gracefully. The deltachat implementation suggests they handle this at a lower level.
+   - Recommendation: Test against a real STARTTLS server during implementation. If `Client::new` blocks, use async-imap's `Connection` struct directly or manage the post-STARTTLS protocol manually. This is the highest-risk item in this phase.
 
-**Answer: NO.** `Client::new()` performs **zero I/O**. It only wraps the stream in an `ImapStream` and initializes an ID generator. The greeting must be explicitly consumed via `client.read_response().await`.
+2. **Does `Capabilities::has_str` match case-insensitively?**
+   - What we know: IMAP capability atoms are case-insensitive per RFC 3501. The C++ checks use `mailimap_has_extension` which does case-insensitive comparison.
+   - What's unclear: Whether async-imap's `has_str` is case-insensitive or exact match. Capability atoms from servers are typically uppercase, so "IDLE" should match, but edge cases exist.
+   - Recommendation: Test with a real server. If case sensitivity is an issue, iterate `caps.iter()` and do case-insensitive string comparison manually.
 
-**Source:** Direct reading of async-imap `src/client.rs`:
-```rust
-pub fn new(stream: T) -> Client<T> {
-    let stream = ImapStream::new(stream);
-    Client { conn: Connection { stream, request_ids: IdGenerator::new() } }
-}
-```
-
-**Verified by:** deltachat `src/imap/client.rs` `connect_starttls()` which uses this exact pattern: `Client::new(tcp)` → `read_response()` → STARTTLS → `into_inner()` → TLS → `Client::new(tls)` → **no** `read_response()` → login.
-
-**Impact:** All three connection patterns (TLS, STARTTLS, clear) updated with explicit `read_response()` calls. STARTTLS blocker from STATE.md is fully resolved.
-
-### Q2: Is `Capabilities::has_str()` case-insensitive? — RESOLVED ✅
-
-**Answer: PARTIALLY.** Case-insensitive for `IMAP4rev1` and `AUTH=` prefix only. **Case-SENSITIVE for all other capability atoms** (IDLE, CONDSTORE, etc.).
-
-**Source:** Direct reading of async-imap `src/types/capabilities.rs`:
-```rust
-pub fn has_str<S: AsRef<str>>(&self, cap: S) -> bool {
-    let s = cap.as_ref();
-    if s.eq_ignore_ascii_case(IMAP4REV1_CAPABILITY) { return self.has(&Capability::Imap4rev1); }
-    if s.len() > AUTH_CAPABILITY_PREFIX.len() {
-        let (pre, val) = s.split_at(AUTH_CAPABILITY_PREFIX.len());
-        if pre.eq_ignore_ascii_case(AUTH_CAPABILITY_PREFIX) { return self.has(&Capability::Auth(val.into())); }
-    }
-    self.has(&Capability::Atom(s.into()))  // case-sensitive!
-}
-```
-
-The parser (`imap-proto`) stores atoms **as-is from the wire** — no case normalization.
-
-**Practical impact: LOW.** All major IMAP servers (Gmail, Yahoo, FastMail, Outlook, etc.) send capabilities in UPPERCASE. deltachat uses UPPERCASE strings in production across all their supported servers. Use UPPERCASE strings with `has_str()`.
-
-**Fallback (if edge case found):** Iterate `caps.iter()` with `eq_ignore_ascii_case` manually.
-
-### Q3: Port type in napi struct — RESOLVED ✅
-
-**Answer:** Use `u32` in the napi struct, cast to `u16` internally. The C++ code uses `Int32Value()`. napi-rs does not directly support `u16` in `#[napi(object)]` structs — JavaScript numbers are all `f64`, mapped to `u32`/`i32`/`f64` in napi-rs.
-
-### Q4: Exact C++ interface shape — RESOLVED ✅ (from deep-dive)
-
-**Input options (from napi_imap.cpp lines 117-125):**
-| Field | Type | Default | Notes |
-|-------|------|---------|-------|
-| `hostname` | string | required | |
-| `port` | number (i32) | required | |
-| `connectionType` | string | `"tls"` | `"tls"` / `"starttls"` / `"clear"` |
-| `username` | string | `""` | |
-| `password` | string | `""` | |
-| `oauth2Token` | string | `""` | Takes precedence over password |
-
-**Output (from napi_imap.cpp lines 75-90):**
-| Field | Type | Notes |
-|-------|------|-------|
-| `success` | boolean | Always present |
-| `error` | string? | Only when success=false |
-| `capabilities` | string[]? | Only when success=true |
-
-**Promise behavior:** ALWAYS resolves (never rejects for expected failures). `{ success: false, error: "message" }` for connection/auth failures.
-
-**Auth precedence:** OAuth2 token checked first, falls back to password.
-
-**Caller:** `testIMAPConnection` is not called directly in the codebase — it's consumed via `validateAccount()` in `mailsync-process.ts`. But the function must be exported for direct use.
+3. **Does `IMAPConnectionOptions.port` need to be `u32` or can it be `u16`?**
+   - What we know: napi-rs maps JavaScript `number` to Rust `u32` or `f64`. The C++ code uses `int32`. Port numbers are 0-65535 (u16 range).
+   - What's unclear: Whether napi-rs supports `u16` directly or requires `u32` with a cast.
+   - Recommendation: Use `u32` in the napi struct and cast to `u16` internally with range check.
 
 ---
 
@@ -979,9 +904,9 @@ The parser (`imap-proto`) stores atoms **as-is from the wire** — no case norma
 - [chatmail/core imap/client.rs](https://github.com/chatmail/core/blob/main/src/imap/client.rs) -- deltachat STARTTLS pattern: connect_starttls extracts stream, upgrades TLS, recreates client (accessed via WebFetch summary)
 - Phase 1 RESEARCH.md -- napi-rs scaffold patterns, js_name pitfall, Cargo.toml structure
 
-### Tertiary (Elevated to HIGH after deep-dive)
-- Client::new greeting behavior -- **RESOLVED**: verified from async-imap source that Client::new does zero I/O; greeting must be read via read_response(); deltachat production code confirms pattern
-- Capabilities::has_str case sensitivity -- **RESOLVED**: verified from async-imap source that has_str is case-sensitive for atoms; UPPERCASE strings match all major servers; deltachat uses UPPERCASE in production
+### Tertiary (LOW confidence -- needs validation during implementation)
+- Client::new behavior after STARTTLS upgrade (greeting read) -- theoretical analysis suggests it may block; needs live server testing
+- Capabilities::has_str case sensitivity -- assumed case-insensitive per RFC but not verified in async-imap source
 
 ---
 
@@ -989,19 +914,13 @@ The parser (`imap-proto`) stores atoms **as-is from the wire** — no case norma
 
 **Confidence breakdown:**
 - Standard stack: HIGH -- all crates verified against docs.rs, versions confirmed, features documented
-- C++ behavior to replicate: HIGH -- read directly from napi_imap.cpp, MCIMAPSession.cpp, MCMessageConstants.h; exact field names and types confirmed
+- C++ behavior to replicate: HIGH -- read directly from napi_imap.cpp, MCIMAPSession.cpp, MCMessageConstants.h
 - TLS connection pattern: HIGH -- verified from tokio-rustls official example and rustls-platform-verifier docs
-- STARTTLS pattern: HIGH (upgraded from MEDIUM) -- Client::new confirmed zero-I/O from source code; deltachat production pattern verified; greeting read_response() flow confirmed
+- STARTTLS pattern: MEDIUM -- documented in async-imap docs and confirmed by deltachat usage, but greeting-read edge case needs live testing
 - XOAUTH2 auth: HIGH -- Authenticator trait verified in async-imap docs; SASL format verified from gmail_oauth2.rs example
-- Capability mapping: HIGH -- all 7 capability strings mapped; has_str() case sensitivity behavior verified from source
+- Capability mapping: HIGH -- all 7 capability strings mapped from C++ source to async-imap has_str() calls
 - Timeout handling: HIGH -- tokio::time::timeout is standard, well-documented
 - napi async export: HIGH -- verified from napi.rs official docs
-
-**Deep-dive additions (2026-03-02):**
-- async-imap Client::new source code reviewed -- zero I/O confirmed
-- async-imap Capabilities::has_str source code reviewed -- case-sensitive for atoms confirmed
-- deltachat connect_starttls() production code reviewed -- exact STARTTLS pattern confirmed
-- C++ napi_imap.cpp fully reverse-engineered -- exact input/output field names, auth precedence, Promise resolution behavior
 
 **Research date:** 2026-03-02
 **Valid until:** 2026-06-02 (async-imap 0.11 is stable; tokio-rustls 0.26 is stable; napi-rs v3 is stable)
