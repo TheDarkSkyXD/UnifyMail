@@ -1,8 +1,8 @@
 # Phase 6: SQLite Layer and Model Infrastructure - Research
 
-**Researched:** 2026-03-02
+**Researched:** 2026-03-02 (updated 2026-03-02 with deep dive)
 **Domain:** Rust async SQLite (tokio-rusqlite), data model serialization, FTS5 schema migration, delta coalescing
-**Confidence:** HIGH (standard stack verified via official docs/crates.io; schema verified against C++ source)
+**Confidence:** HIGH (standard stack verified via official docs/crates.io; schema verified against C++ source; all open questions resolved from source code)
 
 ---
 
@@ -12,9 +12,9 @@
 | ID | Description | Research Support |
 |----|-------------|-----------------|
 | DATA-01 | SQLite database with WAL mode and `busy_timeout=5000` via tokio-rusqlite | tokio-rusqlite 0.7.0 `call()` closure + rusqlite `busy_timeout()` + `pragma_update("journal_mode", "WAL")` |
-| DATA-02 | Delta emission with persist/unpersist types, 500ms coalescing window, transaction batching | `tokio::sync::mpsc` + `tokio::time::sleep` + HashMap coalescing per model class; mirrors C++ `DeltaStream` buffering |
-| DATA-03 | All 13 data models implemented: Message, Thread, Folder, Label, Contact, ContactBook, ContactGroup, Calendar, Event, Task, File, Identity, ModelPluginMetadata | "Fat row" pattern: `data TEXT` JSON column + indexed columns; serde_json with rusqlite's `serde_json` feature |
-| DATA-04 | Schema migration matching C++ baseline (all tables, indexes, FTS5 for ThreadSearch/EventSearch/ContactSearch) | rusqlite_migration 2.4.x with `M::up()` for all V1–V9 SQL from constants.h; FTS5 requires `bundled` feature |
+| DATA-02 | Delta emission with persist/unpersist types, 500ms coalescing window, transaction batching | `tokio::sync::mpsc` + `tokio::time::sleep` + HashMap coalescing per model class; mirrors C++ `DeltaStream` buffering; 500ms confirmed from SyncWorker.cpp |
+| DATA-03 | All 13 data models implemented: Message, Thread, Folder, Label, Contact, ContactBook, ContactGroup, Calendar, Event, Task, File, Identity, ModelPluginMetadata | "Fat row" pattern: `data TEXT` JSON column + indexed columns; serde_json; full field mapping documented in Deep Dive section |
+| DATA-04 | Schema migration matching C++ baseline (all tables, indexes, FTS5 for ThreadSearch/EventSearch/ContactSearch) | rusqlite_migration 2.4.x with `M::up()` for V1–V9 SQL from constants.h; exact SQL documented in Deep Dive section; V5 no-op confirmed required |
 | DATA-05 | Single-writer pattern via tokio-rusqlite prevents blocking on async threads | Single `tokio_rusqlite::Connection` in a Mutex or Arc; all writes via `.call()` closure sent to dedicated background thread |
 </phase_requirements>
 
@@ -166,7 +166,7 @@ pub struct Message {
 }
 ```
 
-**Critical serde rename rules (C++ JSON key → Rust field):**
+**Critical serde rename rules (C++ JSON key -> Rust field):**
 | C++ JSON Key | Rust Field |
 |---|---|
 | `id` | `id` |
@@ -360,10 +360,17 @@ fn build_migrations() -> Migrations<'static> {
         M::up("ALTER TABLE MessageBody ADD COLUMN fetchedAt DATETIME; UPDATE MessageBody SET fetchedAt = datetime('now');"),
         // V4: Task indexes
         M::up("DELETE FROM Task WHERE Task.status = 'complete' OR Task.status = 'cancelled'; CREATE INDEX IF NOT EXISTS TaskByStatus ON Task(accountId, status);"),
-        // V5: (no V5 in C++, skip to V6)
+        // V5: NO-OP — C++ MailStore.migrate() has no "if (version < 5)" block.
+        // This placeholder keeps user_version numbering in sync with the C++ CURRENT_VERSION=9.
+        M::up(""),
         // V6: Event table rebuilt
-        M::up("DROP TABLE IF EXISTS Event; CREATE TABLE IF NOT EXISTS Event ..."),
-        // V7-V9: additional columns and indexes
+        M::up("DROP TABLE IF EXISTS Event; CREATE TABLE IF NOT EXISTS Event (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), etag VARCHAR(40), calendarId VARCHAR(40), recurrenceStart INTEGER, recurrenceEnd INTEGER); CREATE INDEX IF NOT EXISTS EventETag ON Event(calendarId, etag);"),
+        // V7: Event.icsuid
+        M::up("ALTER TABLE Event ADD COLUMN icsuid VARCHAR(150); CREATE INDEX IF NOT EXISTS EventUID ON Event(accountId, icsuid);"),
+        // V8: Contact extensions + ContactGroup + ContactBook
+        M::up("DELETE FROM Contact WHERE refs = 0; ALTER TABLE Contact ADD COLUMN hidden TINYINT(1) DEFAULT 0; ALTER TABLE Contact ADD COLUMN source VARCHAR(10) DEFAULT 'mail'; ALTER TABLE Contact ADD COLUMN bookId VARCHAR(40); ALTER TABLE Contact ADD COLUMN etag VARCHAR(40); CREATE INDEX IF NOT EXISTS ContactBrowseIndex ON Contact(hidden,refs,accountId); CREATE TABLE ContactGroup (id varchar(40), accountId varchar(40), bookId varchar(40), data BLOB, version INTEGER, name varchar(300), PRIMARY KEY (id)); CREATE TABLE ContactContactGroup (id varchar(40), value varchar(40), PRIMARY KEY (id, value)); CREATE TABLE ContactBook (id varchar(40), accountId varchar(40), data BLOB, version INTEGER, PRIMARY KEY (id));"),
+        // V9: Event.recurrenceId
+        M::up("ALTER TABLE Event ADD COLUMN recurrenceId VARCHAR(50) DEFAULT ''; CREATE INDEX IF NOT EXISTS EventRecurrenceId ON Event(calendarId, icsuid, recurrenceId);"),
     ])
 }
 
@@ -385,7 +392,7 @@ conn.call(|db| {
 
 **Critical:** `PRAGMA journal_mode = WAL` must be set on EVERY connection open, not just once. It is a connection-level property even though WAL persists in the database file. The C++ code does this in the `MailStore` constructor.
 
-**Critical:** The C++ schema jumps from V4 to V6 — there is no V5 migration block. The `rusqlite_migration` index is 0-based, but the C++ `user_version` counts from 1. The migration array must contain 9 entries (indices 0-8) matching C++ versions 1-9. V5 was apparently removed; insert a no-op `M::up("")` or handle the gap carefully to keep user_version in sync. Verify against the C++ code before finalizing.
+**Critical:** The C++ schema jumps from V4 to V6 — there is no V5 migration block. `rusqlite_migration` sets `user_version = array_index + 1`, so a 9-entry array produces user_version 1-9, matching `CURRENT_VERSION = 9` in C++. The no-op `M::up("")` at index 4 preserves this alignment when opening existing C++ databases.
 
 ### Anti-Patterns to Avoid
 
@@ -394,7 +401,7 @@ conn.call(|db| {
 - **Storing model JSON in the `data` column without all indexed column projections:** The TypeScript DatabaseStore queries use the indexed columns (e.g., `WHERE unread = 1`). Both must be updated atomically.
 - **Emitting one delta per save without coalescing:** The C++ system explicitly coalesces to prevent "thrashing on the JS side." High-frequency saves (e.g., syncing 1000 messages) must batch through the coalescing window.
 - **Using `#[serde(flatten)]` for the `data` column:** The entire model struct is serialized as one JSON blob to a TEXT column. Do NOT use `serde(flatten)` — serialize the whole struct with `serde_json::to_string()`.
-- **Missing `__cls` key in dispatch JSON:** The C++ `MailModel::toJSON()` adds `_data["__cls"] = tableName()`. The Rust model's `to_json_dispatch()` must also inject `"__cls"` into the JSON. Electron uses it for dispatching.
+- **Missing `__cls` key in dispatch JSON:** The C++ `MailModel::toJSON()` adds `_data["__cls"] = this->tableName()`. The Rust model's `to_json_dispatch()` must also inject `"__cls"` into the JSON. Electron uses it for dispatching.
 
 ---
 
@@ -431,15 +438,15 @@ conn.call(|db| {
 ### Pitfall 3: V5 Migration Gap in C++ Schema
 
 **What goes wrong:** The C++ `constants.h` defines V1, V2, V3, V4, V6, V7, V8, V9 — there is no V5 block. An off-by-one in the rusqlite_migration index results in mismatched user_version values. Existing C++ databases open with Rust code will try to re-run migrations or skip the wrong ones.
-**Why it happens:** V5 was apparently removed from the C++ codebase. The user_version jumps from 4 to 6 implicitly (V6 block is guarded by `if (version < 6)`).
-**How to avoid:** Include a no-op migration at index 4 (version 5) in the Migrations array: `M::up("")`. Verify against the C++ `CURRENT_VERSION = 9` constant and the `if (version < N)` guards in `MailStore::migrate()`.
+**Why it happens:** V5 was removed from the C++ codebase. The `MailStore::migrate()` method has `if (version < 4)` then immediately `if (version < 6)` — there is no `if (version < 5)` guard. The `user_version` goes from 4 to 9 when version is 4 (all blocks 6,7,8,9 run). CONFIRMED by reading MailStore.cpp lines 138-163.
+**How to avoid:** Include `M::up("")` at index 4 (version 5) in the Migrations array. This preserves user_version alignment: the 9-element array sets user_version 1-9, matching C++ `CURRENT_VERSION = 9`.
 **Warning signs:** Rust binary run against an existing C++ database produces migration errors or re-runs V6 destructive DROP.
 
 ### Pitfall 4: JSON Key Mismatch Between Rust Struct and TypeScript Parser
 
 **What goes wrong:** TypeScript `message.headerMessageId` is undefined because the Rust struct serialized it as `header_message_id` instead of `hMsgId`.
 **Why it happens:** Rust's default serde serialization uses snake_case. The C++ code uses camelCase and abbreviated keys (`hMsgId`, `rthMsgId`, `aid`, `v`). Without `#[serde(rename = "...")]` on every field, the JSON keys will not match.
-**How to avoid:** Cross-reference every field with the C++ `_data["key"]` assignments in each model's `.cpp` file. Map TypeScript `Attributes.String({ jsonKey: 'hMsgId' })` entries to verify.
+**How to avoid:** Cross-reference every field with the C++ `_data["key"]` assignments in each model's `.cpp` file. Map TypeScript `Attributes.String({ jsonKey: 'hMsgId' })` entries to verify. Full mapping is in the Deep Dive section below.
 **Warning signs:** TypeScript runtime errors about undefined properties on model objects after receiving a delta.
 
 ### Pitfall 5: Delta `model_class` Must Match C++ `tableName()`
@@ -595,22 +602,727 @@ CREATE VIRTUAL TABLE IF NOT EXISTS `ContactSearch`
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **V5 Migration No-Op Strategy**
-   - What we know: C++ has V1, V2, V3, V4, V6, V7, V8, V9 — no V5.
-   - What's unclear: Does `rusqlite_migration` handle a gap gracefully, or must we include a no-op M::up("") at index 4 to prevent user_version misalignment when opening existing C++ databases?
-   - Recommendation: Include `M::up("")` at index 4. Verify with a test: open a C++ database at user_version=9, run Rust migrations, confirm user_version remains 9 and no migration re-runs.
+All three open questions have been resolved by reading the C++ source directly.
 
-2. **`prepare_cached` vs `prepare` Inside `.call()`**
-   - What we know: The C++ uses a map of pre-compiled statements per table. `prepare_cached` uses an LRU cache on the `Connection`, but the tokio-rusqlite background thread holds the connection — cache is preserved between calls.
-   - What's unclear: Under high concurrency (many `.call()` invocations), does `prepare_cached`'s LRU evict statements needed by concurrent in-flight closures? There are no concurrent closures (single thread), so this should be safe.
-   - Recommendation: Use `prepare_cached` for all hot paths (save, find). Confirm no LRU eviction issues by checking rusqlite's `CachedStatement` lifetime docs.
+### Q1: V5 Migration No-Op Strategy — RESOLVED
 
-3. **Delta Immediate vs Coalesced Emission**
-   - What we know: The C++ uses `maxDeliveryDelay = 0` for `ProcessState` and `ProcessAccountSecretsUpdated` deltas (immediate flush). For normal model saves, delay is `_streamMaxDelay` (default 500ms).
-   - What's unclear: The `_streamMaxDelay` field is set by `setStreamDelay()` — what value does the C++ code actually set? The constant `500` does not appear in `DeltaStream.cpp`; it's passed from callers.
-   - Recommendation: Default to 500ms coalescing for model saves. Immediate-flush deltas bypass the coalescing channel entirely by writing directly to stdout_tx with priority.
+**Resolution:** CONFIRMED no V5 exists. Reading `MailStore.cpp` lines 115-157 shows the migrate() function has guards: `if (version < 1)`, `if (version < 2)`, `if (version < 3)`, `if (version < 4)`, `if (version < 6)`, `if (version < 7)`, `if (version < 8)`, `if (version < 9)`. There is NO `if (version < 5)` block — V5 is permanently skipped. `CURRENT_VERSION = 9` is confirmed at line 103.
+
+**Action:** Include `M::up("")` at array index 4 in the Migrations vec. rusqlite_migration sets `user_version = index + 1`, so 9 entries produces user_version 1 through 9. The empty string migration is valid (rusqlite executes an empty SQL batch as a no-op). This ensures a database created at C++ user_version=9 is recognized as fully migrated by the Rust code.
+
+### Q2: `prepare_cached` Safety — RESOLVED
+
+**Resolution:** CONFIRMED fully safe. The C++ MailStore enforces single-thread access via `assertCorrectThread()` — every public method asserts the caller is on `_owningThread`. This is the same invariant tokio-rusqlite enforces: its single background thread is the only thread that ever calls the rusqlite Connection. Since closures are executed sequentially (one at a time), there is no possibility of concurrent access to the LRU statement cache. `prepare_cached` is the correct choice for all hot paths (save, find, remove).
+
+**Additional finding:** The C++ MailStore caches prepared statements in `map<string, shared_ptr<SQLite::Statement>> _saveUpdateQueries` and `_saveInsertQueries` — one statement per table name. This is the moral equivalent of `prepare_cached`, confirming the approach.
+
+### Q3: Delta Coalescing Delay Values — RESOLVED
+
+**Resolution:** The `_streamMaxDelay` field has NO default initializer in the C++ constructor — it is uninitialized and set exclusively via `setStreamDelay()`. Reading the callers via grep confirms:
+
+| Caller | Delay | Context |
+|--------|-------|---------|
+| `SyncWorker.cpp:62` | **500ms** | Background/foreground IMAP sync workers — the normal case |
+| `main.cpp:621` | **5ms** | Task processor in test/migrate mode |
+| `DeltaStream::sendUpdatedSecrets()` | **0ms** | ProcessAccountSecretsUpdated — immediate, bypasses channel |
+| `DeltaStream::beginConnectionError()` | **0ms** | ProcessState — immediate, bypasses channel |
+| `DeltaStream::endConnectionError()` | **0ms** | ProcessState — immediate, bypasses channel |
+
+**Action for Rust implementation:**
+- Normal model saves (Message, Thread, etc.) use the coalescing channel with 500ms window.
+- `ProcessState` and `ProcessAccountSecretsUpdated` deltas bypass the coalescing channel entirely and write directly to the stdout mpsc sender with no delay.
+- The 5ms value in task processing (test mode) is effectively immediate and can be treated as 0ms in the Rust implementation.
+
+---
+
+## Deep Dive: Model Field Mapping
+
+Complete audit of all 13 model `.cpp` files. For each model: table name, JSON keys in `_data`, indexed columns for SQL binding, and metadata support.
+
+### Base Class: MailModel
+
+All models inherit three JSON keys from the base constructor and `bindToQuery()`:
+
+| JSON Key | C++ Field | TypeScript jsonKey | Indexed Column |
+|----------|-----------|-------------------|----------------|
+| `id` | `_data["id"]` | `id` (no rename) | `id` (PRIMARY KEY) |
+| `aid` | `_data["aid"]` | `aid` | `accountId` |
+| `v` | `_data["v"]` | `v` | `version` |
+| `__cls` | injected by `toJSON()` | `__cls` (used for dispatch) | not stored |
+| `metadata` | `_data["metadata"]` | `metadata` via `pluginMetadata` | join table only |
+
+**Note:** `MailModel::bindToQuery()` binds `:id`, `:data`, `:accountId`, `:version`. All subclass `bindToQuery()` implementations call `MailModel::bindToQuery()` first then bind additional columns.
+
+---
+
+### Message
+
+**Table:** `Message`
+**Supports metadata:** YES (`supportsMetadata()` returns true)
+**`columnsForQuery()`:** `{id, data, accountId, version, headerMessageId, subject, gMsgId, date, draft, unread, starred, remoteUID, remoteXGMLabels, remoteFolderId, threadId}`
+
+**JSON keys in `_data` (from Message.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | message id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `_sa` | syncedAt (unix time_t) | no |
+| `_suc` | syncUnsavedChanges (int) | no |
+| `remoteUID` | IMAP UID (uint32_t) | `remoteUID` |
+| `files` | array of File JSON blobs | no |
+| `date` | header date or receivedDate | `date` |
+| `hMsgId` | headerMessageId | `headerMessageId` |
+| `subject` | email subject | `subject` |
+| `gMsgId` | Gmail message ID string | `gMsgId` |
+| `rthMsgId` | replyToHeaderMessageId (nullable) | no |
+| `fwdMsgId` | forwardedHeaderMessageId (nullable) | no |
+| `unread` | bool | `unread` |
+| `starred` | bool | `starred` |
+| `labels` | array of X-GM-LABELS strings | `remoteXGMLabels` (as JSON dump) |
+| `draft` | bool | `draft` |
+| `extraHeaders` | object of extra IMAP headers | no |
+| `from` | array of contact JSON | no |
+| `to` | array of contact JSON | no |
+| `cc` | array of contact JSON | no |
+| `bcc` | array of contact JSON | no |
+| `replyTo` | array of contact JSON | no |
+| `folder` | client folder JSON (Folder.toJSON()) | no |
+| `remoteFolder` | remote folder JSON (Folder.toJSON()) | `remoteFolderId` (via remoteFolder["id"]) |
+| `threadId` | thread id | `threadId` |
+| `snippet` | short preview (set separately) | no |
+| `plaintext` | bool (set separately) | no |
+| `metadata` | array of plugin metadata objects | join table |
+| `__cls` | "Message" (injected by toJSON) | no |
+
+**toJSONDispatch() additions (conditional, not in data column):**
+- `body` — string, only when `_bodyForDispatch.length() > 0`
+- `fullSyncComplete` — true, only when body is present
+- `headersSyncComplete` — true, only when `version() == 1`
+
+**Indexed column → C++ binding:**
+- `remoteXGMLabels`: bound as `remoteXGMLabels().dump()` (JSON array serialized to string)
+- `remoteFolderId`: bound as `remoteFolderId()` which returns `_data["remoteFolder"]["id"]`
+
+---
+
+### Thread
+
+**Table:** `Thread`
+**Supports metadata:** YES (`supportsMetadata()` returns true)
+**`columnsForQuery()`:** `{id, data, accountId, version, gThrId, unread, starred, inAllMail, subject, lastMessageTimestamp, lastMessageReceivedTimestamp, lastMessageSentTimestamp, firstMessageTimestamp, hasAttachments}`
+
+**JSON keys in `_data` (from Thread.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | "t:" + msgId | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `subject` | thread subject | `subject` |
+| `lmt` | lastMessageTimestamp | `lastMessageTimestamp` |
+| `fmt` | firstMessageTimestamp | `firstMessageTimestamp` |
+| `lmst` | lastMessageSentTimestamp | `lastMessageSentTimestamp` |
+| `lmrt` | lastMessageReceivedTimestamp | `lastMessageReceivedTimestamp` |
+| `gThrId` | Gmail thread ID string | `gThrId` |
+| `unread` | int (count) | `unread` |
+| `starred` | int (count) | `starred` |
+| `inAllMail` | bool | `inAllMail` |
+| `attachmentCount` | int | `hasAttachments` (column name differs!) |
+| `searchRowId` | FTS5 rowid | no |
+| `folders` | array of folder objects with `_refs`, `_u` | no |
+| `labels` | array of label objects with `_refs`, `_u` | no |
+| `participants` | array of contact JSON | no |
+| `metadata` | array of plugin metadata objects | join table |
+| `lmrt_is_fallback` | bool, transient, erased when real value found | no |
+| `__cls` | "Thread" | no |
+
+**Note:** `hasAttachments` in the indexed column is bound as `(double)attachmentCount()`. The column is named `hasAttachments` in the DB but the JSON key is `attachmentCount`. This is a name mismatch that the Rust code must replicate exactly.
+
+**afterSave() side effects:**
+- Maintains `ThreadCategory` join table (DELETE + INSERT per category id)
+- Maintains `ThreadCounts` table (UPDATE unread/total counters)
+- Optionally updates `ThreadSearch` FTS5 index (categories field)
+
+---
+
+### Folder
+
+**Table:** `Folder`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, data, accountId, version, path, role}`
+
+**JSON keys in `_data`:**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | folder id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `path` | IMAP path | `path` |
+| `role` | folder role (inbox, sent, etc.) | `role` |
+| `localStatus` | object with sync state | no |
+| `__cls` | "Folder" | no |
+
+**beforeSave() side effect:** On version==1, inserts `ThreadCounts (categoryId, 0, 0)` row.
+**afterRemove() side effect:** Deletes `ThreadCounts WHERE categoryId = id`.
+
+---
+
+### Label
+
+**Table:** `Label`
+**Supports metadata:** NO (inherits from Folder)
+**`columnsForQuery()`:** Same as Folder: `{id, data, accountId, version, path, role}`
+
+**JSON keys in `_data`:** Same as Folder. Label is a subclass of Folder in C++ — it uses the same `bindToQuery()` and same column set.
+
+**Note:** When a Label is saved, `globalLabelsVersion` atomic is incremented (in `MailStore::save()`), invalidating the label cache. The Rust implementation must maintain an equivalent label cache invalidation mechanism.
+
+---
+
+### Contact
+
+**Table:** `Contact`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, data, accountId, version, refs, email, hidden, source, etag, bookId}`
+
+**JSON keys in `_data` (from Contact.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | contact id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `email` | email address | `email` |
+| `s` | source (mail, carddav, gpeople) | `source` |
+| `refs` | reference count | `refs` |
+| `gis` | array of group ids | no |
+| `info` | object (vcf or google contact info) | no |
+| `name` | display name | no |
+| `grn` | Google resource name (optional) | no |
+| `etag` | CardDAV etag (optional) | `etag` |
+| `bid` | book id (optional) | `bookId` |
+| `h` | hidden bool | `hidden` |
+| `__cls` | "Contact" | no |
+
+**afterSave() side effects:**
+- On version==1: INSERT INTO ContactSearch (content_id, content)
+- On version>1 AND source != 'mail': UPDATE ContactSearch SET content = ?
+
+**afterRemove() side effect:** DELETE FROM ContactSearch WHERE content_id = ?
+
+---
+
+### ContactBook
+
+**Table:** `ContactBook`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, accountId, version, data}` (NOTE: no extra indexed columns beyond base)
+
+**JSON keys in `_data` (from ContactBook.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | book id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `url` | CardDAV URL | no |
+| `source` | source type | no |
+| `ctag` | CardDAV ctag (optional) | no |
+| `syncToken` | CardDAV sync-token (optional) | no |
+| `__cls` | "ContactBook" | no |
+
+**Note:** ContactBook's `bindToQuery()` calls `MailModel::bindToQuery()` only — no additional bindings. The `columnsForQuery()` deliberately omits `source` and `url` from indexed columns (they are only in the `data` blob).
+
+---
+
+### ContactGroup
+
+**Table:** `ContactGroup`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, accountId, version, data, name, bookId}`
+
+**JSON keys in `_data` (from ContactGroup.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | group id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `name` | group name | `name` |
+| `bid` | book id | `bookId` |
+| `grn` | Google resource name (optional) | no |
+| `__cls` | "ContactGroup" | no |
+
+**afterRemove() side effect:** DELETE FROM ContactContactGroup WHERE value = id.
+
+---
+
+### Calendar
+
+**Table:** `Calendar`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, data, accountId}` (NOTE: no version column!)
+
+**JSON keys in `_data` (from Calendar.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | calendar id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version (via base) | NOT indexed (omitted from columnsForQuery) |
+| `path` | CalDAV path | no |
+| `name` | calendar name | no |
+| `ctag` | CalDAV ctag (optional) | no |
+| `syncToken` | CalDAV sync-token (optional) | no |
+| `color` | hex color string | no |
+| `description` | description (optional) | no |
+| `read_only` | bool | no |
+| `order` | display order int | no |
+| `__cls` | "Calendar" | no |
+
+**CRITICAL:** Calendar's `bindToQuery()` does NOT call `MailModel::bindToQuery()` — it binds only `:id`, `:data`, `:accountId`. There is no `:version` binding. The table definition has no `version` column. The Rust Calendar model must NOT bind version.
+
+---
+
+### Event
+
+**Table:** `Event`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, data, icsuid, recurrenceId, accountId, etag, calendarId, recurrenceStart, recurrenceEnd}`
+
+**JSON keys in `_data` (from Event.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | event id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version (via base) | no (not in columnsForQuery) |
+| `cid` | calendarId | `calendarId` |
+| `icsuid` | ICS UID | `icsuid` |
+| `ics` | raw ICS string | no |
+| `href` | CalDAV href (optional) | no |
+| `etag` | CalDAV etag | `etag` |
+| `rid` | recurrenceId (optional, empty string if not exception) | `recurrenceId` |
+| `status` | CONFIRMED/TENTATIVE/CANCELLED | no |
+| `rs` | recurrenceStart (unix int) | `recurrenceStart` |
+| `re` | recurrenceEnd (unix int) | `recurrenceEnd` |
+| `__cls` | "Event" | no |
+
+**CRITICAL:** Event's `bindToQuery()` does NOT call `MailModel::bindToQuery()` — it binds `:id`, `:data`, `:icsuid`, `:recurrenceId`, `:accountId`, `:etag`, `:calendarId`, `:recurrenceStart`, `:recurrenceEnd` directly. No `:version` binding.
+
+**afterSave() side effects:**
+- INSERT/UPDATE EventSearch FTS5 table (title, description, location, participants)
+- Only triggered when `_searchTitle`/`_searchDescription`/`_searchLocation`/`_searchParticipants` are non-empty (i.e., event was constructed from ICS data, not loaded from DB)
+
+**afterRemove() side effect:** DELETE FROM EventSearch WHERE content_id = ?
+
+---
+
+### Task (mail task model, not async task)
+
+**Table:** `Task`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, data, accountId, version, status}`
+
+**JSON keys in `_data` (from Task.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | random id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `__cls` | task type (e.g., "SendDraftTask") | no |
+| `status` | "local", "remote", "complete", "cancelled" | `status` |
+| `should_cancel` | bool (optional) | no |
+| `error` | error JSON (optional) | no |
+| (task-specific fields) | varies per task type | no |
+
+**Note:** Task's `toJSON()` is NOT overridden (inherited from MailModel). The base class adds `__cls` only if not already present. For Task, `__cls` is set in the constructor to the task type name (e.g., `"SendDraftTask"`), so it is already present in `_data` when `toJSON()` runs.
+
+---
+
+### File
+
+**Table:** `File`
+**Supports metadata:** NO
+**`columnsForQuery()`:** `{id, data, accountId, version, filename}`
+
+**JSON keys in `_data` (from File.cpp):**
+
+| JSON Key | Value | Indexed Column |
+|----------|-------|----------------|
+| `id` | file id | `id` (PRIMARY KEY) |
+| `aid` | account id | `accountId` |
+| `v` | version | `version` |
+| `messageId` | parent message id | no |
+| `partId` | IMAP BODYSTRUCTURE part id | no |
+| `contentId` | CID for inline attachments (optional) | no |
+| `contentType` | MIME type | no |
+| `filename` | display name | `filename` |
+| `size` | byte size | no |
+| `__cls` | "File" | no |
+
+**Note:** File objects are embedded in `Message._data["files"]` as a JSON array AND stored in the File table. Both must be maintained.
+
+---
+
+### Identity
+
+**Table:** NONE — Identity is not stored in the database.
+
+**Notes from Identity.cpp:**
+- `tableName()` calls `assert(false)` — Identity is never saved to SQLite
+- `columnsForQuery()` calls `assert(false)`
+- `bindToQuery()` calls `assert(false)`
+- Used only as a global singleton: `Identity::GetGlobal()` / `Identity::SetGlobal()`
+- Contains: `emailAddress`, `firstName`, `lastName`, `token`, `createdAt` JSON fields
+
+**Rust implementation:** Identity should be a plain struct (not implementing MailModel trait) used only for process-level state management. Do NOT attempt to persist it.
+
+---
+
+### ModelPluginMetadata
+
+**Table:** `ModelPluginMetadata`
+**This model is a join table, not a "fat row" model.**
+
+**Schema (from constants.h V1):**
+```sql
+CREATE TABLE IF NOT EXISTS `ModelPluginMetadata` (
+    id VARCHAR(40),
+    `accountId` VARCHAR(8),
+    `objectType` VARCHAR(15),
+    `value` TEXT,
+    `expiration` DATETIME,
+    PRIMARY KEY (`value`, `id`)
+)
+```
+
+**Columns and their meaning:**
+| Column | Value |
+|--------|-------|
+| `id` | The model's id (e.g., a Thread id or Message id) |
+| `accountId` | account id |
+| `objectType` | "Thread" or "Message" (the model's tableName) |
+| `value` | pluginId (e.g., "snooze-plugin") |
+| `expiration` | unix timestamp if metadata has expiration, else NULL |
+
+**How it is maintained:** Via `MailModel::afterSave()` in the base class, for any model where `supportsMetadata()` is true. The logic: DELETE all rows WHERE id = ?, then re-INSERT one row per non-empty metadata entry. The `value` column stores the pluginId string, NOT the metadata value JSON.
+
+**Note:** There is NO `data` blob column on this table. It is a join/lookup table only. The actual metadata values are embedded in the parent model's `data` JSON under the `metadata` array.
+
+---
+
+## Deep Dive: Schema SQL
+
+Exact SQL from `constants.h` for all migration versions. This is the authoritative source for the Rust `schema.rs` file.
+
+### V1 Setup Queries (Initial Schema)
+
+```sql
+CREATE TABLE IF NOT EXISTS `_State` (id VARCHAR(40) PRIMARY KEY, value TEXT);
+
+CREATE TABLE IF NOT EXISTS `File` (id VARCHAR(40) PRIMARY KEY, version INTEGER, data BLOB, accountId VARCHAR(8), filename TEXT);
+
+CREATE TABLE IF NOT EXISTS `Event` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), calendarId VARCHAR(40), _start INTEGER, _end INTEGER, is_search_indexed INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS EventIsSearchIndexedIndex ON `Event` (is_search_indexed, id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS `EventSearch` USING fts5(tokenize = 'porter unicode61', content_id UNINDEXED, title, description, location, participants);
+
+CREATE TABLE IF NOT EXISTS Label (id VARCHAR(40) PRIMARY KEY, accountId VARCHAR(8), version INTEGER, data TEXT, path VARCHAR(255), role VARCHAR(255), createdAt DATETIME, updatedAt DATETIME);
+
+CREATE TABLE IF NOT EXISTS Folder (id VARCHAR(40) PRIMARY KEY, accountId VARCHAR(8), version INTEGER, data TEXT, path VARCHAR(255), role VARCHAR(255), createdAt DATETIME, updatedAt DATETIME);
+
+CREATE TABLE IF NOT EXISTS Thread (id VARCHAR(42) PRIMARY KEY, accountId VARCHAR(8), version INTEGER, data TEXT, gThrId VARCHAR(20), subject VARCHAR(500), snippet VARCHAR(255), unread INTEGER, starred INTEGER, firstMessageTimestamp DATETIME, lastMessageTimestamp DATETIME, lastMessageReceivedTimestamp DATETIME, lastMessageSentTimestamp DATETIME, inAllMail TINYINT(1), isSearchIndexed TINYINT(1), participants TEXT, hasAttachments INTEGER);
+
+CREATE INDEX IF NOT EXISTS ThreadDateIndex ON `Thread` (lastMessageReceivedTimestamp DESC);
+CREATE INDEX IF NOT EXISTS ThreadUnreadIndex ON `Thread` (accountId, lastMessageReceivedTimestamp DESC) WHERE unread = 1 AND inAllMail = 1;
+CREATE INDEX IF NOT EXISTS ThreadUnifiedUnreadIndex ON `Thread` (lastMessageReceivedTimestamp DESC) WHERE unread = 1 AND inAllMail = 1;
+CREATE INDEX IF NOT EXISTS ThreadStarredIndex ON `Thread` (accountId, lastMessageReceivedTimestamp DESC) WHERE starred = 1 AND inAllMail = 1;
+CREATE INDEX IF NOT EXISTS ThreadUnifiedStarredIndex ON `Thread` (lastMessageReceivedTimestamp DESC) WHERE starred = 1 AND inAllMail = 1;
+CREATE INDEX IF NOT EXISTS ThreadGmailLookup ON `Thread` (gThrId) WHERE gThrId IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ThreadIsSearchIndexedIndex ON `Thread` (isSearchIndexed, id);
+CREATE INDEX IF NOT EXISTS ThreadIsSearchIndexedLastMessageReceivedIndex ON `Thread` (isSearchIndexed, lastMessageReceivedTimestamp);
+
+CREATE TABLE IF NOT EXISTS ThreadReference (threadId VARCHAR(42), accountId VARCHAR(8), headerMessageId VARCHAR(255), PRIMARY KEY (threadId, accountId, headerMessageId));
+
+CREATE TABLE IF NOT EXISTS ThreadCategory (id VARCHAR(40), value VARCHAR(40), inAllMail TINYINT(1), unread TINYINT(1), lastMessageReceivedTimestamp DATETIME, lastMessageSentTimestamp DATETIME, PRIMARY KEY (id, value));
+
+CREATE INDEX IF NOT EXISTS `ThreadCategory_id` ON `ThreadCategory` (`id` ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS `ThreadCategory_val_id` ON `ThreadCategory` (`value` ASC, `id` ASC);
+CREATE INDEX IF NOT EXISTS ThreadListCategoryIndex ON `ThreadCategory` (lastMessageReceivedTimestamp DESC, value, inAllMail, unread, id);
+CREATE INDEX IF NOT EXISTS ThreadListCategorySentIndex ON `ThreadCategory` (lastMessageSentTimestamp DESC, value, inAllMail, unread, id);
+
+CREATE TABLE IF NOT EXISTS `ThreadCounts` (`categoryId` TEXT PRIMARY KEY, `unread` INTEGER, `total` INTEGER);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS `ThreadSearch` USING fts5(tokenize = 'porter unicode61', content_id UNINDEXED, subject, to_, from_, categories, body);
+
+CREATE TABLE IF NOT EXISTS `Account` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), email_address TEXT);
+
+CREATE TABLE IF NOT EXISTS Message (id VARCHAR(40) PRIMARY KEY, accountId VARCHAR(8), version INTEGER, data TEXT, headerMessageId VARCHAR(255), gMsgId VARCHAR(255), gThrId VARCHAR(255), subject VARCHAR(500), date DATETIME, draft TINYINT(1), unread TINYINT(1), starred TINYINT(1), remoteUID INTEGER, remoteXGMLabels TEXT, remoteFolderId VARCHAR(40), replyToHeaderMessageId VARCHAR(255), threadId VARCHAR(40));
+
+CREATE INDEX IF NOT EXISTS MessageListThreadIndex ON Message(threadId, date ASC);
+CREATE INDEX IF NOT EXISTS MessageListHeaderMsgIdIndex ON Message(headerMessageId);
+CREATE INDEX IF NOT EXISTS MessageListDraftIndex ON Message(accountId, date DESC) WHERE draft = 1;
+CREATE INDEX IF NOT EXISTS MessageListUnifiedDraftIndex ON Message(date DESC) WHERE draft = 1;
+
+CREATE TABLE IF NOT EXISTS `ModelPluginMetadata` (id VARCHAR(40), `accountId` VARCHAR(8), `objectType` VARCHAR(15), `value` TEXT, `expiration` DATETIME, PRIMARY KEY (`value`, `id`));
+CREATE INDEX IF NOT EXISTS `ModelPluginMetadata_id` ON `ModelPluginMetadata` (`id` ASC);
+CREATE INDEX IF NOT EXISTS `ModelPluginMetadata_expiration` ON `ModelPluginMetadata` (`expiration` ASC) WHERE expiration IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS `DetatchedPluginMetadata` (objectId VARCHAR(40), objectType VARCHAR(15), accountId VARCHAR(8), pluginId VARCHAR(40), value BLOB, version INTEGER, PRIMARY KEY (`objectId`, `accountId`, `pluginId`));
+
+CREATE TABLE IF NOT EXISTS `MessageBody` (id VARCHAR(40) PRIMARY KEY, `value` TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS MessageBodyIndex ON MessageBody(id);
+
+CREATE TABLE IF NOT EXISTS `Contact` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), email TEXT, version INTEGER, refs INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS ContactEmailIndex ON Contact(email);
+CREATE INDEX IF NOT EXISTS ContactAccountEmailIndex ON Contact(accountId, email);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS `ContactSearch` USING fts5(tokenize = 'porter unicode61', content_id UNINDEXED, content);
+
+CREATE TABLE IF NOT EXISTS `Calendar` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8));
+
+CREATE TABLE IF NOT EXISTS `Task` (id VARCHAR(40) PRIMARY KEY, version INTEGER, data BLOB, accountId VARCHAR(8), status VARCHAR(255));
+```
+
+### V2 Setup Queries
+
+```sql
+CREATE INDEX IF NOT EXISTS MessageUIDScanIndex ON Message(accountId, remoteFolderId, remoteUID);
+```
+
+### V3 Setup Queries
+
+```sql
+ALTER TABLE `MessageBody` ADD COLUMN fetchedAt DATETIME;
+UPDATE `MessageBody` SET fetchedAt = datetime('now');
+```
+
+### V4 Setup Queries
+
+```sql
+DELETE FROM Task WHERE Task.status = "complete" OR Task.status = "cancelled";
+CREATE INDEX IF NOT EXISTS TaskByStatus ON Task(accountId, status);
+```
+
+### V5 — DOES NOT EXIST
+
+There is no V5 in the C++ codebase. Insert `M::up("")` (no-op) in the rusqlite_migration array at index 4 to preserve user_version numbering alignment with C++ `CURRENT_VERSION = 9`.
+
+### V6 Setup Queries
+
+```sql
+DROP TABLE IF EXISTS `Event`;
+CREATE TABLE IF NOT EXISTS `Event` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), etag VARCHAR(40), calendarId VARCHAR(40), recurrenceStart INTEGER, recurrenceEnd INTEGER);
+CREATE INDEX IF NOT EXISTS EventETag ON Event(calendarId, etag);
+```
+
+### V7 Setup Queries
+
+```sql
+ALTER TABLE `Event` ADD COLUMN icsuid VARCHAR(150);
+CREATE INDEX IF NOT EXISTS EventUID ON Event(accountId, icsuid);
+```
+
+### V8 Setup Queries
+
+```sql
+DELETE FROM Contact WHERE refs = 0;
+ALTER TABLE `Contact` ADD COLUMN hidden TINYINT(1) DEFAULT 0;
+ALTER TABLE `Contact` ADD COLUMN source VARCHAR(10) DEFAULT 'mail';
+ALTER TABLE `Contact` ADD COLUMN bookId VARCHAR(40);
+ALTER TABLE `Contact` ADD COLUMN etag VARCHAR(40);
+CREATE INDEX IF NOT EXISTS ContactBrowseIndex ON Contact(hidden,refs,accountId);
+CREATE TABLE `ContactGroup` (`id` varchar(40),`accountId` varchar(40),`bookId` varchar(40), `data` BLOB, `version` INTEGER, `name` varchar(300), PRIMARY KEY (id));
+CREATE TABLE `ContactContactGroup` (`id` varchar(40),`value` varchar(40), PRIMARY KEY (id, value));
+CREATE TABLE `ContactBook` (`id` varchar(40),`accountId` varchar(40), `data` BLOB, `version` INTEGER, PRIMARY KEY (id));
+```
+
+### V9 Setup Queries
+
+```sql
+ALTER TABLE `Event` ADD COLUMN recurrenceId VARCHAR(50) DEFAULT '';
+CREATE INDEX IF NOT EXISTS EventRecurrenceId ON Event(calendarId, icsuid, recurrenceId);
+```
+
+---
+
+## Deep Dive: TypeScript Cross-Check
+
+Cross-reference of TypeScript `jsonKey` values (from `app/frontend/flux/models/`) against C++ `_data["key"]` assignments. This section documents mismatches that require attention in the Rust implementation.
+
+### Base Model (model.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `id` | `id` | `id` | MATCH |
+| `accountId` | `aid` | `aid` | MATCH |
+| `version` | `v` | `v` | MATCH |
+
+### Message (message.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `to` | `to` | `to` | MATCH |
+| `cc` | `cc` | `cc` | MATCH |
+| `bcc` | `bcc` | `bcc` | MATCH |
+| `from` | `from` | `from` | MATCH |
+| `replyTo` | `replyTo` | `replyTo` | MATCH |
+| `date` | `date` | `date` | MATCH |
+| `body` | `body` | not in data; via MessageBody table | SPECIAL (JoinedData) |
+| `files` | `files` | `files` | MATCH |
+| `unread` | `unread` | `unread` | MATCH |
+| `starred` | `starred` | `starred` | MATCH |
+| `snippet` | `snippet` | `snippet` | MATCH |
+| `threadId` | `threadId` | `threadId` | MATCH |
+| `headerMessageId` | `hMsgId` | `hMsgId` | MATCH |
+| `subject` | `subject` | `subject` | MATCH |
+| `draft` | `draft` | `draft` | MATCH |
+| `pristine` | `pristine` | `pristine` (if set by UI) | MATCH (UI-only field, C++ ignores) |
+| `plaintext` | `plaintext` | `plaintext` | MATCH |
+| `version` | `v` | `v` | MATCH |
+| `replyToHeaderMessageId` | `rthMsgId` | `rthMsgId` | MATCH |
+| `forwardedHeaderMessageId` | `fwdMsgId` | `fwdMsgId` | MATCH |
+| `folder` | `folder` | `folder` | MATCH |
+| `listUnsubscribe` | `hListUnsub` | not explicitly set by C++ | C++ includes extra headers in `extraHeaders` object |
+| `listUnsubscribePost` | `hListUnsubPost` | not explicitly set by C++ | Same — extra headers stored in `extraHeaders` |
+| `events` | `events` | not in C++ Message | TS-only field for calendar events attached to messages |
+| `pluginMetadata` | `metadata` | `metadata` | MATCH |
+
+**MISMATCH/NOTES:**
+- TS reads `hListUnsub` and `hListUnsubPost` as top-level keys. C++ stores all extra headers under `_data["extraHeaders"]["List-Unsubscribe"]` — these are NOT promoted to top-level keys by C++. The TS side may not receive these unless the C++ or Rust code explicitly promotes them. **Flag for Phase 7 IMAP body sync investigation.**
+- TS has `events` (Event collection). C++ Message has no such field. This is populated by the TypeScript side when parsing inline calendar invitations — not relevant to the Rust data layer.
+
+### Thread (thread.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `snippet` | `snippet` | `snippet` (not set in C++ Thread constructor) | C++ Thread does not store snippet; TS attribute exists but may be empty |
+| `subject` | `subject` | `subject` | MATCH |
+| `unread` | `unread` | `unread` | MATCH |
+| `starred` | `starred` | `starred` | MATCH |
+| `version` | `v` | `v` | MATCH |
+| `folders` | `folders` | `folders` | MATCH |
+| `labels` | `labels` | `labels` | MATCH |
+| `participants` | `participants` | `participants` | MATCH |
+| `attachmentCount` | `attachmentCount` | `attachmentCount` | MATCH |
+| `firstMessageTimestamp` | `fmt` | `fmt` | MATCH |
+| `lastMessageReceivedTimestamp` | `lmrt` | `lmrt` | MATCH |
+| `lastMessageSentTimestamp` | `lmst` | `lmst` | MATCH |
+| `inAllMail` | `inAllMail` | `inAllMail` | MATCH |
+| `pluginMetadata` | `metadata` | `metadata` | MATCH |
+
+**MISMATCH/NOTES:**
+- TS Thread does NOT have `lmt` (lastMessageTimestamp). C++ Thread stores `lmt` in `_data` and binds it to `lastMessageTimestamp` indexed column. The TS side does not expose it as an attribute but the column value is used for sorting queries on the DB side. The Rust Thread model must still populate the `lastMessageTimestamp` indexed column even though TS has no attribute for it.
+- TS Thread has a `categories` virtual attribute that combines `folders` and `labels` arrays — not a stored JSON key.
+- C++ Thread also stores `gThrId` and `searchRowId` in `_data` which TS does not expose as typed attributes.
+
+### Folder / Label (folder.ts, label.ts, category.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `role` | `role` | `role` | MATCH |
+| `path` | `path` | `path` | MATCH |
+| `localStatus` | `localStatus` | `localStatus` | MATCH |
+
+Both Folder and Label inherit from Category. Label.cpp is a subclass of Folder.cpp — same JSON keys, same indexed columns. MATCH across the board.
+
+### Contact (contact.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `name` | `name` | `name` | MATCH |
+| `hidden` | `h` | `h` | MATCH |
+| `source` | `s` | `s` | MATCH |
+| `email` | `email` | `email` | MATCH |
+| `contactGroups` | `gis` | `gis` | MATCH |
+| `refs` | `refs` | `refs` | MATCH |
+| `info` | `info` | `info` | MATCH |
+
+**NOTES:**
+- TS does NOT have `grn` (googleResourceName), `etag`, `bid` (bookId) as typed attributes. These are in C++ `_data` and therefore in the `data` blob, but the TypeScript side does not expose them as Model attributes. They are used server-side only.
+- TS `contactGroups` jsonKey is `gis` which matches C++ `_data["gis"]`. MATCH.
+
+### Calendar (calendar.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `name` | `name` | `name` | MATCH |
+| `description` | `description` | `description` | MATCH |
+| `readOnly` | `read_only` | `read_only` | MATCH |
+| `color` | `color` | `color` | MATCH |
+| `order` | `order` | `order` | MATCH |
+
+**NOTES:**
+- TS does not expose `path`, `ctag`, `syncToken` as typed attributes — these are sync-internal fields stored in `_data` but not read by TypeScript.
+- Full MATCH on all TS-exposed attributes.
+
+### Event (event.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `calendarId` | `cid` | `cid` | MATCH |
+| `ics` | `ics` | `ics` | MATCH |
+| `icsuid` | `icsuid` | `icsuid` | MATCH |
+| `recurrenceId` | `rid` | `rid` | MATCH |
+| `status` | `status` | `status` | MATCH |
+| `recurrenceStart` | `rs` | `rs` | MATCH |
+| `recurrenceEnd` | `re` | `re` | MATCH |
+
+**NOTES:**
+- TS does NOT have `href` or `etag` as typed attributes — sync-internal.
+- Full MATCH on all TS-exposed attributes.
+
+### File (file.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `filename` | `filename` | `filename` | MATCH |
+| `size` | `size` | `size` | MATCH |
+| `contentType` | `contentType` | `contentType` | MATCH |
+| `messageId` | `messageId` | `messageId` | MATCH |
+| `contentId` | `contentId` | `contentId` | MATCH |
+
+Full MATCH.
+
+### ContactBook (contact-book.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `readonly` | `readonly` | NOT in C++ (C++ uses `url`, `source`, `ctag`, `syncToken`) | MISMATCH — TS has different fields |
+| `source` | `source` | `source` | MATCH |
+
+**MISMATCH:** TS ContactBook has `readonly` attribute that C++ ContactBook does not store. C++ ContactBook stores `url`, `ctag`, `syncToken` that TS does not expose. The `source` field matches.
+
+**Assessment:** ContactBook is primarily a sync-internal model. TS only needs `source` to know whether to show CardDAV vs Google contacts UI. The other fields are sync-engine state. No action required in the Rust data layer — just store the full `_data` JSON.
+
+### ContactGroup (contact-group.ts)
+
+| TS modelKey | TS jsonKey | C++ key | Match? |
+|-------------|-----------|---------|--------|
+| `name` | `name` | `name` | MATCH |
+
+**MISMATCH:** TS ContactGroup does NOT expose `bookId` (C++ JSON key: `bid`) or `grn` (googleResourceName). These are sync-internal. The TS side only needs `name` for display.
+
+**Assessment:** The `bookId`/`bid` value is in the `data` JSON blob but TS reads it only from the `data` field — there is no TypeScript attribute definition for it. Since the C++ indexes `bookId` as a DB column, the Rust implementation must also bind it as a column even though TS does not have a typed attribute for it.
+
+### Summary of Critical Mismatches
+
+| Model | Mismatch | Risk Level | Action |
+|-------|---------|-----------|--------|
+| Message | `hListUnsub`/`hListUnsubPost` not populated by C++ as top-level keys | LOW | Phase 7 investigation; TS may not use these from deltas |
+| Thread | TS has no `lmt` attribute but DB column `lastMessageTimestamp` still required | MEDIUM | Rust Thread must populate `lastMessageTimestamp` indexed column even without TS attribute |
+| Thread | TS has no `gThrId` attribute but DB column required | LOW | Rust Thread must populate `gThrId` indexed column for Gmail lookup index |
+| ContactBook | TS `readonly` field not in C++ JSON; C++ fields `url`/`ctag`/`syncToken` not in TS | LOW | No action: sync-internal fields; TS only reads `source` |
+| ContactGroup | TS missing `bookId` (C++ `bid`) and `grn` typed attributes | LOW | Rust still binds `bookId` indexed column; values present in `data` blob |
+| Calendar | No `version` indexed column despite base class having `v` in JSON | MEDIUM | Rust Calendar must NOT bind `:version` — Calendar.bindToQuery does NOT call MailModel::bindToQuery |
+| Event | No `version` indexed column; Event.bindToQuery does NOT call MailModel::bindToQuery | MEDIUM | Same as Calendar — do not bind version column |
 
 ---
 
@@ -629,15 +1341,40 @@ CREATE VIRTUAL TABLE IF NOT EXISTS `ContactSearch`
 - [rusqlite docs.rs](https://docs.rs/rusqlite/latest/rusqlite/) — busy_timeout, pragma_update, execute_batch, serde_json feature
 - [rusqlite GitHub releases](https://github.com/rusqlite/rusqlite/releases) — version 0.38.0 (Dec 2024), bundled = FTS5 included
 - [rusqlite_migration docs.rs](https://docs.rs/rusqlite_migration/latest/rusqlite_migration/) — version 2.4.1, M::up(), Migrations::to_latest(), user_version tracking
-- C++ source: `app/mailsync/MailSync/constants.h` — exact V1-V9 SQL schema, tables, indexes, FTS5 virtual tables
-- C++ source: `app/mailsync/MailSync/DeltaStream.cpp` — delta wire format, coalescing logic, `queueDeltaForDelivery`, `flushWithin`
-- C++ source: `app/mailsync/MailSync/MailStore.cpp` — save/remove pattern, transaction pattern, `_emit` logic
-- C++ source: `app/mailsync/MailSync/Models/MailModel.cpp` — fat row pattern, `bindToQuery`, `toJSON`, `__cls` injection, metadata afterSave
-- C++ source: `app/mailsync/MailSync/Models/Message.cpp` — column list, JSON key names, indexed column binding
+- C++ source: `app/mailsync/MailSync/constants.h` — exact V1-V9 SQL schema (all tables, indexes, FTS5); V5 absence confirmed
+- C++ source: `app/mailsync/MailSync/DeltaStream.cpp` — delta wire format, coalescing logic, `queueDeltaForDelivery`, `flushWithin`; immediate emit (0ms) for ProcessState/ProcessAccountSecretsUpdated
+- C++ source: `app/mailsync/MailSync/MailStore.cpp` — save/remove pattern, transaction pattern, `_emit` logic, `CURRENT_VERSION = 9`, V5 gap confirmed in migrate()
+- C++ source: `app/mailsync/MailSync/MailStore.hpp` — `_streamMaxDelay` field declaration, `setStreamDelay()` signature
+- C++ source: `app/mailsync/MailSync/SyncWorker.cpp` line 62 — `store->setStreamDelay(500)` CONFIRMED 500ms for sync workers
+- C++ source: `app/mailsync/MailSync/main.cpp` line 621 — `store.setStreamDelay(5)` for task processor (effectively immediate)
+- C++ source: `app/mailsync/MailSync/Models/MailModel.cpp` — base class JSON keys (`id`, `aid`, `v`), `toJSON()` adds `__cls`, `bindToQuery()` binds id/data/accountId/version, `afterSave()` metadata join table logic
+- C++ source: `app/mailsync/MailSync/Models/Message.cpp` — all JSON keys, columnsForQuery, bindToQuery, afterSave thread update
+- C++ source: `app/mailsync/MailSync/Models/Thread.cpp` — all JSON keys, columnsForQuery (note: `hasAttachments` column bound as `attachmentCount` value), afterSave ThreadCategory/ThreadCounts/ThreadSearch maintenance
+- C++ source: `app/mailsync/MailSync/Models/Folder.cpp` — JSON keys, columnsForQuery, ThreadCounts side effects
+- C++ source: `app/mailsync/MailSync/Models/Label.cpp` — Folder subclass, same JSON keys
+- C++ source: `app/mailsync/MailSync/Models/Contact.cpp` — all JSON keys including abbreviated (`s`, `h`, `gis`, `bid`), ContactSearch side effects
+- C++ source: `app/mailsync/MailSync/Models/ContactBook.cpp` — JSON keys, minimal columnsForQuery (no extra indexed cols)
+- C++ source: `app/mailsync/MailSync/Models/ContactGroup.cpp` — JSON keys (`bid`, `grn`, `name`), ContactContactGroup join table maintenance
+- C++ source: `app/mailsync/MailSync/Models/Calendar.cpp` — JSON keys, CRITICAL: does NOT call MailModel::bindToQuery, no version column
+- C++ source: `app/mailsync/MailSync/Models/Event.cpp` — JSON keys (`cid`, `ics`, `icsuid`, `rid`, `rs`, `re`, `etag`, `href`, `status`), CRITICAL: does NOT call MailModel::bindToQuery, EventSearch side effects
+- C++ source: `app/mailsync/MailSync/Models/Task.cpp` — JSON keys, columnsForQuery, `__cls` pre-set in constructor
+- C++ source: `app/mailsync/MailSync/Models/File.cpp` — JSON keys, columnsForQuery, embedded in Message.files
+- C++ source: `app/mailsync/MailSync/Models/Identity.cpp` — NOT stored in DB; assert(false) on table/query methods
+- TypeScript source: `app/frontend/flux/models/model.ts` — base Model attributes with jsonKey values
+- TypeScript source: `app/frontend/flux/models/message.ts` — all Message attribute jsonKeys
+- TypeScript source: `app/frontend/flux/models/thread.ts` — all Thread attribute jsonKeys (note: no `lmt` attribute)
+- TypeScript source: `app/frontend/flux/models/category.ts` — Folder/Label base attributes
+- TypeScript source: `app/frontend/flux/models/contact.ts` — Contact attribute jsonKeys (`h`, `s`, `gis`)
+- TypeScript source: `app/frontend/flux/models/calendar.ts` — Calendar attribute jsonKeys
+- TypeScript source: `app/frontend/flux/models/event.ts` — Event attribute jsonKeys (`cid`, `ics`, `icsuid`, `rid`, `rs`, `re`)
+- TypeScript source: `app/frontend/flux/models/file.ts` — File attribute jsonKeys
+- TypeScript source: `app/frontend/flux/models/contact-book.ts` — ContactBook attributes (mismatch from C++)
+- TypeScript source: `app/frontend/flux/models/contact-group.ts` — ContactGroup attributes (minimal)
+- TypeScript source: `app/frontend/flux/models/model-with-metadata.ts` — metadata jsonKey = `metadata`, pluginMetadata join table
 
 ### Secondary (MEDIUM confidence)
 
-- [rusqlite serde_json.rs source](https://github.com/rusqlite/rusqlite/blob/master/src/types/serde_json.rs) — ToSql/FromSql for serde_json::Value: NULL→NULL, JSON object/array→TEXT, numbers→INT/REAL
+- [rusqlite serde_json.rs source](https://github.com/rusqlite/rusqlite/blob/master/src/types/serde_json.rs) — ToSql/FromSql for serde_json::Value: NULL->NULL, JSON object/array->TEXT, numbers->INT/REAL
 - [rusqlite_migration README](https://github.com/cljoly/rusqlite_migration/blob/master/README.md) — Migration pattern with WAL pragma before to_latest()
 
 ### Tertiary (LOW confidence)
@@ -651,8 +1388,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS `ContactSearch`
 **Confidence breakdown:**
 - Standard stack (tokio-rusqlite, rusqlite_migration, serde): HIGH — versions confirmed from official docs and GitHub releases as of 2026-03-02
 - Architecture (fat row pattern, delta coalescing): HIGH — directly derived from C++ source code which is the authoritative reference
-- Schema (V1-V9 SQL): HIGH — verbatim from constants.h in the repository
-- Pitfalls: MEDIUM — most derived from code analysis + known SQLite/rusqlite behavior; V5 gap is a real risk requiring test validation
+- Schema (V1-V9 SQL): HIGH — verbatim from constants.h in the repository; extracted character-for-character
+- Model field mapping: HIGH — directly read from each model's .cpp file
+- Delta delay values: HIGH — confirmed by grep of all setStreamDelay() callers (SyncWorker.cpp=500ms, main.cpp=5ms, DeltaStream.cpp=0ms)
+- V5 gap: HIGH — confirmed by reading MailStore::migrate() line-by-line; no if(version<5) block exists
+- TypeScript cross-check: HIGH — read directly from all model .ts files; mismatches documented
 
 **Research date:** 2026-03-02
 **Valid until:** 2026-06-01 (tokio-rusqlite and rusqlite APIs are stable; schema derived from committed C++ source)
