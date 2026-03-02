@@ -52,9 +52,9 @@ Requirements for milestone v1.0 — Rewrite mailcore N-API in Rust. Each maps to
 - [ ] **INTG-03**: All C++ source files, node-gyp configs, and vendored mailcore2 removed
 - [ ] **INTG-04**: `node-addon-api` and `node-gyp` dependencies removed from package.json
 
-## Future Requirements
+## v1 Future Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
+Deferred from v1.0. Tracked but not in v1.0 roadmap.
 
 ### Improvements
 
@@ -63,17 +63,138 @@ Deferred to future release. Tracked but not in current roadmap.
 - **IMPR-03**: Structured error codes (errorCode field) for machine-readable errors
 - **IMPR-04**: IMAP4rev2 capability detection
 
-## Out of Scope
-
-Explicitly excluded. Documented to prevent scope creep.
+## v1 Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Full IMAP client (FETCH, SEARCH, IDLE loop) | mailsync C++ engine owns ongoing IMAP communication |
 | POP3 connection testing | POP3 compiled in old C++ but never used by N-API layer |
 | Hot-reload of providers.json | providers.json is bundled and static; OnceLock single-init is sufficient |
-| Sync engine rewrite | Only the N-API addon is being replaced, not the mailsync C++ process |
 | Mobile platform builds | Desktop only (Windows, macOS, Linux) |
+
+---
+
+## v2 Requirements
+
+Requirements for milestone v2.0 — Rewrite mailsync Engine in Rust. Full parity replacement of the C++ mailsync binary (~16,200 LOC).
+
+### IPC Protocol
+
+- [ ] **IPC-01**: Binary reads account JSON and identity JSON from stdin on startup (two-line handshake)
+- [ ] **IPC-02**: Binary emits newline-delimited JSON to stdout with exact field names (`modelJSONs`, `modelClass`, `type`)
+- [ ] **IPC-03**: Binary handles all stdin commands: `queue-task`, `cancel-task`, `wake-workers`, `need-bodies`, `sync-calendar`
+- [ ] **IPC-04**: Binary supports all process modes: `sync`, `test`, `migrate`, `reset`, `install-check`
+- [ ] **IPC-05**: Binary exits with code 141 when parent closes stdin (orphan detection)
+- [ ] **IPC-06**: stdout uses explicit flush after every message (no block buffering in pipe mode)
+
+### Database and Delta Emission
+
+- [ ] **DATA-01**: SQLite database with WAL mode and `busy_timeout=5000` via tokio-rusqlite
+- [ ] **DATA-02**: Delta emission with persist/unpersist types, 500ms coalescing window, transaction batching
+- [ ] **DATA-03**: All data models implemented: Message, Thread, Folder, Label, Contact, ContactBook, ContactGroup, Calendar, Event, Task, File, Identity, ModelPluginMetadata
+- [ ] **DATA-04**: Schema migration matching C++ baseline (all tables, indexes, FTS5 for ThreadSearch/EventSearch/ContactSearch)
+- [ ] **DATA-05**: Single-writer pattern via tokio-rusqlite prevents blocking on async threads
+
+### IMAP Background Sync
+
+- [ ] **ISYN-01**: IMAP folder enumeration via LIST with role detection (Inbox, Sent, Drafts, Trash, Spam, Archive)
+- [ ] **ISYN-02**: IMAP incremental sync via CONDSTORE (modseq-based change detection)
+- [ ] **ISYN-03**: IMAP incremental sync via UID range (fallback for servers without CONDSTORE)
+- [ ] **ISYN-04**: UIDVALIDITY change detection triggers full folder re-sync per RFC 4549
+- [ ] **ISYN-05**: Message header sync (FETCH ENVELOPE + BODYSTRUCTURE) with stable ID generation from headers
+- [ ] **ISYN-06**: Message body caching with `need-bodies` priority queue and per-folder age policy (3 months)
+- [ ] **ISYN-07**: Background sync worker iterates folders on 2-10 minute schedule
+
+### IMAP IDLE
+
+- [ ] **IDLE-01**: Foreground IDLE monitoring on primary folder with 29-minute re-IDLE loop
+- [ ] **IDLE-02**: IDLE interrupted on task arrival via internal tokio channel
+- [ ] **IDLE-03**: Separate IMAP connection for IDLE (not shared with background sync session)
+
+### SMTP Sending
+
+- [ ] **SEND-01**: SMTP send with TLS, STARTTLS, and clear connections via lettre
+- [ ] **SEND-02**: SMTP authentication with password and XOAUTH2
+- [ ] **SEND-03**: MIME message construction from draft JSON (multipart, attachments, inline images)
+- [ ] **SEND-04**: SMTP connection timeout of 15 seconds prevents indefinite hang
+
+### Task Processor
+
+- [ ] **TASK-01**: Local phase executes immediately on `queue-task` receipt (DB write + delta emission)
+- [ ] **TASK-02**: Remote phase executes on foreground IMAP/SMTP connection
+- [ ] **TASK-03**: All task types supported: SendDraft, DestroyDraft, ChangeLabels, ChangeFolder, ChangeStarred, ChangeUnread, SyncbackMetadata, SyncbackEvent, and contact/calendar tasks
+- [ ] **TASK-04**: Startup reset of tasks stuck in `remote` state (crash recovery)
+- [ ] **TASK-05**: Runtime expiry of completed tasks after configurable period
+
+### OAuth2 Token Management
+
+- [ ] **OAUT-01**: OAuth2 token refresh via HTTP token exchange endpoint
+- [ ] **OAUT-02**: Token expiry check before IMAP/SMTP authenticate (5-minute buffer window)
+- [ ] **OAUT-03**: Updated token credentials emitted to UI via `ProcessAccountSecretsUpdated` delta
+
+### Gmail-Specific Behaviors
+
+- [ ] **GMAL-01**: Gmail folder whitelist — only sync INBOX, All Mail, Trash, Spam
+- [ ] **GMAL-02**: X-GM-LABELS, X-GM-MSGID, X-GM-THRID IMAP extension parsing
+- [ ] **GMAL-03**: Gmail contacts via Google People API (not standard CardDAV)
+- [ ] **GMAL-04**: Gmail skips IMAP APPEND for Sent folder after SMTP send
+
+### CalDAV Calendar Sync
+
+- [ ] **CDAV-01**: CalDAV calendar discovery and enumeration via service discovery
+- [ ] **CDAV-02**: CalDAV sync-collection REPORT for incremental calendar sync
+- [ ] **CDAV-03**: CalDAV CREATE/UPDATE/DELETE events via iCalendar format
+- [ ] **CDAV-04**: CalDAV ETag handling with GET-after-PUT fallback for servers that omit ETag on mutation
+- [ ] **CDAV-05**: Rate limiting with RFC 6585 Retry-After compliance
+
+### CardDAV Contact Sync
+
+- [ ] **CRDV-01**: CardDAV contact discovery and enumeration via service discovery
+- [ ] **CRDV-02**: CardDAV sync-collection REPORT for incremental contact sync
+- [ ] **CRDV-03**: CardDAV CREATE/UPDATE/DELETE contacts via vCard format
+- [ ] **CRDV-04**: Google People API v1 contacts for Gmail accounts (separate from CardDAV path)
+
+### Metadata
+
+- [ ] **META-01**: Metadata worker with HTTP long-polling from identity server
+- [ ] **META-02**: Metadata expiration worker cleans up stale metadata
+- [ ] **META-03**: Plugin metadata sync via SyncbackMetadata task type
+
+### Packaging and Cleanup
+
+- [ ] **PKGN-01**: Cross-platform builds for 5 targets: win-x64, mac-arm64, mac-x64, linux-x64, linux-arm64
+- [ ] **PKGN-02**: Release binary under 15MB with LTO and strip
+- [ ] **PKGN-03**: electron-builder asarUnpack configured for Rust mailsync binary
+- [ ] **PKGN-04**: `mailsync-process.ts` spawns Rust binary via existing path resolution logic
+- [ ] **PKGN-05**: All C++ mailsync source, vendored dependencies (libetpan, mailcore2), and build configs deleted
+- [ ] **PKGN-06**: TLS via rustls exclusively (no OpenSSL symbols to conflict with Electron's BoringSSL)
+
+### Improvements (Beyond C++ Parity)
+
+- [ ] **IMPR-05**: Per-operation timeouts via `tokio::time::timeout()` for all network operations
+- [ ] **IMPR-06**: Structured `SyncError` enum distinguishing auth/TLS/network/server error classes
+- [ ] **IMPR-07**: Improved body sync progress updates emitted to UI during large syncs
+- [ ] **IMPR-08**: Async multiplexing via tokio tasks reduces OS thread count vs C++ implementation
+
+## v2 Future Requirements
+
+Deferred to v2.x or later. Not in v2.0 roadmap.
+
+- **DFRD-01**: IMAP NOTIFY extension (RFC 5465) — only ~30% of servers support it
+- **DFRD-02**: IMAP BINARY extension (RFC 3516) — only if body sync is measured as a bottleneck
+- **DFRD-03**: In-engine FTS5 full-text search indexing — requires design decision on index location
+- **DFRD-04**: QRESYNC typed API — contribute upstream to chatmail/async-imap after CONDSTORE parity is validated
+- **DFRD-05**: POP3 protocol support — never used in current implementation
+
+## v2 Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Full IMAP client library | Sync engine only needs sync operations, not a general-purpose IMAP library |
+| POP3/NNTP protocols | Never used in current implementation |
+| Mobile platform builds | Desktop only (Windows, macOS, Linux) |
+| Exchange ActiveSync (EAS) | Anti-feature: complex proprietary protocol with licensing requirements |
+| Per-folder IDLE connections | Anti-feature: one IDLE on primary folder is sufficient; multiple IDLEs waste server resources |
+| Full body pre-download | Anti-feature: lazy body caching with age policy is the correct approach |
 
 ## Traceability
 
