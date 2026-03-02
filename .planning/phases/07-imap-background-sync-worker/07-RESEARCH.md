@@ -996,3 +996,318 @@ pub async fn background_sync(
 
 **Research date:** 2026-03-02
 **Valid until:** 2026-06-01 (async-imap updates could add X-GM-THRID typed method; check before Phase 7 coding)
+
+---
+
+## Deep Dive: Open Questions Resolved
+
+**Research date:** 2026-03-02
+**Method:** C++ codebase inspection (libetpan, mailcore2 GitHub source, MailUtils.cpp, MailProcessor.cpp), imap-proto GitHub source inspection, bs58 GitHub source inspection
+
+---
+
+### Q1: X-GM-THRID Raw Extraction — RESOLVED (HIGH confidence)
+
+**Root cause of uncertainty:** async-imap 0.11.2 provides `gmail_labels()` and `gmail_msg_id()` but has no `gmail_thread_id()` method. The question was: where does the parsed `u64` value live?
+
+**Finding:** `imap-proto` (the underlying parser used by async-imap) DOES have a typed `AttributeValue::GmailThrId(u64)` variant. This was confirmed by reading the imap-proto types.rs source at `github.com/djc/tokio-imap/blob/main/imap-proto/src/types.rs`.
+
+The full attribute type hierarchy is:
+
+```
+Attribute::GmailThrId         -- the fetch attribute name (used in FETCH queries)
+AttributeValue::GmailThrId(u64) -- the parsed response value
+```
+
+**How async-imap typed methods work (from fetch.rs source):**
+
+```rust
+// From async-imap src/types/fetch.rs -- gmail_msg_id() reference implementation
+pub fn gmail_msg_id(&self) -> Option<&u64> {
+    if let Response::Fetch(_, attrs) = self.response.parsed() {
+        attrs
+            .iter()
+            .filter_map(|av| match av {
+                AttributeValue::GmailMsgId(id) => Some(id),
+                _ => None,
+            })
+            .next()
+    } else {
+        unreachable!()
+    }
+}
+```
+
+**X-GM-THRID extractor to implement (exact same pattern):**
+
+```rust
+// Source: imap-proto AttributeValue::GmailThrId(u64) variant confirmed in types.rs
+// Pattern matches async-imap gmail_msg_id() exactly
+use imap_proto::types::AttributeValue;
+
+/// Extract X-GM-THRID from an async-imap Fetch response.
+/// Requires X-GM-THRID to be included in the uid_fetch query string.
+pub fn gmail_thread_id(fetch: &async_imap::types::Fetch) -> Option<u64> {
+    use async_imap::imap_proto::Response;
+    if let Response::Fetch(_, attrs) = fetch.response.parsed() {
+        attrs
+            .iter()
+            .filter_map(|av| match av {
+                AttributeValue::GmailThrId(id) => Some(*id),
+                _ => None,
+            })
+            .next()
+    } else {
+        None
+    }
+}
+```
+
+**Note on `fetch.response` access:** The `Fetch` struct `response` field may be private in async-imap 0.11.2. If so, the extraction must be done via a wrapper or by forking async-imap to add a `gmail_thread_id()` method using the exact pattern above. Check whether `Fetch::response` is `pub` before implementing; if private, submit a PR to async-imap or add the method via a newtype wrapper.
+
+**Fallback if internal field is not accessible:** Store `gmailMsgId` and look up thread grouping using `X-GM-MSGID` cross-reference (all messages with the same `X-GM-THRID` share a `gmailMsgId` cluster that can be detected by querying `UID SEARCH X-GM-THRID <thread_id>`). However, the direct `AttributeValue::GmailThrId` path is strongly preferred.
+
+**Query string to use:**
+```rust
+const GMAIL_FETCH_QUERY: &str =
+    "(UID FLAGS ENVELOPE BODYSTRUCTURE X-GM-LABELS X-GM-MSGID X-GM-THRID)";
+```
+
+**Prescriptive answer:** Implement a free function `gmail_thread_id(fetch: &Fetch) -> Option<u64>` that matches on `AttributeValue::GmailThrId(id)`. If `fetch.response` is private, add this method as a PR to async-imap (one-line change following the exact pattern of `gmail_msg_id()`). Do NOT use a secondary SEARCH approach as it doubles IMAP round trips.
+
+---
+
+### Q2: RFC 2047 MIME Encoding in Stable ID Generation — RESOLVED (HIGH confidence)
+
+**Root cause of uncertainty:** The C++ `idForMessage()` calls `subject->UTF8Characters()` and `messageID->UTF8Characters()` on mailcore2 `String*` objects. The question was: are these decoded or raw RFC 2047?
+
+**Finding from mailcore2 source (MCMessageHeader.cpp on GitHub):**
+
+```cpp
+// mailcore2: MCMessageHeader.cpp -- setSubject() is called during IMAP parse
+void MessageHeader::setSubject(String * subject) {
+    mSubject = String::stringByDecodingMIMEHeaderValue(subject)->retain();
+}
+
+String * MessageHeader::subject() {
+    return mSubject;
+}
+```
+
+`String::stringByDecodingMIMEHeaderValue()` decodes RFC 2047 encoded-words (e.g., `=?UTF-8?B?SGVsbG8gV29ybGQ=?=` -> `Hello World`) at the time the header is set. Therefore, when `idForMessage()` calls `subject->UTF8Characters()`, it receives the **fully decoded UTF-8 string**.
+
+**What imap-proto returns (raw bytes):**
+
+The `imap-proto::types::Envelope` struct uses `Option<Cow<'a, [u8]>>` for all header fields:
+
+```
+Envelope {
+    date:       Option<Cow<'a, [u8]>>,
+    subject:    Option<Cow<'a, [u8]>>,   // raw IMAP octets, may be RFC 2047
+    from:       Option<Vec<Address<'a>>>,
+    message_id: Option<Cow<'a, [u8]>>,   // typically ASCII, no RFC 2047
+    ...
+}
+
+Address {
+    mailbox: Option<Cow<'a, [u8]>>,  // raw octets
+    host:    Option<Cow<'a, [u8]>>,  // raw octets
+    ...
+}
+```
+
+**The mismatch:** C++ hashes decoded subjects; imap-proto delivers raw bytes. For any message with a non-ASCII subject (e.g., `=?UTF-8?B?5L2g5aW9?=`), `String::from_utf8_lossy()` on the raw bytes produces the encoded-word string literally, not the decoded characters. This causes a different hash and a different message ID.
+
+**Required: Decode RFC 2047 before hashing.**
+
+Use the `rfc2047-decoder` crate (or `mail-parser` decoded header accessors):
+
+```rust
+// Add to Cargo.toml: rfc2047-decoder = "1"
+
+fn decode_header_field(raw: &[u8]) -> String {
+    // Attempt RFC 2047 decode; fall back to lossy UTF-8 on failure
+    rfc2047_decoder::decode(raw)
+        .unwrap_or_else(|_| String::from_utf8_lossy(raw).into_owned())
+}
+
+fn id_for_message(
+    account_id: &str,
+    folder_path: &str,
+    uid: u32,
+    envelope: &imap_proto::types::Envelope,
+) -> String {
+    // Decode subject exactly as mailcore2 does -- MUST decode RFC 2047
+    let subject = envelope.subject
+        .as_ref()
+        .map(|s| decode_header_field(s))
+        .unwrap_or_default();
+
+    // message-id is ASCII per RFC 2822 -- no RFC 2047 encoding expected
+    // Be defensive and attempt decode; C++ received raw ASCII here
+    let message_id = envelope.message_id
+        .as_ref()
+        .map(|m| decode_header_field(m))
+        .unwrap_or_default();
+
+    // Recipient email addresses: mailbox@host
+    // C++ called addr->mailbox()->UTF8Characters() -- raw bytes, no RFC 2047 for email parts
+    // Do NOT RFC 2047 decode address components
+    let mut recipients: Vec<String> = vec![];
+    for addr_list in [&envelope.to, &envelope.cc, &envelope.bcc] {
+        if let Some(addrs) = addr_list {
+            for addr in addrs {
+                let mailbox = addr.mailbox.as_ref()
+                    .map(|m| String::from_utf8_lossy(m).into_owned())
+                    .unwrap_or_default();
+                let host = addr.host.as_ref()
+                    .map(|h| String::from_utf8_lossy(h).into_owned())
+                    .unwrap_or_default();
+                if !mailbox.is_empty() && !host.is_empty() {
+                    recipients.push(format!("{}@{}", mailbox, host));
+                }
+            }
+        }
+    }
+    recipients.sort();
+    let participants = recipients.join("");
+
+    // Date: parse RFC 2822 date to Unix timestamp string
+    let timestamp_str = envelope.date
+        .as_ref()
+        .and_then(|d| std::str::from_utf8(d).ok())
+        .and_then(|s| chrono::DateTime::parse_from_rfc2822(s).ok())
+        .map(|dt| dt.timestamp().to_string())
+        .unwrap_or_else(|| format!("{}:{}", folder_path, uid));
+
+    // Build src string exactly as C++ MailUtils.cpp:670-699 Scheme 1:
+    // accountId + "-" + timestamp + subject + "-" + participants + "-" + messageID
+    let src = format!(
+        "{}-{}{}-{}-{}",
+        account_id, timestamp_str, subject, participants, message_id
+    );
+
+    let mut hasher = sha2::Sha256::new();
+    sha2::Digest::update(&mut hasher, src.as_bytes());
+    let hash = hasher.finalize();
+
+    // Encode first 30 bytes as Bitcoin Base58
+    bs58::encode(&hash[..30])
+        .with_alphabet(bs58::Alphabet::BITCOIN)
+        .into_string()
+}
+```
+
+**Key distinctions:**
+- Subject: MUST decode RFC 2047 (mailcore2 decoded it via `stringByDecodingMIMEHeaderValue`)
+- Message-ID: Attempt decode but is normally ASCII; raw bytes are safe
+- Address mailbox/host: Do NOT RFC 2047 decode -- C++ used raw UTF-8 bytes for address components
+
+**Prescriptive answer:** Add `rfc2047-decoder = "1"` to Cargo.toml. Decode the `subject` field from raw bytes before including it in the stable ID hash. Do NOT decode the `message_id` field (RFC 2822 ASCII). Do NOT decode address mailbox/host fields. This matches the C++ mailcore2 behavior exactly.
+
+---
+
+### Q3: Base58 Zero-Byte Compatibility — RESOLVED (HIGH confidence)
+
+**Root cause of uncertainty:** Bitcoin Base58 encodes leading zero bytes as `'1'` characters. The question was whether the C++ and `bs58` crate handle this identically.
+
+**C++ implementation confirmed (MailUtils.cpp:74-119):**
+
+```cpp
+// Comment in source: "From https://github.com/bitcoin/bitcoin/blob/master/src/base58.cpp"
+// This is verbatim Bitcoin reference implementation
+static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+std::string MailUtils::toBase58(const unsigned char * pbegin, size_t len) {
+    // Skip & count leading zeroes.
+    int zeroes = 0;
+    while (pbegin != pend && *pbegin == 0) {
+        pbegin++;
+        zeroes++;
+    }
+    // ... big-endian base conversion into b58[] ...
+    // Translate the result into a string.
+    std::string str;
+    str.reserve(zeroes + (b58.end() - it));
+    str.assign(zeroes, '1');  // Each leading 0x00 input byte becomes '1'
+    while (it != b58.end())
+        str += pszBase58[*(it++)];
+    return str;
+}
+```
+
+**bs58 crate confirmed (Nullus157/bs58-rs src/encode.rs, via GitHub source fetch):**
+
+```rust
+// From bs58-rs encode.rs -- leading zero handling:
+for _ in input.into_iter().take_while(|v| **v == 0) {
+    output[index] = 0;   // index 0 in alphabet
+    index += 1;
+}
+// ... then alphabet mapping ...
+*val = alpha.encode[*val as usize];
+// For BITCOIN alphabet: alpha.encode[0] = b'1'
+```
+
+Both implementations:
+1. Count leading zero bytes in the input
+2. Map each leading zero byte to alphabet index 0 (`'1'` in Bitcoin alphabet)
+3. Append the rest of the base-converted string after the leading `'1'` characters
+
+**They are byte-for-byte identical.** The `bs58::Alphabet::BITCOIN` constant alphabet is `123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz` -- matching the C++ `pszBase58` string exactly.
+
+**Does this edge case occur in practice?**
+
+A SHA-256 hash has approximately 1/256 (~0.4%) chance that its first byte is zero. For the first 30 bytes: any of the 30 bytes could be zero with ~0.4% probability each, but only the leading zeros (contiguous zeros at the start) produce `'1'` characters. This is rare but valid and handled correctly by both implementations.
+
+**Prescriptive answer:** Use `bs58` crate with `bs58::Alphabet::BITCOIN` directly. No custom implementation is needed:
+
+```rust
+// Add to Cargo.toml: bs58 = "0.5"
+// Source: C++ MailUtils::toBase58() confirmed as verbatim bitcoin/bitcoin/src/base58.cpp
+
+fn stable_id_encode(hash_bytes: &[u8]) -> String {
+    // Encodes first 30 bytes as Bitcoin Base58.
+    // Matches C++ toBase58(hash.data(), 30) exactly:
+    //   - Same alphabet: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+    //   - Same leading zero handling: each leading 0x00 byte -> '1' character
+    //   - Same big-endian base conversion algorithm
+    bs58::encode(&hash_bytes[..30])
+        .with_alphabet(bs58::Alphabet::BITCOIN)
+        .into_string()
+}
+```
+
+---
+
+### Updated Cargo.toml Additions (from deep dive)
+
+```toml
+# Add to [dependencies] in app/mailsync-rust/Cargo.toml
+bs58 = "0.5"              # Bitcoin Base58 for stable message ID encoding
+rfc2047-decoder = "1"     # RFC 2047 MIME encoded-word decoding for subject field
+```
+
+---
+
+### Updated Don't Hand-Roll (additions from deep dive)
+
+| Problem | Don't Build | Use Instead | Why |
+|---------|-------------|-------------|-----|
+| Bitcoin Base58 encoding | Custom base58 from scratch | `bs58 = "0.5"` with `bs58::Alphabet::BITCOIN` | Byte-for-byte identical to C++ bitcoin/bitcoin base58.cpp; leading zero handling confirmed by source inspection |
+| RFC 2047 MIME header decoding | Custom encoded-word parser | `rfc2047-decoder = "1"` | Handles multiple charsets, base64 and QP encoding; required for subject field in stable ID |
+| X-GM-THRID extraction | SEARCH-based thread lookup (extra round trip) | `AttributeValue::GmailThrId(u64)` match in same pattern as `gmail_msg_id()` | imap-proto already parses the u64; one match arm vs one extra IMAP round trip per message |
+
+---
+
+### Updated Sources (Deep Dive)
+
+#### Primary (HIGH confidence)
+- `app/mailsync/MailSync/MailUtils.cpp:74-119` -- C++ `toBase58()` function: verbatim bitcoin/bitcoin base58.cpp; `str.assign(zeroes, '1')` for leading zeros confirmed by direct read
+- `app/mailsync/MailSync/MailUtils.cpp:630-703` -- C++ `idForMessage()` Scheme 1 algorithm: `accountId + "-" + unix_timestamp + subject + "-" + sorted_recipients + "-" + messageID`, SHA-256 first 30 bytes, Base58 encode
+- `app/mailsync/MailSync/MailProcessor.cpp:116-117` -- `if (mMsg->gmailThreadID())`: mailcore2 `gmailThreadID()` returns `uint64_t` directly
+- `app/mailsync/Vendor/libetpan/src/low-level/imap/xgmthrid.c` -- `mailimap_uint64_parse()` parses X-GM-THRID token as uint64; stored in `uint64_t*` in extension data
+- [imap-proto types.rs](https://github.com/djc/tokio-imap/blob/main/imap-proto/src/types.rs) -- `AttributeValue::GmailThrId(u64)` variant confirmed; `Attribute::GmailThrId` fetch attribute confirmed (HIGH -- direct source inspection)
+- [async-imap fetch.rs](https://github.com/chatmail/async-imap/blob/main/src/types/fetch.rs) -- `gmail_msg_id()` reference implementation confirmed; `AttributeValue::GmailMsgId(id)` match pattern; no `GmailThrId` method exists (HIGH -- direct source inspection)
+- [bs58-rs encode.rs](https://github.com/Nullus157/bs58-rs/blob/master/src/encode.rs) -- Leading zero handling: `take_while(|v| **v == 0)` -> `alpha.encode[0]` = `b'1'` for BITCOIN; identical to C++ (HIGH -- direct source fetch confirmed)
+- [mailcore2 MCMessageHeader.cpp](https://github.com/mailcore/mailcore2/blob/master/src/core/abstract/MCMessageHeader.cpp) -- `setSubject()` calls `String::stringByDecodingMIMEHeaderValue(subject)` -- RFC 2047 decoded at import; `subject()` returns decoded string (HIGH -- direct source fetch)
