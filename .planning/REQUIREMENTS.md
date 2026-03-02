@@ -229,12 +229,73 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INTG-02 | Phase 4 | Pending |
 | INTG-03 | Phase 4 | Pending |
 | INTG-04 | Phase 4 | Pending |
+| IPC-01 | Phase 5 | Pending |
+| IPC-02 | Phase 5 | Pending |
+| IPC-03 | Phase 5 | Pending |
+| IPC-04 | Phase 5 | Pending |
+| IPC-05 | Phase 5 | Pending |
+| IPC-06 | Phase 5 | Pending |
+| IMPR-08 | Phase 5 | Pending |
+| DATA-01 | Phase 6 | Pending |
+| DATA-02 | Phase 6 | Pending |
+| DATA-03 | Phase 6 | Pending |
+| DATA-04 | Phase 6 | Pending |
+| DATA-05 | Phase 6 | Pending |
+| ISYN-01 | Phase 7 | Pending |
+| ISYN-02 | Phase 7 | Pending |
+| ISYN-03 | Phase 7 | Pending |
+| ISYN-04 | Phase 7 | Pending |
+| ISYN-05 | Phase 7 | Pending |
+| ISYN-06 | Phase 7 | Pending |
+| ISYN-07 | Phase 7 | Pending |
+| OAUT-01 | Phase 7 | Pending |
+| OAUT-02 | Phase 7 | Pending |
+| OAUT-03 | Phase 7 | Pending |
+| GMAL-01 | Phase 7 | Pending |
+| GMAL-02 | Phase 7 | Pending |
+| GMAL-03 | Phase 7 | Pending |
+| GMAL-04 | Phase 7 | Pending |
+| IMPR-05 | Phase 7 | Pending |
+| IMPR-06 | Phase 7 | Pending |
+| IDLE-01 | Phase 8 | Pending |
+| IDLE-02 | Phase 8 | Pending |
+| IDLE-03 | Phase 8 | Pending |
+| SEND-01 | Phase 8 | Pending |
+| SEND-02 | Phase 8 | Pending |
+| SEND-03 | Phase 8 | Pending |
+| SEND-04 | Phase 8 | Pending |
+| TASK-01 | Phase 8 | Pending |
+| TASK-02 | Phase 8 | Pending |
+| TASK-03 | Phase 8 | Pending |
+| TASK-04 | Phase 8 | Pending |
+| TASK-05 | Phase 8 | Pending |
+| IMPR-07 | Phase 8 | Pending |
+| CDAV-01 | Phase 9 | Pending |
+| CDAV-02 | Phase 9 | Pending |
+| CDAV-03 | Phase 9 | Pending |
+| CDAV-04 | Phase 9 | Pending |
+| CDAV-05 | Phase 9 | Pending |
+| CRDV-01 | Phase 9 | Pending |
+| CRDV-02 | Phase 9 | Pending |
+| CRDV-03 | Phase 9 | Pending |
+| CRDV-04 | Phase 9 | Pending |
+| META-01 | Phase 9 | Pending |
+| META-02 | Phase 9 | Pending |
+| META-03 | Phase 9 | Pending |
+| PKGN-01 | Phase 10 | Pending |
+| PKGN-02 | Phase 10 | Pending |
+| PKGN-03 | Phase 10 | Pending |
+| PKGN-04 | Phase 10 | Pending |
+| PKGN-05 | Phase 10 | Pending |
+| PKGN-06 | Phase 10 | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
-- Mapped to phases: 27
+- v1 mapped to phases: 27
+- v2 requirements: 59 total
+- v2 mapped to phases: 59
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 after roadmap creation*
+*Last updated: 2026-03-02 after v2.0 roadmap creation*

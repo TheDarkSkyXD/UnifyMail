@@ -18,10 +18,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-01)
+See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Users can set up email accounts quickly and reliably through automatic provider detection and connection validation
-**Current focus:** Phase 1 — Scaffolding and Provider Detection
+**Current focus:** Phase 1 — Scaffolding and Provider Detection (v1.0 active milestone)
 
 ## Current Position
 
@@ -69,6 +69,11 @@ Recent decisions affecting current work:
 - [01-01]: TEST_MUTEX pattern for serializing integration tests that share LazyLock<RwLock<...>> global singleton
 - [Phase 01]: Custom hand-written index.js replaces napi-generated loader: GNU .node loads in MSVC Node.js via N-API stable ABI, bypassing flawed process.config shlib_suffix detection
 - [Phase 01]: Wrapper module (mailcore-wrapper) uses same package name as C++ addon so require('mailcore-napi') transparently routes to Rust without consumer code changes
+- [v2.0 Pre-Phase 5]: Rust mailsync is a standalone binary (not N-API addon) — owns its own tokio runtime and has no BoringSSL conflict; stdin/stdout IPC replaces N-API boundary
+- [v2.0 Pre-Phase 5]: Use CONDSTORE-only for IMAP incremental sync (no QRESYNC) — async-imap 0.11.2 has select_condstore() but no typed QRESYNC API; QRESYNC deferred to v2.x
+- [v2.0 Pre-Phase 5]: Use tokio-rusqlite for all database access — synchronous rusqlite on async threads causes tokio thread starvation; single-writer pattern via tokio-rusqlite is mandatory
+- [v2.0 Pre-Phase 5]: Use libdav 0.10.2 for CalDAV/CardDAV — replaces ~1,000 lines of manual WebDAV discovery and PROPFIND parsing
+- [v2.0 Pre-Phase 5]: Dedicated stdout flush task with exclusive stdout ownership — all tokio tasks route deltas through mpsc channel; prevents block-buffering silent drop of deltas when not connected to a TTY
 
 ### Pending Todos
 
@@ -78,6 +83,9 @@ None yet.
 
 - [Phase 2 risk]: IMAP STARTTLS stream upgrade (TcpStream to TlsStream inside async-imap) is not abstracted by the library — consult deltachat-core-rust patterns before implementing
 - [Phase 4 risk]: electron-builder asarUnpack interaction with napi-rs single-package binary distribution needs hands-on verification; napi-rs/node-rs issue #376 documents the problem
+- [Phase 8 research flag]: Validate lettre multipart MIME builder API coverage for inline images (CID references) and text/html + text/plain alternatives before Phase 8 coding begins
+- [Phase 9 research flag]: CalDAV server compatibility matrix (ETag after PUT, sync-token expiry, Exchange Online, iCloud, Nextcloud) — targeted research pass recommended before implementing sync-collection state machine
+- [Phase 9 watch]: Verify Google People API v1 endpoint and OAuth2 scope requirements are current before Phase 9 — Google has been migrating People API surfaces
 
 ## Session Continuity
 
