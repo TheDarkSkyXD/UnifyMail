@@ -1,209 +1,327 @@
 # Project Research Summary
 
-**Project:** UnifyMail — Rust napi-rs N-API addon (mailcore-napi rewrite)
-**Domain:** Native Node.js addon in Rust replacing a C++ mailcore2 addon for IMAP/SMTP connection testing and email provider detection
-**Researched:** 2026-03-01
+**Project:** UnifyMail v2.0 — Rust Mailsync Engine Rewrite
+**Domain:** Standalone Rust binary replacing a C++ IMAP/SMTP/CalDAV/CardDAV sync engine for a desktop Electron email client
+**Researched:** 2026-03-02
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This project is a feature-parity rewrite of five exported functions from a C++ node-addon-api (mailcore2-backed) native addon into a pure-Rust napi-rs addon. The functions — `registerProviders`, `providerForEmail`, `testIMAPConnection`, `testSMTPConnection`, and `validateAccount` — are the boundary between the Electron UI and account validation logic during email onboarding. The existing TypeScript/React/Electron application stack remains entirely unchanged; only `app/mailcore/` is replaced. The driving motivations are eliminating the node-gyp/mailcore2 C++ build chain and gaining ABI-stability across Electron versions.
+This milestone rewrites the existing C++ mailsync binary (~16,200 LOC, 50 source files) as a standalone Rust binary that maintains exact wire-format compatibility with the existing TypeScript `MailsyncBridge` consumer in Electron. The Rust binary is a drop-in replacement — same command-line interface, same stdin/stdout newline-delimited JSON protocol, same SQLite schema. The key architectural reality is that the Rust engine is a child process, not a Node.js addon, which eliminates the tokio runtime ownership constraints and BoringSSL conflicts present in the v1.0 N-API milestone. Experts building Rust email sync engines (Delta Chat being the primary production reference) use `async-imap` with the `runtime-tokio` feature, `tokio-rusqlite` for non-blocking SQLite access, and `lettre` for SMTP — a well-established trio for async email in Rust.
 
-The recommended approach is to use napi-rs 3.8.3 with `napi4 + async + tokio_rt` features, async-imap 0.11.2 for IMAP capability testing, lettre 0.11.19 for SMTP, hickory-resolver 0.25.2 for MX lookups, and rustls (via tokio-rustls 0.26.4 and rustls-platform-verifier 0.6.2) for TLS throughout. The flat four-file Rust source layout (`provider.rs`, `imap.rs`, `smtp.rs`, `validator.rs`) maps cleanly to the five exported functions and mirrors the C++ source structure. The `napi build --platform` CLI tool replaces node-gyp and generates TypeScript declarations automatically from `#[napi]` proc-macros, eliminating the hand-maintained `types/index.d.ts`.
+The recommended approach follows a strict dependency-driven build order: protocol and database infrastructure first, then IMAP sync, then IDLE and task execution, then CalDAV/CardDAV and metadata. This order is non-negotiable because the delta emission layer must exist before any IMAP sync code can be tested end-to-end with the Electron UI. A critical architectural pattern is the single dedicated stdout flush task that owns exclusive write access to stdout — all other tokio tasks route deltas through an `mpsc` channel to this task. Missing this pattern produces the most severe bug class: the UI appears frozen because deltas never reach Electron (Rust's stdout uses full block buffering when not connected to a TTY).
 
-The critical risk area is not Rust implementation complexity but Electron integration correctness. Three Pitfall classes — TLS library choice (rustls vs. native-tls/OpenSSL conflicting with Electron's BoringSSL), Electron V8 memory cage constraints on external ArrayBuffers, and napi-rs tokio runtime lifecycle in Electron's multi-process model — are go/no-go gates that must be verified before any IMAP or SMTP code is written. Getting these wrong requires painful refactoring across all three async function implementations. The strategy is: prove the addon loads correctly in Electron main process first, then implement in strict dependency order (provider sync logic, then IMAP, then SMTP, then validateAccount which composes the others).
+The primary risk is behavioral regression from implicit protocol contracts. The C++ engine has accumulated contracts that live only in the TypeScript consumer code: field names like `modelJSONs` (uppercase JSON — serde's auto-camelCase produces `modelJsons` which is wrong), `ProcessState` model class for connection status indicators, and the two-line startup handshake (account JSON then identity JSON on stdin before any sync). All 20+ features required for C++ binary deletion are P1 with no deferral possible — this is a parity rewrite, not a new product. The recommended mitigation is building a contract test harness in Phase 1, before writing any IMAP code, that validates every message type against the TypeScript parser expectations.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The Rust crate selection is well-established and verified against official documentation. napi-rs v3 (3.8.3) is the current stable branch with simplified ThreadsafeFunction API, auto-generated TypeScript declarations, and native async/tokio integration. The async runtime (tokio 1.x) is owned by napi-rs — no manual `Runtime::new()` is needed or permitted. TLS uses rustls exclusively throughout (tokio-rustls 0.26.4 + rustls-platform-verifier 0.6.2) because native-tls on Linux introduces OpenSSL symbols that conflict with Electron's bundled BoringSSL. There are no viable alternatives to this TLS choice for an Electron addon that must run on Linux.
+The Rust sync engine requires approximately 25 Cargo dependencies, all from the tokio ecosystem. Every major async crate in the stack shares tokio 1.x, eliminating runtime conflicts. The `bundled` feature in rusqlite is mandatory to embed SQLite 3.51.1 — macOS ships an outdated system SQLite and Windows has none. The most significant crate discovery is `libdav 0.10.2` (released 2026-02-10), a production-ready CalDAV/CardDAV client that replaces approximately 1,000 lines of WebDAV discovery and PROPFIND parsing that would otherwise need to be implemented manually.
 
 See `.planning/research/STACK.md` for the complete Cargo.toml template and version compatibility matrix.
 
 **Core technologies:**
-- `napi 3.8.3` + `napi-derive 3` + `napi-build 2`: N-API framework — current stable, ABI-stable across Electron versions, auto-generates `.d.ts`
-- `tokio 1.x` (rt-multi-thread, net, time, io-util, macros): async runtime — managed by napi-rs; required for all three async function exports
-- `tokio-rustls 0.26.4` + `rustls-platform-verifier 0.6.2`: TLS — pure Rust, no OpenSSL, uses OS trust store for certificate validation (critical for enterprise CAs)
-- `async-imap 0.11.2` (feature: runtime-tokio): IMAP capability detection — only maintained async IMAP crate; must use runtime-tokio feature or async-std conflict occurs
-- `lettre 0.11.19` (features: tokio1, rustls-tls): SMTP connection testing — only Rust SMTP library with built-in XOAUTH2 SASL support
-- `hickory-resolver 0.25.2` (feature: tokio-runtime): MX lookups — renamed successor to trust-dns-resolver; required for provider matching in `validateAccount`
-- `serde 1.x` + `serde_json 1.x`: providers.json parsing — industry standard, 39KB file parsed once at module load
+- `tokio 1.x` (rt-multi-thread, sync, io-util, macros, fs): Async runtime — the binary owns its own runtime via `#[tokio::main]`; no napi-rs ownership conflict
+- `async-imap 0.11.2` (runtime-tokio): IMAP client — the only maintained async IMAP crate; IDLE and CONDSTORE confirmed via source inspection; QRESYNC typed API absent (CONDSTORE-only for MVP)
+- `lettre 0.11.19` (tokio1, rustls-tls, builder, smtp-transport): SMTP send — XOAUTH2 built-in; MIME builder handles multipart attachments
+- `tokio-rustls 0.26.4` + `rustls-platform-verifier 0.6.2`: TLS — pure Rust, no OpenSSL, OS trust store
+- `rusqlite 0.38.0` (bundled, serde_json): SQLite — bundled SQLite 3.51.1; WAL mode; fat-row JSON schema preserved from C++
+- `tokio-rusqlite 0.6`: Async SQLite bridge — serializes all access through a dedicated background thread per connection; prevents tokio thread starvation
+- `libdav 0.10.2`: CalDAV/CardDAV — service discovery, PROPFIND parsing, sync-collection support
+- `mail-parser 0.11.2`: MIME parsing — zero-copy, 41 character sets, production-validated in Stalwart Mail Server
+- `calcard 0.3.2`: iCalendar and vCard parsing — replaces C++ vendored icalendarlib and inline vCard parsing in DAVWorker
+- `ammonia 4.1.2`: HTML sanitization — whitelist-based; 4.1.2 fixes RUSTSEC-2025-0071 (do not use 4.1.1 or earlier)
+- `oauth2 5.0.0` (reqwest): Token refresh — provider-agnostic RFC 6749; covers Gmail, Outlook, Yahoo
+- `serde 1.x` + `serde_json 1.x`: Protocol serialization — newline-delimited JSON for stdin/stdout IPC
+- `tracing 0.1` + `tracing-subscriber 0.3`: Logging — async-aware spans; stderr only (stdout reserved for delta protocol)
+
+**Critical version requirement:** `ammonia` must be `4.1.2` or later — earlier versions have RUSTSEC-2025-0071.
 
 ### Expected Features
 
-The five functions are a closed scope — this is a parity rewrite, not a feature expansion. All behavior must match C++ output exactly. See `.planning/research/FEATURES.md` for full behavioral specifications, capability mapping tables, error scenario lists, and XOAUTH2 encoding requirements.
+The feature set is fully defined by the C++ source code. Every feature below already exists in the C++ engine and must be replicated exactly. There is no "launch with subset" option — the Rust binary must handle a production account without any regression before the C++ binary can be deleted.
 
-**Must have (table stakes — v1, required for API parity):**
-- `registerProviders(jsonPath)` — JSON parse with serde_json, regex compilation with `regex::RegexSet`, stored in `OnceLock<ProviderDatabase>`
-- `providerForEmail(email)` — synchronous domain-regex lookup returning typed MailProviderInfo (must map `ssl/starttls` bool flags to `connectionType` string enum)
-- `testIMAPConnection(opts)` — TLS/STARTTLS/clear paths, password + XOAUTH2 authentication, 7 specific capability strings detected (idle, condstore, qresync, compress, namespace, xoauth2, gmail)
-- `testSMTPConnection(opts)` — TLS/STARTTLS/clear via lettre SmtpTransport variants, password + XOAUTH2, `test_connection()` NOOP
-- `validateAccount(opts)` — orchestrates IMAP + SMTP with TLS, adds provider identifier from domain lookup, returns typed result shape
-- TypeScript declarations auto-generated by napi-rs matching existing `types/index.d.ts` shapes exactly (use `#[napi(js_name = "...")]` to preserve uppercase naming like `testIMAPConnection`)
-- All three async functions non-blocking on Node.js event loop via napi-rs async tokio integration
+See `.planning/research/FEATURES.md` for full behavioral specifications, feature dependency graph, and phase-specific behavior groupings.
 
-**Should have (v1.x — safe additive improvements):**
-- Configurable connection timeout parameter (currently hardcoded; C++ comment notes 30s hardcoded timeout)
-- Concurrent IMAP + SMTP testing in `validateAccount` via `tokio::join!()` — reduces validation latency ~50%
-- `allowInsecureSsl` parameter for enterprise environments with self-signed certificates
+**Must have (table stakes — all P1, required before C++ deletion):**
+- stdin/stdout JSON protocol — exact wire format; `modelJSONs` (uppercase JSON), `modelClass`, `type` field names required
+- IMAP folder management — LIST, role detection, Gmail folder whitelist (INBOX, All Mail, Trash, Spam only)
+- IMAP incremental sync (UID range) — fallback for servers without CONDSTORE
+- IMAP incremental sync (CONDSTORE) — modseq-based; Gmail supports CONDSTORE but not QRESYNC
+- IMAP IDLE monitoring — foreground worker; 29-minute re-IDLE loop; interrupt on task arrival
+- UIDVALIDITY change handling — detect, reset, full re-sync; RFC 4549 canonical behavior
+- Message header sync — FETCH ENVELOPE + BODYSTRUCTURE; stable IDs from message headers; thread grouping
+- Message body caching (lazy) — priority from `need-bodies` stdin command; per-folder age policy
+- SMTP send — RFC 2822 MIME construction; TLS; password + XOAUTH2; multipart with attachments
+- Task processor (local + remote) — all 13+ task types from TaskProcessor.hpp; idempotent local phase
+- Task cleanup — startup reset of `remote`-state tasks; runtime expiry of completed tasks
+- SQLite delta emission — persist/unpersist; 500ms coalescing window; transaction batching
+- SQLite schema migration — all C++ migrations as baseline; `--mode migrate` entry point
+- OAuth2 token refresh — XOAUTH2 SASL; HTTP token exchange; updated-secrets delta to UI
+- Crash recovery — task reset on launch; retryable/non-retryable error classification
+- CalDAV calendar sync — sync-collection REPORT; CREATE/UPDATE/DELETE via iCalendar
+- CardDAV contact sync — sync-collection REPORT; CREATE/UPDATE/DELETE via vCard
+- Gmail Google People API — OAuth2 contacts path (separate from standard CardDAV)
+- Metadata worker — HTTP long-polling from identity server; plugin metadata sync
+- Process modes — `sync`, `test`, `reset`, `migrate`, `install-check`
+- Gmail-specific behaviors — X-GM-LABELS, X-GM-MSGID, X-GM-THRID; no APPEND for Sent
+- stdin orphan detection — exit code 141 when parent closes stdin
 
-**Defer (v2+):**
-- Structured error codes (errorCode field) — only if TypeScript consumers need machine-readable errors
-- IMAP4rev2 capability detection — additive, low risk, deferred until needed
+**Should have (v2.x improvements, not required for C++ deletion):**
+- Explicit per-operation timeouts via `tokio::time::timeout()` — surfaces meaningful errors for flaky networks
+- Structured `SyncError` enum — distinguishes auth/TLS/network/server errors for smarter retry policy
+- More frequent body sync progress updates — UI improvement once parity is proven
+- Async multiplexing of workers via tokio tasks vs OS threads — reduce thread count
 
-**Anti-features (explicitly excluded):**
-- Full IMAP client (FETCH, SEARCH, IDLE loop) — mailsync C++ engine owns ongoing IMAP
-- POP3 connection testing — return `pop: []` in MailProviderInfo, no connection test
-- Hot-reload of providers.json — use `OnceLock` single-initialization; providers.json is bundled and static
+**Defer (v3+):**
+- IMAP NOTIFY extension (RFC 5465) — only ~30% of servers support it; Gmail/Outlook do not
+- IMAP BINARY extension (RFC 3516) — only if body sync is measured as a bottleneck
+- In-engine FTS5 full-text search indexing — requires design decision on index location
+- QRESYNC typed API — contribute upstream to chatmail/async-imap after CONDSTORE parity is validated
 
 ### Architecture Approach
 
-The architecture is a thin Rust layer directly below the existing TypeScript consumers. The `app/mailcore/` directory is converted from a node-gyp C++ project to a napi-rs Rust project in place; the `"mailcore-napi": "file:mailcore"` reference in `app/package.json` remains unchanged. The `index.js` platform binary loader and `index.d.ts` declaration file are generated by `napi build --platform` and committed to the repo. The flat Rust source structure with four module files keeps the codebase shallow and maintainable.
+The architecture mirrors the C++ threading model with tokio tasks replacing OS threads. The process has five primary components: a stdin loop task dispatching JSON commands, a background sync task iterating all folders with CONDSTORE, a foreground IDLE task monitoring the primary folder and executing task remote phases, a cal/contacts sync task for CalDAV/CardDAV, and a metadata sync task for the identity server. All components share three singleton types via `Arc`: `MailStore` (SQLite access), `DeltaStream` (stdout channel), and `Account` (credentials). The single-writer SQLite pattern via `tokio-rusqlite` and the exclusive-stdout DeltaStream flush task are the two non-negotiable structural patterns — both prevent deadlocks that are impossible to diagnose after the fact.
 
-Key architectural decisions from research:
-- Embed `providers.json` at compile time via `include_str!()` to eliminate runtime path resolution across Electron dev/production/packaged environments
-- Use `OnceLock<ProviderDatabase>` for global provider state — zero-cost reads, no lock on the hot path, no external crates (standard since Rust 1.70)
-- Use `#[napi(module_exports)]` init hook for automatic provider loading on module load, replicating C++ `Init()` behavior
-- Never use `napi::Env` inside async fn bodies — collect results in plain Rust types, return them, let napi-rs marshal on main thread
+See `.planning/research/ARCHITECTURE.md` for complete project directory structure, all seven architectural patterns with code examples, and the full build order diagram.
 
 **Major components:**
-1. `provider.rs` — sync provider lookup; OnceLock global state; serde_json parse; regex matching
-2. `imap.rs` — async IMAP test; async-imap + tokio-rustls; three connection type paths; XOAUTH2 Authenticator trait impl
-3. `smtp.rs` — async SMTP test; lettre AsyncSmtpTransport; three transport builders; native XOAUTH2 via lettre Credentials
-4. `validator.rs` — async account validation; composes imap + smtp; tokio::join!() for concurrent testing
-5. `lib.rs` — module entry, `#[napi(module_exports)]` init, re-exports from all four modules
+1. `stdin_loop` task — reads newline-delimited JSON commands; dispatches all 8 command types; detects stdin EOF as orphan signal (exit code 141)
+2. `MailStore` (rusqlite via tokio-rusqlite) — single writer connection; separate reader connection; WAL mode; `busy_timeout=5000`; all writes produce delta items
+3. `DeltaStream` — `mpsc::UnboundedSender` into dedicated flush task; 500ms coalescing window; exclusive stdout ownership; merges repeated saves of same model
+4. `background_sync` task — IMAP session for folder iteration; CONDSTORE incremental sync; body fetch scheduling; UID range fallback
+5. `foreground_idle` task — second IMAP session for IDLE on primary folder; `tokio::select!` on IDLE notification vs interrupt channel vs shutdown; task remote phase execution
+6. `TaskProcessor` — local phase (immediate DB write) on `queue-task` receipt; remote phase (IMAP/SMTP/DAV operation) in foreground task; 13+ task type dispatch
+7. `cal_contacts_sync` task — libdav CalDAV/CardDAV; Google People API for Gmail contacts; rate limiting (RFC 6585 Retry-After)
+8. `metadata_sync` task — HTTP long-polling from identity server via reqwest; independent failure (non-retryable errors stop only this worker, not IMAP sync)
 
 ### Critical Pitfalls
 
 See `.planning/research/PITFALLS.md` for full details including warning signs, recovery strategies, and phase assignments.
 
-1. **TLS library conflict: native-tls vs. Electron's BoringSSL** — Use rustls exclusively (tokio-rustls + rustls-platform-verifier). Run `cargo tree | grep openssl` and it must return nothing. Address in Phase 1 scaffolding — retrofitting TLS libraries later requires coordinated changes across imap.rs, smtp.rs, and Cargo.toml features.
+1. **stdout not flushed when spawned as child process** — Rust's stdout uses full block buffering when not connected to a TTY. Use `BufWriter::new(io::stdout())` with explicit `.flush()` after every message. Deltas pile up invisibly; UI never updates. Address in Phase 1 before writing any IMAP code.
 
-2. **Tokio runtime lifecycle mismatch in Electron** — Pin napi-rs >= 2.16.16 (use template defaults which are v3). Wrap all async functions with `tokio::time::timeout`. Load addon only in Electron main process (the existing mailsync-process.ts pattern is correct). Add Electron integration test as go/no-go before IMAP code.
+2. **Blocking rusqlite calls on tokio worker threads cause starvation** — `rusqlite::Connection` is synchronous; calling it in `async fn` blocks tokio worker threads. Under load with multiple folders syncing, all threads block on SQLite fsync and the binary appears frozen. Use `tokio-rusqlite::Connection::call()` for every database operation. Address in Phase 2 before IMAP sync code exists.
 
-3. **IMAP/SMTP connections hang with no timeout** — async-imap and tokio provide no default timeout. Wrap every network future with `tokio::time::timeout(Duration::from_secs(15), ...)`. This is mandatory, not optional polish — missing timeouts hang the onboarding UI indefinitely.
+3. **Delta JSON field name mismatch causes silent UI drops** — TypeScript parser requires `modelJSONs` (uppercase JSON — serde's `rename_all = "camelCase"` produces `modelJsons` which is wrong), `modelClass` (not `objectClass`), `type`. Silent drops with console warning only. Use `#[serde(rename = "modelJSONs")]` explicitly. Address in Phase 1.
 
-4. **XOAUTH2 SASL encoding errors** — Use `Vec<u8>` with literal `b'\x01'` separators. Use `base64::engine::general_purpose::STANDARD` (not URL_SAFE). Send empty response `\r\n` after failed AUTHENTICATE challenge. Unit test against Google's reference encoding before live server testing.
+4. **IMAP IDLE 29-minute timeout causes silent disconnection** — Server closes TCP connection after ~30 minutes of IDLE; socket enters `CLOSE-WAIT`; `async-imap` IDLE future hangs forever. Real-world failure confirmed in deltachat-core-rust issue #5093. Wrap IDLE `wait()` in `tokio::time::timeout(25 * 60s)`. Address in Phase 4.
 
-5. **Provider regex matching silent mismatches** — Treat domain-match patterns as suffix-anchored case-insensitive matches. Cross-validate Rust output against C++ addon on 50 representative addresses before removing C++ code. Regex patterns need `^` + `$` anchoring and must not match substrings (`google.com` must not match `notgoogle.com`).
+5. **stdin deadlock under large task payloads** — OS pipe buffer is 64 KiB; large HTML drafts (~500 KB) exceed it. If stdin reading and stdout writing are not on independent tasks, both processes deadlock. stdin reader and stdout writer must be dedicated independent tokio tasks sharing no mutex. Address in Phase 1.
+
+6. **Implicit C++ protocol behavioral contracts** — TypeScript consumer enforces: two-line startup handshake (account then identity JSON), ProcessState messages for connection status, specific exit codes and JSON structure per mode, SIGTERM must exit 0 not SIGABRT. Missing any causes silent failure or app crash. Build a binary skeleton handling all modes with these contracts before sync logic. Address in Phase 1.
+
+7. **CONDSTORE-only fallback missing for Gmail** — Gmail supports CONDSTORE but not QRESYNC. `async-imap 0.11.2` has `select_condstore()` but no typed QRESYNC API. Use CONDSTORE-only for MVP; QRESYNC via raw command is high complexity with fragile response parsing. Address in Phase 3.
 
 ## Implications for Roadmap
 
-Based on combined research, the phase structure is driven by two constraints: (1) Electron integration correctness is a go/no-go gate that must be proven before any IMAP/SMTP code, and (2) the five functions have a clear dependency order — provider lookup is synchronous and foundational; IMAP and SMTP are independent of each other; validateAccount composes all of the above.
+The dependency graph from FEATURES.md is unambiguous: infrastructure before protocol, protocol before IMAP, IMAP background before IMAP foreground (IDLE + tasks), CalDAV/CardDAV independently after IMAP is stable. The phase structure maps directly from the architecture research build order.
 
-### Phase 1: Scaffolding and Provider Detection
+### Phase 1: Core Infrastructure and IPC Protocol
 
-**Rationale:** The three critical Electron-specific pitfalls (TLS library, tokio runtime lifecycle, V8 memory cage) must be validated before any network code is written. Provider detection is synchronous, has no external dependencies, and produces an immediately verifiable result — it serves as the first meaningful implementation milestone after scaffolding is proven. Regex matching correctness for providers.json must also be established here since it underpins validateAccount's `identifier` field.
+**Rationale:** Every subsequent phase depends on the delta emission pipeline and protocol contract being correct. No IMAP sync can be tested with the Electron UI until the binary can emit valid deltas. Five of the seven critical pitfalls strike in this phase — it is the highest-risk phase per unit of code written.
 
-**Delivers:** Working napi-rs scaffold loading in Electron main process; `registerProviders` + `providerForEmail` functions with full type generation; 50-address cross-validation test passing against C++ output; `cargo tree | grep openssl` clean; CI building for all 5 target triples.
+**Delivers:** A binary skeleton that handles all five process modes (`sync`, `test`, `migrate`, `reset`, `install-check`) with correct startup handshake, stdout flushing, stdin EOF detection, delta emission structure, and SQLite schema creation. Produces no mail yet but passes contract tests against the TypeScript protocol parser.
 
-**Addresses:** registerProviders, providerForEmail (FEATURES.md table stakes); OnceLock + module_init pattern (ARCHITECTURE.md); include_str! embedding for providers.json path resolution.
+**Addresses (from FEATURES.md):**
+- stdin/stdout JSON protocol (wire format compatibility)
+- SQLite schema migration (`--mode migrate`)
+- Delta emission infrastructure (transactions, coalescing, 500ms stream delay)
+- Process modes and two-line startup handshake
+- stdin orphan detection
 
-**Avoids:** TLS library conflict (BoringSSL) — establish rustls-only in Cargo.toml from the start; V8 memory cage — declare no external ArrayBuffer return types; tokio runtime mismatch — verify Electron load before proceeding.
+**Avoids (from PITFALLS.md):**
+- stdout buffering (flush pattern established at project start)
+- stdin deadlock (dedicated independent stdin/stdout tokio tasks)
+- Delta JSON format mismatch (contract test validates all field names)
+- Protocol behavioral contracts (all modes tested in isolation)
+- TLS OpenSSL dependency (rustls locked in at project creation via `cargo tree | grep openssl`)
 
-**Pitfall prevention:** Provider regex edge cases (Pitfall 7) must be resolved here.
+**Research flag:** No additional research needed. Patterns are well-established; tokio-rusqlite and delta coalescing are documented.
 
-### Phase 2: IMAP Connection Testing
+### Phase 2: SQLite Layer and Model Infrastructure
 
-**Rationale:** IMAP is the most complex of the three async functions. It has three TLS paths (tls/starttls/clear), requires a custom XOAUTH2 Authenticator trait implementation, and the STARTTLS stream-upgrade pattern is the highest-risk implementation task. Tackling IMAP before SMTP means the harder problem is proven first; SMTP is easier and benefits from patterns established here. Error message format must be established in this phase since it affects all subsequent consumer integration.
+**Rationale:** All IMAP sync output lands in the database before being emitted as deltas. The SQLite layer must be proven correct — especially the tokio-rusqlite single-writer pattern and WAL mode configuration — before any concurrent IMAP workers write to it.
 
-**Delivers:** `testIMAPConnection` with all three connection types, password + XOAUTH2 auth, 7 capabilities correctly detected, 15-second timeout on all network operations, error strings matching C++ format.
+**Delivers:** Complete `MailStore` with reader/writer connections, WAL mode, `busy_timeout=5000`, all data model types (Message, Thread, Folder, Label, Contact, Calendar, Event, Task), and migration scripts matching the existing C++ schema.
 
-**Uses:** async-imap 0.11.2 (runtime-tokio), tokio-rustls 0.26.4, rustls-platform-verifier 0.6.2 (STACK.md).
+**Addresses (from FEATURES.md):**
+- SQLite delta emission (complete implementation with coalescing and transaction batching)
+- All model types required for IMAP sync output
 
-**Implements:** imap.rs module (ARCHITECTURE.md).
+**Avoids (from PITFALLS.md):**
+- Blocking rusqlite calls on tokio threads (tokio-rusqlite enforced at layer boundary)
+- WAL mode + busy_timeout configured correctly (no SQLITE_BUSY under concurrent load)
 
-**Avoids:** Connection timeout hang (Pitfall 5) — mandatory timeout wrappers; XOAUTH2 encoding errors (Pitfall 6) — unit test before live server; opaque error messages (Pitfall 8) — domain error enum with C++-matching Display strings established here.
+**Uses (from STACK.md):** `rusqlite 0.38` (bundled), `tokio-rusqlite 0.6`, `serde`/`serde_json`
 
-### Phase 3: SMTP Connection Testing and Account Validation
+**Research flag:** No additional research needed. rusqlite and tokio-rusqlite patterns are well-documented.
 
-**Rationale:** SMTP is structurally simpler than IMAP because lettre provides a higher-level API that maps directly to the three connection type variants and has built-in XOAUTH2 support. `validateAccount` is a composition of the already-proven IMAP and SMTP functions plus the provider lookup from Phase 1 — it should be implemented last when all components are individually validated.
+### Phase 3: IMAP Background Sync Worker
 
-**Delivers:** `testSMTPConnection` with all three lettre transport builders and XOAUTH2; `validateAccount` orchestrating both with `tokio::join!()` for concurrent testing; complete API parity across all 5 functions; TypeScript consumers (`onboarding-helpers.ts`, `mailsync-process.ts`) compile without type errors.
+**Rationale:** The background sync worker is the engine's primary value delivery. It must exist and be correct before the foreground IDLE worker, because the foreground worker starts only after the background worker completes its first folder iteration — the same sequencing as the C++ engine (confirmed in C++ main.cpp).
 
-**Uses:** lettre 0.11.19 (tokio1, rustls-tls), hickory-resolver 0.25.2 (STACK.md).
+**Delivers:** Full IMAP sync against a live account: folder enumeration, CONDSTORE incremental sync, UID range fallback, message header parsing, body caching, UIDVALIDITY handling, OAuth2 token refresh, Gmail-specific behaviors (X-GM-LABELS, X-GM-MSGID, folder whitelist).
 
-**Implements:** smtp.rs, validator.rs modules (ARCHITECTURE.md).
+**Addresses (from FEATURES.md):**
+- IMAP folder management
+- IMAP incremental sync (UID range and CONDSTORE)
+- UIDVALIDITY change handling
+- Message header sync
+- Message body caching (lazy)
+- OAuth2 token refresh
+- Gmail-specific behaviors (X-GM-LABELS, X-GM-MSGID, X-GM-THRID)
 
-**Avoids:** SMTP XOAUTH2 SASL encoding (Pitfall 6 SMTP variant); provider identifier correctly populated in validateAccount result.
+**Avoids (from PITFALLS.md):**
+- CONDSTORE-only fallback for Gmail (no QRESYNC in v2.0; `select_condstore()` used directly)
+- QRESYNC ENABLE-before-SELECT ordering (capability detection before SELECT, ENABLE issued post-auth)
+- OAuth2 token expiry during session (check expiry within 5 minutes before every IMAP authenticate)
 
-### Phase 4: Cross-Platform Packaging and CI
+**Uses (from STACK.md):** `async-imap 0.11.2` (runtime-tokio), `tokio-rustls`, `rustls-platform-verifier`, `mail-parser 0.11.2`, `oauth2 5.0.0`, `ammonia 4.1.2`
 
-**Rationale:** The napi-rs binary distribution strategy (single-package vs. optional dependencies) has different implications for Electron vs. Node.js packaging and must be validated with electron-builder. The asarUnpack configuration, cross-compilation for all 5 target triples, and binary size targets all require a separate focus phase. This phase cannot be done in parallel with implementation because it depends on the finalized Cargo.toml feature flags that determine binary size.
+**Research flag:** No additional research needed. async-imap CONDSTORE API confirmed via source inspection; Delta Chat is a working reference implementation.
 
-**Delivers:** GitHub Actions CI building all 5 platform binaries; electron-builder asarUnpack configured for `.node` files; stripped release binary < 8 MB on Linux x64; macOS universal binary; verified packaged build on each target platform.
+### Phase 4: Foreground IDLE and Task Execution
 
-**Avoids:** Architecture mismatch in packaging (Pitfall 4) — electron-builder asarUnpack + single-package distribution strategy; binary size bloat (Pitfall 9) — `cargo bloat` review, explicit tokio feature flags, `profile.release` with lto + strip.
+**Rationale:** IDLE requires a separate IMAP connection from the background sync session — sharing one session is an anti-pattern (IMAP is strictly sequential at the protocol level; concurrent commands on one session produce protocol errors). Task execution (remote phase) runs in the foreground task after IDLE interruption, using the live session. SMTP send is a task and belongs here.
 
-**Research flag:** This phase requires validation of the electron-builder asarUnpack + napi-rs binary distribution interaction — the napi-rs documentation covers npm distribution but Electron-builder specifics require verification against the actual build configuration.
+**Delivers:** IDLE monitoring with 29-minute re-IDLE loop, task interrupt mechanism via `tokio::sync::watch`, all task remote phases (move, flag, label, expunge, send), SMTP send via lettre, crash recovery on launch.
+
+**Addresses (from FEATURES.md):**
+- IMAP IDLE monitoring
+- Task processor (local and remote phases, all 13+ task types)
+- SMTP send (SendDraftTask)
+- Task cleanup (startup reset, runtime expiry)
+- Crash recovery
+
+**Avoids (from PITFALLS.md):**
+- IDLE 29-minute disconnect (25-minute `tokio::time::timeout` loop with `DONE` before re-IDLE)
+- IMAP IDLE + background sync on same session (two separate IMAP connections per account)
+- Task atomicity (performLocal idempotent; performRemote retry via cleanupTasksAfterLaunch)
+- STARTTLS SNI missing (hostname passed explicitly as SNI parameter)
+
+**Uses (from STACK.md):** `lettre 0.11.19`, `tokio::select!`, `tokio::sync::watch` for interrupt channel
+
+**Research flag:** Verify lettre's MIME multipart builder API covers inline images (CID references) and text/html + text/plain alternatives before coding begins. The C++ `performRemoteSendDraft` handles these cases via mailcore2's MIME builder.
+
+### Phase 5: CalDAV, CardDAV, and Metadata Workers
+
+**Rationale:** These workers are independent of IMAP sync — they share only the `MailStore` and `DeltaStream`. They are grouped because they share the `libdav` crate and HTTP infrastructure. The metadata worker is the simplest and should be implemented last within this phase.
+
+**Delivers:** CalDAV calendar sync (sync-collection REPORT, CREATE/UPDATE/DELETE events), CardDAV contact sync (CREATE/UPDATE/DELETE contacts), Gmail Google People API contacts, metadata worker HTTP long-polling, sync-calendar stdin command handling.
+
+**Addresses (from FEATURES.md):**
+- CalDAV calendar sync
+- CardDAV contact sync
+- Gmail Google People contact sync
+- Metadata worker and expiration worker
+- `sync-calendar` stdin command
+
+**Avoids (from PITFALLS.md):**
+- CalDAV ETag sync loop (GET-after-PUT when server omits ETag; sync-token fallback for servers without sync-collection)
+- CalDAV REPORT missing `Depth: 1` header
+- vCard invalid UTF-8 (calcard handles forgivingly)
+- Rate limiting (RFC 6585 Retry-After backoff; port C++ RateLimiter pattern)
+- CalDAV/CardDAV token expiry (shared OAuth2 `TokenManager` handles all three worker types)
+
+**Uses (from STACK.md):** `libdav 0.10.2`, `reqwest 0.13`, `calcard 0.3.2`, `quick-xml 0.37`
+
+**Research flag:** CalDAV server behavior variation for ETag after PUT, sync-token expiry (Google 29-day limit), and `507 Insufficient Storage` reset warrants a focused research pass before implementing the sync-collection state machine. Server matrix: Google Calendar, iCloud, Nextcloud/Baikal, Exchange Online.
+
+### Phase 6: Cross-Platform Builds, Packaging, and C++ Deletion
+
+**Rationale:** The binary is useless if it cannot reach users. Packaging must be verified before the C++ binary is deleted. The `asarUnpack` configuration and dev fallback path in `mailsync-process.ts` must be updated to match Cargo's output path (not the C++ CMake path).
+
+**Delivers:** Cross-platform binaries (Windows MSVC, macOS Intel, macOS Apple Silicon, Linux x64, Linux arm64), verified asar unpacking in production build, stripped release binaries under 15 MB, C++ source deletion.
+
+**Addresses (from FEATURES.md):** All process modes fully tested; binary distributed and loadable in production packaging
+
+**Avoids (from PITFALLS.md):**
+- Binary not found in production (update `asarUnpack` in electron-builder config; update dev fallback path in `mailsync-process.ts`)
+- Cross-compilation failures (cargo-xwin for Windows MSVC, cargo-zigbuild for Linux arm64)
+
+**Uses (from STACK.md):** `cargo-xwin`, `cargo-zigbuild`, `cargo-bloat`, `cargo-audit`
+
+**Research flag:** No additional research needed. Cross-compilation targets and tooling are identical to v1.0.
 
 ### Phase Ordering Rationale
 
-- Provider detection before IMAP/SMTP: synchronous and verifiable without network; correctness of regex matching underpins validateAccount's identifier field
-- Scaffolding as go/no-go gate: three of the nine documented pitfalls are Electron-specific structural issues that would require full refactoring if discovered after IMAP/SMTP implementation
-- IMAP before SMTP: STARTTLS stream upgrade and custom XOAUTH2 Authenticator are the hardest implementation tasks; establishing error format conventions in Phase 2 benefits Phase 3
-- validateAccount last: pure composition of proven components; `tokio::join!()` concurrent execution is trivial once both IMAP and SMTP are tested independently
-- Packaging as final phase: depends on finalized Cargo.toml features; binary size optimization is a final-pass concern once functionality is proven
+- **Phases 1-2 before everything:** The delta protocol and SQLite layer are the foundation. No IMAP code can be tested with Electron until Phase 1 is complete. Protocol contract failures discovered late require refactoring across all worker code.
+- **Phase 3 before Phase 4:** Background sync must complete its first folder iteration before the foreground IDLE task is safe to start — this is the same sequencing as the C++ engine and is enforced architecturally.
+- **Phase 5 independent of Phases 3-4:** CalDAV/CardDAV workers share no IMAP session state. They can be developed in parallel with Phases 3-4 if team size allows, but require Phase 2 (MailStore) to be complete.
+- **Phase 6 last:** The C++ binary cannot be deleted until all other phases are proven in production with live accounts. Packaging validation is a gate condition for deletion.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 2 (IMAP STARTTLS):** The stream-type transition from plain TcpStream to TlsStream inside async-imap is not abstracted by the library. Existing patterns from deltachat-core-rust or similar projects should be studied before implementation. This is the highest-complexity task in the entire rewrite.
-- **Phase 4 (Electron packaging):** The interaction between napi-rs single-package binary distribution and electron-builder's asarUnpack mechanism needs hands-on verification. The napi-rs/node-rs issue #376 documents the problem but the recommended workaround (napi-postinstall + asarUnpack) may need adjustment for this project's specific electron-builder configuration.
+- **Phase 4:** lettre multipart MIME API for attachments and inline images — validate builder API coverage against all cases in C++ `performRemoteSendDraft` before coding begins
+- **Phase 5:** CalDAV server behavior variation (ETag after PUT, sync-token expiry, `507` reset, Exchange Online compatibility) — a server compatibility matrix research session is recommended before implementing the sync-collection state machine
 
-Phases with standard patterns (no research-phase needed):
-- **Phase 1 (Provider detection):** JSON parsing, regex matching, OnceLock state — all standard Rust patterns with comprehensive documentation.
-- **Phase 2 (IMAP TLS + password auth):** Direct TLS connection on port 993 using async-imap + tokio-rustls is well-documented in async-imap examples.
-- **Phase 3 (SMTP):** lettre's transport builder pattern is the cleanest API in the crate graph; XOAUTH2 is natively supported and documented.
+Phases with standard patterns (skip research-phase):
+- **Phase 1:** tokio task architecture and stdout flush patterns are thoroughly documented in official tokio docs and confirmed pitfalls
+- **Phase 2:** rusqlite + tokio-rusqlite single-writer pattern is well-established with official API docs
+- **Phase 3:** async-imap CONDSTORE API confirmed via direct source inspection; Delta Chat (deltachat-core-rust) is a working reference implementation
+- **Phase 6:** Cross-compilation tools and targets are identical to the v1.0 milestone — no new territory
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All crate versions verified against docs.rs and official napi-rs documentation. Cargo.toml feature combinations verified against crate feature lists. One MEDIUM item: Electron 39 Node.js version (22.20.0) sourced from a third-party article — cross-reference against electronjs.org releases recommended. |
-| Features | HIGH | C++ source files read directly. TypeScript consumer files read directly. Behavioral specifications derived from actual source, not inference. XOAUTH2 format verified against Google's protocol spec. |
-| Architecture | HIGH | napi-rs official documentation is comprehensive. Component boundaries directly mirror C++ source structure. One known gap: `get_current_dll_path()` platform-specific implementation — the `include_str!()` embedding approach (documented in ARCHITECTURE.md) eliminates this entirely and is preferred. |
-| Pitfalls | HIGH | Most pitfalls sourced from official napi-rs issue tracker, Electron blog posts, and RFC specifications. All 9 pitfalls have documented recovery strategies. IMAP STARTTLS implementation complexity is the one area where the mitigation advice ("look at deltachat-core-rust") is directional rather than prescriptive. |
+| Stack | HIGH | All crate versions verified against docs.rs; CONDSTORE confirmed via async-imap source inspection; QRESYNC gap confirmed via multiple searches and source inspection; libdav 0.10.2 freshness verified (released 2026-02-10); ammonia RUSTSEC fix version confirmed |
+| Features | HIGH | C++ source read directly (main.cpp, SyncWorker, TaskProcessor, DAVWorker, MetadataWorker, DeltaStream, MailStore, XOAuth2TokenManager); RFC standards verified; every feature traced to a specific C++ source file |
+| Architecture | HIGH | C++ source and CLAUDE.md read directly for threading model; tokio patterns from official docs; tokio-rusqlite API from docs.rs; all async-imap IDLE/CONDSTORE patterns verified; anti-patterns documented with concrete examples |
+| Pitfalls | HIGH | IPC pitfalls verified against live TypeScript source (mailsync-bridge.ts, mailsync-process.ts); IDLE disconnect confirmed via deltachat-core-rust issue #5093; rusqlite async issue verified against rusqlite#697; stdout buffering confirmed via rust-lang/rust#60673 and tokio#7174; pipe deadlock confirmed via rust-lang/rust#45572 |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **IMAP STARTTLS stream upgrade:** Research recommends looking at deltachat-core-rust patterns before implementing — this should happen at the start of Phase 2, not as a research-phase but as a direct code reading exercise on the reference implementation.
-- **Electron 39 Node.js version:** Verify `22.20.0` vs `22.21.1` against the official Electron releases page (ARCHITECTURE.md and STACK.md have slightly different version numbers for the same Electron release — does not affect any implementation decision since napi4 supports all Node 22.x versions).
-- **providers.json regex matching semantics:** The C++ mailcore2 matching logic is implicit in source code, not formally specified. The cross-validation test (50 addresses against C++ output) in Phase 1 is the validation mechanism — it must be run before the C++ code is deleted.
-- **Binary distribution strategy for this specific electron-builder setup:** The project's existing `app/package.json` uses `"file:mailcore"` reference. Whether this maps well to the napi-rs single-package distribution pattern with electron-builder needs validation in Phase 4.
+- **QRESYNC decision point:** Research confirms CONDSTORE-only for MVP and defers QRESYNC. This decision should be explicitly tracked. If any production server shows significantly worse reconnect behavior without QRESYNC, the raw-command approach should be evaluated during Phase 3. Estimated: affects <5% of use cases.
+
+- **lettre multipart attachment API coverage:** The SMTP send task in C++ handles multipart with attachments and inline images. lettre's `builder` API can do this, but the exact API surface for inline image CID references should be validated before Phase 4 coding begins.
+
+- **CalDAV server compatibility matrix:** The research identifies the ETag loop pitfall and sync-token expiry as known risks, but server-specific behaviors for Exchange Online, iCloud, and Nextcloud are not fully characterized. A targeted Phase 5 research pass is recommended before implementation.
+
+- **Google People API v1 currency:** The C++ engine uses Google People API for Gmail contacts. Verify the API v1 endpoint and OAuth2 scope requirements are still current before Phase 5 implementation — Google has been migrating People API surfaces.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [docs.rs/crate/napi/latest](https://docs.rs/crate/napi/latest) — napi 3.8.3 features and version
-- [napi.rs/docs/concepts/async-fn](https://napi.rs/docs/concepts/async-fn) — async + tokio_rt integration
-- [napi.rs/docs/cross-build](https://napi.rs/docs/cross-build) — cross-compilation tooling
-- [napi.rs/docs/deep-dive/release](https://napi.rs/docs/deep-dive/release) — binary distribution strategy
-- [napi.rs/changelog/napi](https://napi.rs/changelog/napi) — version history, Electron fixes
-- [docs.rs/async-imap](https://docs.rs/async-imap/latest/async_imap/) — 0.11.2, runtime-tokio feature
-- [docs.rs/lettre/latest](https://docs.rs/lettre/latest/lettre/) — 0.11.19, XOAUTH2, TLS
-- [docs.rs/hickory-resolver](https://docs.rs/hickory-resolver/latest/hickory_resolver/) — 0.25.2
-- [docs.rs/crate/rustls-platform-verifier](https://docs.rs/crate/rustls-platform-verifier/latest) — 0.6.2
-- [docs.rs/tokio-rustls](https://docs.rs/tokio-rustls/latest/tokio_rustls/) — 0.26.4
-- [developers.google.com/gmail/imap/xoauth2-protocol](https://developers.google.com/workspace/gmail/imap/xoauth2-protocol) — XOAUTH2 spec
-- [electronjs.org/blog/v8-memory-cage](https://www.electronjs.org/blog/v8-memory-cage) — external ArrayBuffer prohibition
-- C++ source files read directly: `app/mailcore/src/napi/napi_imap.cpp`, `napi_smtp.cpp`, `napi_provider.cpp`, `napi_validator.cpp`, `addon.cpp`
-- TypeScript interface read directly: `app/mailcore/types/index.d.ts`
-- Consumer behavior read directly: `app/internal_packages/onboarding/lib/onboarding-helpers.ts`
+
+- C++ source read directly: `app/mailsync/MailSync/main.cpp`, `SyncWorker.hpp/cpp`, `TaskProcessor.hpp`, `DAVWorker.hpp`, `MetadataWorker.hpp`, `MailStore.hpp`, `DeltaStream.hpp`, `XOAuth2TokenManager.hpp` — ground truth for all feature and architecture research
+- `app/mailsync/CLAUDE.md` — threading model, vendor library list, build system overview
+- `CLAUDE.md` (project root) — IPC protocol, task system, sync engine communication diagram
+- `app/src/browser/mailsync-bridge.ts` — live TypeScript consumer; delta message format; ProcessState handling
+- `app/src/browser/mailsync-process.ts` — live TypeScript consumer; mode handling; binary path resolution; startup handshake
+- [docs.rs/async-imap](https://docs.rs/async-imap/latest/async_imap/) — version 0.11.2; IDLE, CONDSTORE, QUOTA, ID extensions confirmed
+- [github.com/chatmail/async-imap src/client.rs](https://github.com/chatmail/async-imap/blob/main/src/client.rs) — `select_condstore()` present; no `select_qresync()` confirmed via source inspection
+- [docs.rs/rusqlite](https://docs.rs/rusqlite/latest/rusqlite/) — version 0.38.0; bundled SQLite 3.51.1
+- [docs.rs/tokio-rusqlite](https://docs.rs/tokio-rusqlite/latest/tokio_rusqlite/) — single-writer-thread model; `Connection::call` API
+- [docs.rs/libdav](https://docs.rs/libdav/latest/libdav/) — version 0.10.2 (2026-02-10); CalDAV + CardDAV
+- [docs.rs/lettre](https://docs.rs/lettre/latest/lettre/) — version 0.11.19; tokio1, rustls-tls, builder features
+- [docs.rs/ammonia](https://docs.rs/ammonia/latest/ammonia/) — version 4.1.2; RUSTSEC-2025-0071 fix
+- [docs.rs/mail-parser](https://docs.rs/mail-parser/latest/mail_parser/) — version 0.11.2; zero-copy; 41 charsets
+- [docs.rs/calcard](https://docs.rs/calcard/latest/calcard/) — version 0.3.2; iCalendar + vCard; Stalwart Labs
+- [docs.rs/oauth2](https://docs.rs/oauth2/latest/oauth2/) — version 5.0.0; reqwest backend; PKCE; refresh flow
+- [RFC 7162: IMAP CONDSTORE + QRESYNC](https://datatracker.ietf.org/doc/html/rfc7162) — ENABLE-before-SELECT requirement; Gmail CONDSTORE-only
+- [RFC 2177: IMAP IDLE](https://datatracker.ietf.org/doc/html/rfc2177) — 29-minute re-issue requirement
+- [RFC 4549: Disconnected IMAP Clients](https://datatracker.ietf.org/doc/html/rfc4549) — UIDVALIDITY handling
+- [RFC 4791 §5.3.4: CalDAV ETag after PUT](https://www.rfc-editor.org/rfc/rfc4791) — server may omit ETag after mutation
+- [Tokio graceful shutdown](https://tokio.rs/tokio/topics/shutdown) + [Tokio channels](https://tokio.rs/tokio/tutorial/channels) — official patterns used in architecture
+- [tokio issue #7174](https://github.com/tokio-rs/tokio/issues/7174) — async stdout not flushed at process exit
+- [rust-lang/rust issue #60673](https://github.com/rust-lang/rust/issues/60673) — stdout block buffering when not TTY
+- [rust-lang/rust issue #45572](https://github.com/rust-lang/rust/issues/45572) — pipe buffer fill deadlock
+- [rusqlite issue #697](https://github.com/rusqlite/rusqlite/issues/697) — transactions not safe across await points
 
 ### Secondary (MEDIUM confidence)
-- [napi-rs/napi-rs issue #1175](https://github.com/napi-rs/napi-rs/issues/1175) — Windows thread_local GetProcAddress fix
-- [napi-rs/napi-rs issue #2460](https://github.com/napi-rs/napi-rs/issues/2460) — SIGABRT on terminated worker thread
-- [napi-rs/node-rs issue #376](https://github.com/napi-rs/node-rs/issues/376) — arch mismatch with optional dependencies in Electron
-- [electron/electron issue #13176](https://github.com/electron/electron/issues/13176) — BoringSSL/OpenSSL conflict confirmation
-- [rust-imap issue #167](https://github.com/jonhoo/rust-imap/issues/167) — no built-in connection timeout
 
-### Tertiary (MEDIUM-LOW confidence)
-- [Electron 39 release notes (third-party)](https://xiuerold.medium.com/electron-39-a-quiet-evolution-of-the-modern-runtime-11a079fd8517) — Node.js 22.20.0 version claim; cross-reference against official releases recommended
+- [deltachat-core-rust issue #5093](https://github.com/deltachat/deltachat-core-rust/issues/5093) — IDLE CLOSE-WAIT confirmed in production Rust email client after ~30 minutes
+- [Gmail IMAP Extensions](https://developers.google.com/workspace/gmail/imap/imap-extensions) — X-GM-LABELS, X-GM-MSGID, X-GM-THRID, CONDSTORE without QRESYNC
+- [sabre/dav: Building a CalDAV client](https://sabre.io/dav/building-a-caldav-client/) — ETag-after-PUT pattern; sync-token fallback
+- [Google CardDAV API](https://developers.google.com/people/carddav) — Google People API for Gmail contacts
+- [SQLite concurrent writes and "database is locked"](https://tenthousandmeters.com/blog/sqlite-concurrent-writes-and-database-is-locked-errors/) — WAL mode, busy_timeout, checkpoint starvation
 
 ---
-*Research completed: 2026-03-01*
+*Research completed: 2026-03-02*
 *Ready for roadmap: yes*

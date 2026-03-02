@@ -1,286 +1,633 @@
 # Pitfalls Research
 
-**Domain:** Rust napi-rs native addon for Electron (IMAP/SMTP/provider detection)
-**Researched:** 2026-03-01
-**Confidence:** HIGH (most claims verified against official docs, napi-rs changelog, and GitHub issues)
+**Domain:** Rewriting a C++ IMAP/SMTP/CalDAV sync engine in Rust for an Electron desktop email client (stdin/stdout JSON IPC)
+**Researched:** 2026-03-02
+**Confidence:** HIGH (IPC protocol verified against live UnifyMail codebase; IMAP/CONDSTORE pitfalls verified against RFC 7162 and Delta Chat implementation reports; SQLite async pitfalls verified against rusqlite/tokio-rusqlite docs and GitHub issues; TLS confirmed HIGH from v1.0 research)
+
+---
+
+> **Scope note:** This file covers v2.0 mailsync engine pitfalls only. The v1.0 napi-rs addon
+> pitfalls (Tokio runtime lifecycle, V8 memory cage, BoringSSL, asar packaging of .node files)
+> are documented in the original PITFALLS.md written for v1.0. Do not duplicate those here —
+> the v2.0 engine is a standalone binary, not a Node.js addon.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Tokio Runtime Lifecycle Mismatch with Electron's Process Model
+### Pitfall 1: stdout Buffering Causes the Electron UI to Never Update
+
+**Severity:** CRITICAL
 
 **What goes wrong:**
-napi-rs maintains a global tokio runtime internally. On macOS, a bug (fixed in napi v2.16.16) caused the runtime reference count to not be restored after Electron's renderer process lifecycle events, leading to panics or silent promise hangs when async functions were called after the runtime was implicitly torn down. On Windows, napi-sys v2.2.1 introduced `thread_local!` usage that broke `GetProcAddress` during module initialization in Electron, producing an immediate panic at startup.
+When Rust writes to stdout via `println!` or `serde_json::to_writer(std::io::stdout(), ...)`, the
+output is buffered in the OS pipe buffer. When stdout is not connected to a TTY (which is always
+the case when spawned as a child process by Node.js), Rust's stdout switches to full block
+buffering. This means deltas written to stdout pile up in a buffer and are not delivered to the
+Electron parent process until the buffer flushes — which may be thousands of lines later, at
+process exit, or never if the process is killed. The Electron `_onIncomingMessages` handler in
+`mailsync-bridge.ts` never fires, the UI never updates, and emails appear not to sync.
 
-The issue is not just historical: Electron spawns multiple processes (main, renderer, utility), and each process that loads the `.node` addon gets its own tokio runtime. If the addon is loaded in a worker thread context that terminates while Rust futures are still pending, the result is SIGABRT rather than graceful promise rejection (documented in napi-rs issue #2460, fixed by restoring THREAD_DESTROYED detection).
+Additionally, tokio issue #7174 documents that when `process::exit()` is called (e.g., on fatal
+error), tokio's async I/O does not guarantee stdout is flushed first, so the final status JSON
+message that `mailsync-process.ts` parses from the last line of output can be silently lost.
 
 **Why it happens:**
-Electron is not plain Node.js. Its V8 embedder lifecycle, multi-process architecture, and worker thread model create process teardown scenarios that never occur in a standard Node.js server. napi-rs was initially written for servers; Electron-specific bugs were only addressed after being reported. The tokio runtime in napi-rs is initialized lazily and globally — if the process exits while futures are in-flight, the teardown order is not guaranteed.
+The C++ mailsync engine used `fflush(stdout)` after every write. Developers porting to Rust reach
+for `println!` or `writeln!(stdout, ...)` which feel idiomatic but do not flush. Rust's `print!`
+macro is documented as not flushing; `println!` is documented as flushing only when connected to
+a TTY.
 
 **How to avoid:**
-- Pin napi-rs to a version >= 2.16.16 for the macOS reference count fix.
-- Ensure napi-rs is >= the version that removed thread_local usage (post-PR #1176). The napi-rs package template generates a `Cargo.toml` that pulls current versions — use the template rather than a hand-rolled setup.
-- Always wrap async napi-rs functions with `tokio::time::timeout` so they cannot hang indefinitely if the runtime is unexpectedly unavailable.
-- In Electron, load the `.node` addon only in the main process or a dedicated utility process, not in renderer processes. The existing `mailsync-process.ts` already does this.
-- Add an Electron integration test that loads the addon and calls all five functions — run it as part of CI using `electron-mocha` or similar to catch runtime mismatches before shipping.
+- Use a dedicated stdout writer with explicit flush after every message:
+  ```rust
+  use std::io::{self, Write};
+  let stdout = io::stdout();
+  let mut handle = stdout.lock();
+  serde_json::to_writer(&mut handle, &delta)?;
+  handle.write_all(b"\n")?;
+  handle.flush()?;
+  ```
+- Alternatively, wrap stdout in a `BufWriter` and flush after every newline-delimited message:
+  ```rust
+  let mut out = BufWriter::new(io::stdout());
+  // ... write message ...
+  out.flush()?;
+  ```
+- Before any `process::exit()` call, flush stdout synchronously. In async contexts, call
+  `tokio::io::AsyncWriteExt::flush` on the tokio stdout handle before exiting.
+- Write a test that spawns the Rust binary as a child process and asserts that a delta arrives
+  within 500ms of the triggering event — not just that the binary exits eventually.
 
 **Warning signs:**
-- Addon loads in regular Node.js but panics immediately in Electron at startup.
-- `GetProcAddress failed` message in Electron's stderr on Windows.
-- Promises returned by `validateAccount` or `testIMAPConnection` never resolve or reject when Electron is quitting.
-- SIGABRT on macOS during app quit, particularly if async operations were in-flight.
+- The UI does not update even though the binary is running (check with `ps`).
+- Deltas arrive in large batches rather than one at a time.
+- Reducing sync interval or adding sleep calls between writes suddenly "fixes" the issue.
+- The final error JSON (parsed by `mailsync-process.ts`) is sometimes missing after a non-zero
+  exit code.
 
 **Phase to address:**
-Phase 1 (scaffolding) — verify the addon loads cleanly in Electron before writing a single line of IMAP code. This is a go/no-go gate.
+Phase 1 (IPC scaffolding) — establish the stdout flush pattern in the skeleton binary before
+writing a single line of IMAP code. This is a go/no-go gate for the entire delta protocol.
 
 ---
 
-### Pitfall 2: TLS Library Choice Conflicts with Electron's BoringSSL
+### Pitfall 2: stdin Pipe Buffer Fills and Deadlocks Under Large Task Payloads
+
+**Severity:** CRITICAL
 
 **What goes wrong:**
-If the Rust crate graph includes `openssl-sys` (even as a transitive dependency), the addon may fail to compile or produce symbol conflicts at runtime on Linux. On macOS and Windows this often compiles fine — then the Linux CI build fails because there are no OpenSSL headers in the CI environment, or there is an ABI mismatch between the OpenSSL the system provides and what Electron's bundled Node.js expects.
+The existing `mailsync-process.ts` configures stdin's `highWaterMark` to 1 MB (it is documented
+in a comment: "Allow us to buffer up to 1MB on stdin instead of 16k. This is necessary because
+some tasks ... can be gigantic amounts of HTML"). The OS pipe buffer on Linux is 64 KiB by
+default. If the Rust engine reads stdin synchronously (blocking the main thread or a tokio thread)
+while the Electron side is writing, and if the Electron write exceeds the OS buffer before the
+engine drains it, the write blocks on the Electron side. Simultaneously, if the Rust engine is
+trying to write a delta to stdout while Electron's stdout read buffer is full, both processes
+deadlock: each is blocked waiting for the other to read.
 
-More critically: `native-tls` on Linux links against the system's `libssl.so`. Electron ships its own BoringSSL. Symbol names overlap between OpenSSL and BoringSSL. When both are loaded into the same process, global SSL state initialization can conflict, causing TLS handshakes to fail silently or producing hard-to-debug segfaults in the TLS layer. Electron's own issue tracker (issue #13176) confirmed: "they conflict with Chromium's fork of OpenSSL" and exporting BoringSSL symbols was closed as "causes more problems than it solves."
+This is a documented Rust issue (rust-lang/rust#45572: "process::Command hangs if piped stdout
+buffer fills") and is platform-specific — more likely to manifest with large email bodies on
+Linux than on macOS.
 
 **Why it happens:**
-`lettre` defaults to `native-tls` and `async-imap` requires a TLS connector. Developers reaching for the most natural TLS choice end up with system OpenSSL. On macOS, `native-tls` uses Secure Transport (no conflict). On Windows, it uses SChannel (no conflict). Linux is the dangerous case because it uses OpenSSL which can conflict with BoringSSL in Electron.
+The C++ engine used separate threads for stdin reading and stdout writing, which prevents
+deadlock by design. Developers writing the Rust engine in async may assume tokio's scheduler
+prevents blocking, but if stdin is read in a `spawn_blocking` that holds a lock while the
+async stdout writer is also waiting, the scheduler cannot resolve the deadlock.
 
 **How to avoid:**
-Use `rustls` exclusively. `rustls` is a pure-Rust TLS implementation with no system library dependencies, no header requirements, and no link-time conflicts with Electron's BoringSSL. Concrete dependency choices:
-- `lettre` with feature flags `rustls-tls` and without `native-tls` (disable default features).
-- `async-imap` with `tokio-rustls` as the TLS connector, not `async-native-tls`.
-- `trust-dns-resolver` with `dns-over-rustls` if DNS-over-TLS is needed.
-- Audit `Cargo.lock` after each dependency addition: `cargo tree | grep openssl` must return nothing. If it does, identify and eliminate the dependency pulling it in.
+- Read stdin on a dedicated async task (`tokio::spawn`) that continuously feeds a `tokio::sync::mpsc`
+  channel. Never hold a blocking read on the main async task.
+- Write stdout on a separate dedicated writer task that drains a `tokio::sync::mpsc` channel.
+- The stdin reader task and the stdout writer task must never share a mutex or wait on each other.
+- Test with large task payloads: queue a task with a 500 KB HTML body via stdin and verify
+  the engine processes it and emits a delta within 5 seconds.
 
 **Warning signs:**
+- Hanging only with large emails or when many tasks are queued simultaneously.
+- `strace` on Linux shows the Rust binary blocked in `write(1, ...)` (stdout) while the
+  Electron side is blocked in `write(child.stdin, ...)`.
+- Works fine with small payloads, breaks intermittently with large drafts.
+
+**Phase to address:**
+Phase 1 (IPC scaffolding) — the stdin/stdout concurrency model must be established before
+any task processing logic is written.
+
+---
+
+### Pitfall 3: Blocking SQLite Operations on the Tokio Async Thread Pool Cause Starvation
+
+**Severity:** CRITICAL
+
+**What goes wrong:**
+`rusqlite::Connection` is synchronous and blocking. Calling it directly inside an `async fn`
+body blocks the tokio worker thread executing the future. SQLite's `fsync()` on a slow disk
+(or when WAL checkpointing is running) can block for hundreds of milliseconds. Under load with
+multiple concurrent IMAP folders syncing simultaneously, all tokio worker threads become
+occupied with blocked SQLite calls. New async tasks — including the stdin reader and stdout
+writer — cannot be scheduled. The engine appears frozen despite the binary running.
+
+Additionally, rusqlite issue #697 documents that transactions cannot safely span `.await` points
+because `Connection` is not `Send` and the transaction lifetime cannot cross async boundaries.
+Naive attempts to use `async fn` with rusqlite and transactions will fail to compile or panic.
+
+**Why it happens:**
+Developers accustomed to `async/await` assume all I/O in the tokio world is non-blocking.
+SQLite is not async. The compile error from trying to hold a rusqlite transaction across an
+`.await` is confusing; the workaround of calling `connection.execute()` directly inside an
+`async fn` (without `spawn_blocking`) silently blocks threads.
+
+**How to avoid:**
+- Use `tokio-rusqlite` (crates.io), which wraps every `rusqlite` call in `spawn_blocking`
+  internally and serializes all access through a dedicated SQLite thread per connection:
+  ```rust
+  use tokio_rusqlite::Connection;
+  let conn = Connection::open("mailsync.db").await?;
+  conn.call(|db| {
+      db.execute("INSERT INTO messages ...", params![])?;
+      Ok(())
+  }).await?;
+  ```
+- Never call `rusqlite` methods directly inside an `async fn` without going through
+  `tokio-rusqlite` or `tokio::task::spawn_blocking`.
+- Enable WAL mode at database open time: `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;`
+  to allow concurrent reads while a write transaction is in progress (matches the existing
+  C++ engine's SQLite configuration).
+- Set `busy_timeout` to 5000ms to automatically retry on `SQLITE_BUSY` instead of returning
+  an error: `PRAGMA busy_timeout = 5000;`
+- Use a single writer connection through `tokio-rusqlite` for all writes. Use a separate
+  read-only connection pool (or `async-sqlite` with `PoolBuilder`) for queries.
+
+**Warning signs:**
+- `cargo check` produces "future cannot be sent between threads safely" when trying to hold
+  a `rusqlite::Transaction` across an `.await`.
+- Sync appears to stall when 3+ folders are syncing simultaneously.
+- `SQLITE_BUSY` errors in logs despite WAL mode being enabled.
+- Tokio task count grows indefinitely (visible in `tokio-console`) — threads are all stuck
+  in blocking SQLite calls.
+
+**Phase to address:**
+Phase 2 (SQLite layer) — must be designed correctly before IMAP sync code is written,
+since every sync operation produces database writes.
+
+---
+
+### Pitfall 4: Delta JSON Format Incompatibility Breaks the Electron UI Silently
+
+**Severity:** CRITICAL
+
+**What goes wrong:**
+The Electron `mailsync-bridge.ts` parses every newline-delimited JSON message from stdout and
+expects exactly this format:
+```json
+{ "type": "persist" | "unpersist", "modelClass": "Thread" | "Message" | ..., "modelJSONs": [...] }
+```
+Special message types also exist: `{ "type": "folder-status", ... }` and request/response
+messages with `requestId`. If the Rust engine emits JSON with different field names (e.g.
+`"objectClass"` instead of `"modelClass"`, or `"objects"` instead of `"modelJSONs"`), the
+bridge's condition `if (!modelJSONs || !type || !modelClass)` silently drops the message
+with a console warning. The UI never updates. There is no error thrown — the binary is running
+fine from Electron's perspective.
+
+Additional format requirements from live code analysis:
+- Messages that are not `{` as the first byte are dropped (line 421: `if (msg[0] !== '{')`).
+- Response messages must end with `-result` suffix or be exactly `folder-status` to be routed
+  to `sendRequest()` callers.
+- `ProcessState` and `ProcessAccountSecretsUpdated` as `modelClass` values trigger special
+  handling in `OnlineStatusStore` and `KeyManager`, respectively.
+
+**Why it happens:**
+Rust structs are serialized with `serde_json` using field names defined in Rust code. Developers
+naturally use Rust naming conventions or logical naming that diverges from the TypeScript protocol.
+Without a contract test that validates the wire format, the mismatch only becomes apparent at
+runtime with silent drops rather than crashes.
+
+**How to avoid:**
+- Define delta message types in Rust with exact field names matching the TypeScript protocol:
+  ```rust
+  #[derive(Serialize)]
+  #[serde(rename_all = "camelCase")]  // ensure camelCase field names
+  struct DeltaMessage {
+      #[serde(rename = "type")]
+      msg_type: String,          // "persist" or "unpersist"
+      model_class: String,       // maps to "modelClass" in JSON
+      model_jsons: Vec<serde_json::Value>, // maps to "modelJSONs" - but see below
+  }
+  ```
+  Important: `"modelJSONs"` uses uppercase `JSON` — serde's `rename_all = "camelCase"` will
+  produce `"modelJsons"`. You must use `#[serde(rename = "modelJSONs")]` on that specific field.
+- Write a contract test that deserializes every message type the Rust engine emits and
+  asserts all required TypeScript keys are present. Run this test against the actual
+  TypeScript parsing logic if possible.
+- Implement a mock TypeScript consumer (`scripts/mock-receiver.ts`) that validates incoming
+  messages — the existing `scripts/mock-mailsync.js` already provides the outgoing half.
+
+**Warning signs:**
+- Binary is running (process shows in task manager) but no emails appear in the UI.
+- Electron console shows: "Sync worker sent a JSON formatted message with unexpected keys".
+- Integration test passes but UI is empty after switching to the Rust binary.
+- `modelJSONs` shows as `modelJsons` in received messages (camelCase auto-naming issue).
+
+**Phase to address:**
+Phase 1 (IPC scaffolding) — define and test the wire format contract before writing any
+model serialization. Create a golden JSON fixture for each message type.
+
+---
+
+### Pitfall 5: IMAP IDLE 29-Minute Timeout Causes Silent Disconnection
+
+**Severity:** HIGH
+
+**What goes wrong:**
+RFC 2177 states that IMAP servers MAY treat an IDLE connection as inactive and close it after
+their own inactivity timeout, which varies by server but is often around 30 minutes. The client
+is required to terminate IDLE and re-issue it at least every 29 minutes to prevent being logged
+out. If the Rust engine starts an IDLE session and holds it indefinitely, the server closes the
+TCP connection silently (sends FIN). The TCP stack on the client side moves the socket to
+`CLOSE-WAIT`. The Rust `async-imap` IDLE handle is still `await`ing on the socket, which is
+now closed. The future will never resolve or error — it hangs forever. New email notifications
+stop arriving. This is a documented, real-world failure mode observed in Delta Chat's Rust
+implementation (deltachat-core-rust issue #5093), where the connection enters `CLOSE-WAIT`
+state after ~30 minutes and mail stops being received until the app is restarted.
+
+**Why it happens:**
+Developers implement IDLE once and assume TCP keepalives will detect a dead connection. TCP
+keepalives operate at the OS level on a multi-minute interval and do not guarantee detection
+of server-side session timeout within the IMAP-level 29-minute window. The `async-imap`
+IDLE API provides no built-in keepalive mechanism — it is the caller's responsibility.
+
+**How to avoid:**
+- Wrap the IDLE `wait()` call in a `tokio::time::timeout` of 25 minutes. On timeout, send
+  `DONE` to end IDLE, then immediately re-issue IDLE. This is the standard approach:
+  ```rust
+  loop {
+      let mut idle = session.idle();
+      idle.init().await?;
+      let result = tokio::time::timeout(
+          Duration::from_secs(25 * 60),
+          idle.wait()
+      ).await;
+      idle.done().await?;  // always send DONE before re-using session
+      match result {
+          Ok(Ok(_)) => { /* server sent notification, handle new mail */ }
+          Ok(Err(e)) => { /* IMAP error, reconnect */ }
+          Err(_timeout) => { /* 25 min elapsed, re-issue IDLE silently */ }
+      }
+  }
+  ```
+- Send NOOP every 15 minutes as an additional keepalive when not in IDLE mode (during
+  background folder sync phases).
+- Detect `CLOSE-WAIT` by implementing a read-timeout on the underlying stream: if no bytes
+  have been received within 60 seconds during IDLE, treat it as a dead connection.
+- Test with a mock IMAP server that closes the connection after 60 seconds and verify the
+  engine reconnects automatically without manual intervention.
+
+**Warning signs:**
+- Email notifications stop arriving after 25-35 minutes of the app being idle.
+- `netstat`/`ss` shows a connection to the IMAP server in `CLOSE-WAIT` state while the binary is
+  running.
+- Log shows IDLE was started but no DONE was ever sent.
+- Only affects IDLE path — background sync (periodic folder polling) still works.
+
+**Phase to address:**
+Phase 3 (IMAP IDLE implementation) — implement the 25-minute re-IDLE loop as the first
+working version. Never write an IDLE implementation without this loop.
+
+---
+
+### Pitfall 6: CONDSTORE/QRESYNC ENABLE Must Precede SELECT — Protocol State Machine Error
+
+**Severity:** HIGH
+
+**What goes wrong:**
+RFC 7162 requires that a client using QRESYNC issue `ENABLE QRESYNC` exactly once per
+connection, after authentication and before any `SELECT` command. If `SELECT` is issued first
+and QRESYNC is then enabled, the server MUST respond with a tagged BAD response. Many
+implementations get the ordering wrong: they enable QRESYNC lazily (when they first need it
+during a SELECT) rather than eagerly (after authentication). The `async-imap` library does
+not enforce this ordering — it exposes CONDSTORE select as a parameter to the SELECT call,
+but QRESYNC's ENABLE must be done separately as a raw command.
+
+Additionally, Gmail supports CONDSTORE but does NOT support QRESYNC (as of 2025). Code
+that gates sync on QRESYNC availability will silently degrade for all Gmail accounts if
+the CONDSTORE-only fallback path is not implemented.
+
+**Why it happens:**
+CONDSTORE (flag changes) and QRESYNC (expunge tracking) are defined in the same RFC 7162
+and often treated as a unit. Developers assume "if CONDSTORE works, QRESYNC works" — Gmail
+proves this wrong. Additionally, the ENABLE command is not a standard IMAP command many
+developers are familiar with; it is introduced specifically in RFC 5161 and used only for
+a few extensions.
+
+**How to avoid:**
+- After authentication and capability fetch, immediately issue:
+  1. `ENABLE QRESYNC` if QRESYNC is in capabilities.
+  2. Otherwise, record that only CONDSTORE is available and prepare the CONDSTORE-only
+     fallback sync path.
+- Define a server capability struct early:
+  ```rust
+  struct ServerCapabilities {
+      condstore: bool,
+      qresync: bool,   // false for Gmail — always check separately
+      idle: bool,
+      compress_deflate: bool,
+  }
+  ```
+- Test against a Gmail account and a non-Gmail IMAP server to verify both sync paths.
+- When using QRESYNC SELECT, include the stored `UIDVALIDITY` and `MODSEQ` values:
+  ```
+  SELECT INBOX (QRESYNC (uidvalidity modseq))
+  ```
+  Missing the MODSEQ parameter causes the server to fall back to full resync, negating
+  the performance benefit.
+
+**Warning signs:**
+- `SELECT` returns a tagged BAD response on servers that support QRESYNC.
+- Gmail accounts never use the QRESYNC code path — check whether Gmail capability
+  detection is reaching the fallback branch.
+- After reconnect, full folder download occurs instead of incremental update.
+
+**Phase to address:**
+Phase 3 (IMAP sync implementation) — define capability detection and ENABLE sequencing
+before implementing any SELECT-based sync logic.
+
+---
+
+### Pitfall 7: C++ Protocol Behavioral Contracts Are Implicit — Regression Without Test Coverage
+
+**Severity:** HIGH
+
+**What goes wrong:**
+The C++ mailsync engine has accumulated behavioral contracts that are not documented:
+- The `modelJSONs` array field name uses uppercase `JSON` (not `Json`).
+- `ProcessState` model messages are used by `OnlineStatusStore` to update connection status
+  in the UI — not emitting these causes the connection indicator to show "offline" forever.
+- The first data sent on stdin after spawn is the account JSON followed by identity JSON,
+  each on its own line (see `mailsync-process.ts` line 219). The Rust engine must read and
+  parse both before doing anything else.
+- The binary is force-killed by `process.kill()` during app quit — it must handle `SIGTERM`
+  (Unix) and `WM_CLOSE`/`TerminateProcess` (Windows) without data corruption.
+- In "test" mode (spawned with `--mode test`), the binary must write a single JSON result
+  object as the last line of stdout before exiting with code 0 for success or non-0 for
+  failure, with error keys matching `LocalizedErrorStrings` in `mailsync-process.ts`.
+
+Without a test harness that exercises these contracts, the Rust rewrite can appear functional
+while violating any of them.
+
+**Why it happens:**
+The contracts live in TypeScript source code (the consumer), not in specification documents.
+Developers writing the Rust engine read the TypeScript code carefully for the happy path but
+miss edge cases (mode handling, startup handshake, kill handling).
+
+**How to avoid:**
+- Extract all protocol contracts into a shared test fixture before writing Rust code:
+  ```
+  Protocol contracts to implement:
+  1. On startup: read two newline-delimited JSON lines from stdin (account, identity)
+  2. In "sync" mode: stream delta JSON to stdout indefinitely until killed
+  3. In "test" mode: write one result JSON line, exit 0 (success) or non-0 (failure)
+  4. In "migrate" mode: write status JSON, exit 0
+  5. Handle SIGTERM: flush stdout, exit 0 without SIGABRT
+  6. Emit ProcessState messages when connection status changes
+  ```
+- Run the existing `scripts/mock-mailsync.js` and read its source — it is the reference
+  implementation of the protocol for development, already handling the handshake.
+- Add integration tests that spawn the Rust binary via `std::process::Command` and verify
+  each contract mode independently.
+
+**Warning signs:**
+- App shows "connection failed" for an account that is actually syncing (missing ProcessState).
+- No mail appears in UI after switching to Rust binary in development mode.
+- App crashes on quit with SIGABRT from the child process (not handling SIGTERM correctly).
+- "test" mode account validation never returns — binary not exiting after test.
+
+**Phase to address:**
+Phase 1 (IPC scaffolding) — define and test every protocol contract before implementing
+any sync logic. Build the binary skeleton that handles all modes correctly with no-op
+implementations first.
+
+---
+
+### Pitfall 8: TLS BoringSSL Symbol Conflicts on Linux (Identical to v1.0 Risk, Now More Dangerous)
+
+**Severity:** HIGH
+
+**What goes wrong:**
+Same root cause as documented in the v1.0 PITFALLS.md, but with higher risk in the mailsync
+binary context: the engine is a standalone binary loaded by Electron via `spawn()`. Unlike a
+`.node` addon (which is dlopen'd into Electron's process), the sync binary runs in its own
+process. This means OpenSSL symbol conflicts do NOT occur between the Rust binary and Electron's
+BoringSSL — they are separate processes.
+
+However, the risk remains in a different form: if the Rust engine links against system OpenSSL
+(via `native-tls` or `openssl-sys`), the build will fail on Linux CI systems without OpenSSL
+dev headers, and on Alpine/musl-based systems (which use a different OpenSSL ABI). Cross-
+compilation from x86_64 to arm64 Linux becomes impossible because OpenSSL requires host-specific
+compilation.
+
+Use rustls as the sole TLS backend. The reasoning is identical to v1.0: pure Rust, no system
+library dependencies, correct certificate validation, works on all target platforms.
+
+**How to avoid:**
+- Enforce `cargo tree | grep openssl` returns nothing. Add this as a CI step.
+- Use `rustls-platform-verifier` for OS-native cert validation (Windows CertStore, macOS
+  Security.framework, Linux system CAs) — as established in v1.0 research.
+- In the sync engine, TLS is needed for IMAP (port 993 + STARTTLS on 143), SMTP (port 465
+  + STARTTLS on 587), CalDAV (HTTPS), and CardDAV (HTTPS). The `reqwest` HTTP client used
+  for CalDAV/CardDAV must be configured with `rustls-tls` feature (not `native-tls-alpn`).
+
+**Warning signs:**
+- CI build fails on Ubuntu runners with "cannot find -lssl".
+- Cross-compilation to `aarch64-unknown-linux-gnu` fails with OpenSSL linking errors.
 - `cargo tree | grep openssl` shows any entry.
-- Linux-only TLS handshake failures during IMAP STARTTLS upgrade when running inside Electron.
-- "SSL_CTX_new: no cipher" or similar errors at runtime on Linux.
-- CI builds succeed but runtime fails only when loaded from within Electron (not from plain `node`).
 
 **Phase to address:**
-Phase 1 (scaffolding) — establish `rustls`-only from the start. Retrofitting TLS libraries across all crates is painful because `lettre` and `async-imap` have separate feature flags that must be coordinated.
+Phase 1 (project scaffolding) — lock in `rustls`-only at project creation. This decision
+cannot be changed later without auditing all dependencies.
 
 ---
 
-### Pitfall 3: Electron V8 Memory Cage Breaks External ArrayBuffer/Buffer
+### Pitfall 9: IMAP STARTTLS Stream Upgrade Requires Manual Connection Replacement
+
+**Severity:** HIGH
 
 **What goes wrong:**
-Starting with Electron 21 (June 2022), V8 sandboxed pointers are enabled. This means `ArrayBuffer` or `Buffer` objects pointing to external (off-heap) memory are no longer permitted. Any napi-rs code that calls `Env::create_external_arraybuffer` or uses `TypedArray::with_external_data` will crash at runtime inside Electron with an assertion failure — the application quits without a useful error message.
+IMAP STARTTLS (port 143) requires negotiating a plain TCP connection first, issuing the
+STARTTLS command, and then upgrading the same TCP socket to a TLS stream. `async-imap` does
+expose `starttls()` on the Client, but only for wrapping the connection — the caller is
+responsible for providing the TLS connector. The common mistake is passing a `TlsConnector`
+that does not have the hostname set for SNI (Server Name Indication), causing TLS handshake
+failures on servers that require SNI (most modern servers).
 
-For this addon, this is only relevant if Rust-allocated byte buffers (e.g., raw email data, provider JSON bytes) are returned directly to JavaScript as `Buffer`. The C++ predecessor never did this for the 5 exposed functions (all returns are plain objects/strings/booleans), but a naive Rust port could introduce it by returning `Vec<u8>` through napi-rs's zero-copy path.
+Additionally, some servers (certain corporate Exchange configurations) advertise STARTTLS
+but then fail the upgrade with "TLS not available". The code must handle this as a hard
+error and report it with the user-friendly string `"StartTLS is not available"` (matching
+the key `ErrorStartTLSNotAvailable` in `mailsync-process.ts` `LocalizedErrorStrings`).
 
 **Why it happens:**
-Electron 21+ enforces the V8 memory cage for security. napi-rs added a compatibility fix (`create external TypedArray in Electron env`, released in v3.0.0-beta.10), but the fix copies the data rather than wrapping it — developers who manually bypass this by using `unsafe` external buffer APIs will hit the crash.
+TLS connection examples online typically show connecting directly on port 993 (implicit TLS).
+The STARTTLS code path is less commonly implemented and easy to get wrong with SNI.
 
 **How to avoid:**
-- Never use `Env::create_external_arraybuffer` or `TypedArray::with_external_data` for data returned to JavaScript.
-- Return `Vec<u8>` or `String` from napi-rs functions and let napi-rs copy them into V8-managed memory.
-- For the 5-function API in this project (all return structured objects), this is naturally avoided — but must be consciously maintained if any function ever needs to return binary data.
-- Confirm the version of napi-rs used includes the Electron external TypedArray fix.
+- When connecting on port 143, use `async-imap`'s `connect_starttls` method with an explicit
+  hostname for SNI:
+  ```rust
+  let tls_connector = TlsConnector::from(Arc::new(
+      rustls::ClientConfig::builder()
+          .with_platform_verifier()
+          .with_no_client_auth()
+  ));
+  let imap_client = async_imap::connect_starttls(
+      (hostname.as_str(), 143),
+      hostname.as_str(),  // SNI hostname — must match the server certificate
+      tls_connector,
+  ).await?;
+  ```
+- Test STARTTLS against at least Gmail (imap.gmail.com:143), Fastmail, and a self-hosted
+  Dovecot instance.
+- Map `StarttlsUnavailable` variant to the exact error string `"ErrorStartTLSNotAvailable"`.
 
 **Warning signs:**
-- "Assertion failed" crash immediately when a function that returns binary data is called from Electron.
-- Works fine from `node` but crashes inside Electron.
-- No stack trace — the crash happens inside V8's memory validation layer before Rust code can run a destructor.
+- `tls handshake failure: unrecognized name` errors — SNI hostname is missing.
+- STARTTLS connection succeeds on Gmail but fails on corporate Exchange servers.
+- Error message shown in UI is "tls error" rather than "StartTLS is not available".
 
 **Phase to address:**
-Phase 1 (scaffolding) — verify all return types up front. Since all five functions return plain JS objects (not buffers), this is a design constraint to declare explicitly, not a fix to apply.
+Phase 3 (IMAP implementation) — implement and test STARTTLS before considering IMAP done.
 
 ---
 
-### Pitfall 4: Architecture Mismatch — npm Optional Dependencies vs. Electron Multi-Arch Builds
+### Pitfall 10: CalDAV/CardDAV ETag-Based Sync Misses Server-Mutated Events
+
+**Severity:** MEDIUM
 
 **What goes wrong:**
-The recommended napi-rs distribution pattern is platform-specific npm packages installed via `optionalDependencies`. This works perfectly in a standard Node.js context. It fails in Electron when building for a target architecture that differs from the host machine's architecture. npm installs optional dependencies for the *current* machine's architecture, not the *target* Electron architecture. When electron-builder packages the app for `x64` while running on `arm64` macOS (or vice versa), the wrong `.node` binary ends up in the bundle.
+RFC 4791 §5.3.4 states that when a server mutates a calendar object resource after PUT (e.g.,
+normalizing timezone, adding scheduling metadata), the server MUST NOT return an ETag in the
+PUT response. Clients that assume a successful PUT always returns a new ETag will cache a
+stale ETag and miss server-side changes. On the next sync, the client compares its cached
+(wrong) ETag against the server's actual ETag, finds a mismatch, re-downloads the object,
+and the cycle continues — producing a never-ending sync loop that writes to the database on
+every cycle and generates unnecessary network traffic.
 
-The napi-rs issue tracker (node-rs issue #376) confirms: "npm optional modules are installed for the current nodejs architecture, not for the target Electron arch. None of the Electron tooling appears aware of binaries via optional dependencies."
+Additionally, WebDAV sync-tokens (RFC 6578) are not universally supported. iCloud CalDAV
+supports sync-tokens; some older Exchange versions and some self-hosted servers do not. Code
+that requires sync-tokens will silently fail (no error, just no sync) against these servers.
 
 **Why it happens:**
-npm's platform/cpu optional dependency resolution predates Electron's multi-architecture build requirements. Electron tooling (electron-builder, electron-forge) has special-casing for node-gyp, but not for the napi-rs optional dependency pattern.
+The CalDAV spec is complex and server behavior is inconsistent. Developers test against a single
+server (typically Google Calendar or iCloud) and do not encounter the edge case until users
+report sync loops.
 
 **How to avoid:**
-For an app distributed via electron-builder, use the single-package approach instead of optional dependencies:
-- Bundle all platform binaries in one package (using `@napi-rs/triples` for naming).
-- Use a `postinstall` script or `napi-postinstall` to copy the correct binary at install time based on `process.platform` and `process.arch`.
-- Configure electron-builder's `asarUnpack` to exclude `.node` files: `"asarUnpack": ["**/*.node"]`. Native `.node` files cannot run from inside an `.asar` archive — they must be on disk. This is true regardless of distribution method.
-- Test the packaged build (not just `npm start`) on each target platform/architecture combination.
+- After any PUT to CalDAV, check the response code and ETag header:
+  - If the response includes an ETag header: cache it.
+  - If the response does NOT include an ETag header (server mutated the object): immediately
+    issue a GET request to fetch the stored version and its ETag before updating the local DB.
+- For sync strategy, use a two-phase approach:
+  1. Prefer REPORT with `sync-token` (RFC 6578) if the server advertises `{DAV:}sync-collection`.
+  2. Fall back to REPORT with ETag comparison (fetch all ETags, diff against cached values)
+     for servers that do not support sync-tokens.
+- Test against Google Calendar, iCloud, and a self-hosted Nextcloud/Baikal instance.
 
 **Warning signs:**
-- App works in development (`npm start`) but crashes after electron-builder packaging with "invalid ELF header" or "not a valid Win32 application" errors.
-- macOS universal build only works on the architecture of the build machine.
-- "Cannot find module" errors for the `.node` file when launched from the packaged `.asar`.
+- Sync-loop logs: database writes occurring on every sync cycle for the same event UID.
+- ETag stored in DB does not match ETag returned by server's PROPFIND within the same sync.
+- CalDAV sync works for Gmail accounts but not for corporate Exchange accounts.
 
 **Phase to address:**
-Phase 4 (cross-platform packaging) — but the binary distribution strategy must be decided in Phase 1 scaffolding and cannot be easily changed later.
+Phase 5 (CalDAV/CardDAV implementation) — design the ETag caching layer correctly from the
+start; retrofitting it requires touching every PUT code path.
 
 ---
 
-### Pitfall 5: IMAP/SMTP Connection Timeout with No Upper Bound
+### Pitfall 11: electron-builder Binary Path Resolution Differs Between Dev and Production
+
+**Severity:** MEDIUM
 
 **What goes wrong:**
-The C++ `napi_imap.cpp` calls `session->connectIfNeeded(&err)` — mailcore2 handles its own timeout internally. In the Rust replacement, `async-imap`'s `connect` function has no built-in timeout. If the IMAP server is reachable but slow to respond (firewalled destination, overloaded server, wrong port), the future will pend indefinitely. This hangs the onboarding UI: the "Checking connection..." spinner never stops, and the Promise never resolves or rejects.
-
-This is documented in rust-imap's issue #167 and referenced in the async-imap ecosystem: "Long connection timeouts lead to unreliable behavior, and expiration of timeouts is never reliable."
-
-**Why it happens:**
-Rust's async networking (via tokio) follows the composable timeout pattern — you must explicitly wrap futures with `tokio::time::timeout`. Library authors do not add defaults because the appropriate timeout is application-specific. Developers porting from mailcore2 assume the library manages timeouts as mailcore2 did; it does not.
-
-**How to avoid:**
-Wrap every network future with an explicit timeout using `tokio::time::timeout`:
-```rust
-use tokio::time::{timeout, Duration};
-
-let result = timeout(
-    Duration::from_secs(15),
-    async_imap::connect((hostname, port), tls_connector)
-).await;
-
-match result {
-    Err(_elapsed) => return Err(ImapError::Timeout),
-    Ok(Err(e)) => return Err(e.into()),
-    Ok(Ok(client)) => client,
-}
+`mailsync-process.ts` already handles this for the C++ binary:
+```typescript
+this.binaryPath = path.join(resourcePath, binaryName)
+  .replace('app.asar', 'app.asar.unpacked');
 ```
-Apply the same pattern to: TLS handshake, CAPABILITY command, LOGIN/AUTHENTICATE command, LOGOUT. Set timeouts to 15 seconds for initial connect, 10 seconds for protocol commands. These mirror reasonable email client defaults. Expose timeout as a parameter if needed for tests.
+The `app.asar.unpacked` replacement is required because native binaries cannot be executed from
+inside an `.asar` archive — they must be on disk. If the Rust binary is not explicitly listed
+in electron-builder's `asarUnpack` (or the equivalent), it will be packed inside `app.asar`,
+the path replacement will not find it, and the `else if (fs.existsSync(mockPath))` fallback
+will be triggered in production, which does not exist there either. The error thrown is:
+"mailsync binary not found at ... and no mock available" — the app cannot sync email at all.
 
-**Warning signs:**
-- Test that connects to `imap.gmail.com:9999` (unreachable port) hangs instead of returning an error after ~15 seconds.
-- Onboarding spinner runs indefinitely when a user enters wrong port.
-- CI IMAP tests randomly hang (flaky) — almost always a missing timeout.
-
-**Phase to address:**
-Phase 2 (IMAP implementation) — implement timeouts as a first-class requirement, not a polish item.
-
----
-
-### Pitfall 6: XOAUTH2 SASL Encoding Errors
-
-**What goes wrong:**
-The XOAUTH2 initial client response format is:
+Additionally, the existing dev fallback path checks:
+```typescript
+path.join(resourcePath, 'mailsync', 'Windows', 'x64', 'Release', binaryName)
 ```
-base64("user=" + email + "\x01auth=Bearer " + token + "\x01\x01")
-```
-The `\x01` bytes are ASCII Control-A (byte value 1). Common mistakes:
-1. Using the literal string `^A` instead of the byte `\x01`.
-2. Using `base64url` encoding (RFC 4648 §5, URL-safe variant with `-` and `_` characters) instead of standard base64 (RFC 4648 §4, with `+` and `/`). IMAP servers expect standard base64.
-3. Embedding whitespace or newlines in the base64 output (must be a single continuous string).
-4. Not sending an empty response `\r\n` when the server returns an error challenge after a failed AUTHENTICATE attempt — this violates the IMAP protocol and leaves the connection in an undefined state, causing subsequent operations to fail silently.
-5. Using the wrong OAuth scope: for IMAP, Google requires `https://mail.google.com/`; for Gmail IMAP admin delegation it's a different scope. Microsoft Exchange requires `https://outlook.office.com/IMAP.AccessAsUser.All`.
-
-The Microsoft SMTP equivalent (`AUTH XOAUTH2`) has the same format but a different scope and has been the subject of multiple recent authentication failures (documented in Microsoft Q&A threads, 2023-2024).
+The Rust build system produces the binary at a different path
+(`target/release/mailsync` or `target/x86_64-pc-windows-msvc/release/mailsync.exe`).
+The dev fallback path must be updated to match the Rust build output location.
 
 **Why it happens:**
-The XOAUTH2 spec (Google's documentation) shows the format but the byte `^A` looks like a typographical convention. Rust's `base64` crate has both standard and URL-safe variants; the wrong one is easy to pick accidentally. The empty-response requirement on error is buried in a footnote of the Gmail XOAUTH2 documentation.
+The binary path is hardcoded in TypeScript. When the build system changes (C++ CMake → Cargo),
+the output location changes, but the TypeScript code is not automatically updated.
 
 **How to avoid:**
-- Construct the SASL payload as a `Vec<u8>`, using literal `b'\x01'` separators — never string formatting with `^A`.
-- Use `base64::engine::general_purpose::STANDARD.encode(...)` from the `base64` crate (not `URL_SAFE` or `URL_SAFE_NO_PAD`).
-- After sending AUTHENTICATE XOAUTH2, check if the server response is a challenge (`+` followed by base64 error JSON) and send an empty line `\r\n` before returning an error to the caller.
-- Write a unit test that constructs the XOAUTH2 payload for a known email/token pair and asserts exact byte equality against the reference output from Google's documentation.
+- Update `asarUnpack` in `electron-builder.json` (or equivalent config) to include the
+  Rust binary: `"asarUnpack": ["mailsync.bin", "mailsync.exe"]`.
+- Update the dev fallback path in `mailsync-process.ts` to match Cargo's output:
+  ```typescript
+  const devBuildPath = path.join(resourcePath, '..', '..', 'target',
+    'release', binaryName);
+  ```
+- Add a CI step that packages the app with electron-builder and verifies the binary
+  exists at the expected unpacked path before running integration tests.
 
 **Warning signs:**
-- OAuth2 IMAP/SMTP tests fail with "535 Authentication Credentials Invalid" or "NO AUTHENTICATE failed" only for OAuth2 paths, while password auth succeeds.
-- Connection hangs after a failed XOAUTH2 attempt (missing empty response).
-- Token encodes correctly when tested in isolation but fails against a real server (wrong base64 variant).
+- App works in `npm start` (dev mode) but silently fails to sync after packaging.
+- Electron console shows "mailsync binary not found" after distributing to testers.
+- The `CLOSE-WAIT` workaround is never triggered — processes are never spawned at all.
 
 **Phase to address:**
-Phase 2 (IMAP) and Phase 3 (SMTP/validator) — implement and unit-test XOAUTH2 encoding before integrating with live servers.
+Phase 6 (packaging and distribution) — but the `asarUnpack` configuration must be planned in
+Phase 1. The dev fallback path must be updated as soon as the Rust binary produces its first
+output.
 
 ---
 
-### Pitfall 7: Provider Regex Matching — Silent Mismatch for Edge Cases
+### Pitfall 12: OAuth2 Token Expiry During Long Sync Sessions Causes Silent Auth Failure
+
+**Severity:** MEDIUM
 
 **What goes wrong:**
-The `providers.json` database uses domain-match patterns and MX-match patterns (e.g., `google.com`, `*.googlemail.com`, `aspmx.l.google.com`). The C++ `MailProvidersManager` implements its own matching logic. The Rust replacement must reproduce that logic exactly. Common failures:
-
-1. **Subdomain matching**: A pattern like `googlemail.com` should match `user@googlemail.com` but not `user@notgooglemail.com`. If matching is done as a simple string `contains()`, false positives occur.
-2. **MX record suffix matching**: MX records are matched by suffix against patterns in `mxMatch`. A pattern `google.com` should match `aspmx.l.google.com` but the matching must be anchored — `google.com` must not match `notgoogle.com`.
-3. **Case sensitivity**: Email domains and MX hostnames should be compared case-insensitively (RFC 5321 specifies case-insensitive domain comparison).
-4. **First-match vs. best-match**: If a providers.json entry has both `domainMatch` and `mxMatch`, the C++ code gives priority to the first match found in iteration order. Changing this order breaks provider detection for ambiguous domains.
-
-**Why it happens:**
-The matching rules are not formally specified anywhere — they are implicit in the mailcore2 C++ implementation. Developers writing the Rust replacement will naturally use `str::ends_with` or simple regex, which handles the common cases but fails on anchoring and case sensitivity.
-
-**How to avoid:**
-- Treat each entry in `domainMatch` as a suffix-anchored, case-insensitive pattern: domain must end with `.{pattern}` OR equal `{pattern}` exactly (to handle the root domain case).
-- For `mxMatch`, apply the same suffix-anchored logic to the MX hostname, not the email domain.
-- Write a test fixture covering: exact match, subdomain match, suffix-but-not-substring match (e.g., `google.com` must not match `notgoogle.com`), uppercase input, empty input, input with no `@` sign.
-- Cross-validate: run the C++ addon's `providerForEmail` on the same 20 test addresses and compare output with the Rust implementation before removing the C++ code.
-
-**Warning signs:**
-- Provider detection works for `@gmail.com` but silently returns null for `@googlemail.com` or `@GMAIL.COM`.
-- A provider that should be detected via MX records is not detected (check: is MX resolution actually happening? DNS failures can silently degrade to null).
-- Provider detection regression reports from users after the C++ removal.
-
-**Phase to address:**
-Phase 1 (provider detection) — this is the first piece of logic to implement, and correctness must be established before IMAP/SMTP work begins.
-
----
-
-### Pitfall 8: Error Messages Become Opaque After Rust-to-JS Propagation
-
-**What goes wrong:**
-The C++ addon uses `ErrorMessage::messageForError(err)` to convert mailcore2 error codes into human-readable strings (e.g., "Authentication failed", "Connection timeout"). These strings are displayed directly in the onboarding UI. In the Rust replacement, errors are propagated as `napi::Error` objects. If Rust errors are returned as `Err(Error::from_reason("Connection refused (os error 111)"))`, the JavaScript consumer sees the raw Rust OS error message — which is technical, inconsistent across platforms, and unfamiliar to users.
-
-Worse: if a `?` operator propagates an IO error through multiple layers, the error reason may be `"tcp connect error: Connection refused (os error 111)"` with nested message structure that TypeScript callers are not expecting.
+OAuth2 access tokens for Gmail and Outlook expire after 1 hour. The C++ engine uses the
+identity JSON (passed via stdin on startup) and calls a refresh endpoint as needed. If the
+Rust engine receives a token on startup and uses it throughout the session without refreshing,
+IMAP auth failures will start occurring after 60 minutes. The engine may interpret `NO [AUTHENTICATIONFAILED]`
+as a permanent authentication failure and emit an `ErrorAuthentication` delta, causing the
+Electron UI to mark the account as `SYNC_STATE_AUTH_FAILED` and stop syncing.
 
 **Why it happens:**
-napi-rs converts `Err(napi::Error)` into a JavaScript rejected Promise, where the `.message` property is whatever string was passed to `Error::from_reason()`. Developers focus on making errors propagate at all, not on making error messages match what the UI expects.
+The OAuth2 refresh flow is easy to omit when building the IMAP connection layer — the token
+"works" during testing because tests run for less than 60 minutes.
 
 **How to avoid:**
-- Define a domain-specific error enum in Rust (`ImapError`, `SmtpError`, `ValidationError`) with variants like `Timeout`, `AuthFailed`, `TlsHandshakeFailed`, `ConnectionRefused`, `ProviderNotFound`.
-- Implement `Display` for each variant to produce the same human-readable strings as the C++ `ErrorMessage::messageForError()` output.
-- Map low-level IO/TLS errors to domain errors at the boundary where they are caught, not at the napi export boundary.
-- In napi-rs export functions, produce `napi::Error::from_reason(format!("{}", domain_error))` for user-facing errors, and preserve the raw error in debug logs.
-- Write a test asserting that a connection timeout produces `{ success: false, error: "Connection timeout" }` (matching the C++ string) rather than `"deadline has elapsed"` (tokio's raw timeout message).
+- Store the access token and its expiry timestamp. Before each IMAP `AUTHENTICATE XOAUTH2`
+  call, check if the token expires within the next 5 minutes and trigger a refresh if so.
+- Implement a background task that refreshes tokens every 50 minutes regardless of connection
+  state.
+- On `NO [AUTHENTICATIONFAILED]`, attempt one token refresh and retry before emitting an auth
+  failure delta.
+- The Rust engine must call the same OAuth2 token refresh endpoints as the C++ engine. Examine
+  the C++ source to find which endpoints and parameters are used.
 
 **Warning signs:**
-- TypeScript consumers pattern-match on error messages (they likely do — check `onboarding-helpers.ts`).
-- Onboarding UI shows "tcp connect error: Connection refused (os error 111)" instead of a user-friendly message.
-- The `error` field in the returned object contains Rust internal details (file paths, tokio internals).
+- Sync stops exactly ~60 minutes after app launch for Gmail/Outlook OAuth2 accounts.
+- Logs show `AUTHENTICATIONFAILED` 60 minutes into a session.
+- Password-authenticated accounts never exhibit the failure.
 
 **Phase to address:**
-Phase 2 (IMAP) — establish error mapping convention before any integration test. Harder to retrofit across 3 phases than to design once.
-
----
-
-### Pitfall 9: Binary Size Bloat from Full Tokio and Unused Crate Features
-
-**What goes wrong:**
-A naive `Cargo.toml` that includes full tokio (`tokio = { version = "1", features = ["full"] }`) and does not disable unused features on lettre, trust-dns-resolver, or rustls will produce a `.node` binary of 15–25 MB on Linux. This is the binary that ships in the application bundle. The C++ mailcore2 addon (despite the large C++ codebase) was not significantly smaller because of vendored native dependencies, but the user-visible impact is: slow application startup (binary mapped into memory), large download size, and large application bundle.
-
-Specific sources of bloat that have been measured in napi-rs projects:
-- `tokio/full` includes `time`, `net`, `process`, `signal`, `fs`, `sync`, `rt-multi-thread` — the addon only needs `rt-multi-thread`, `net`, `time`, and `sync`.
-- `lettre`'s `file-transport` and `sendmail-transport` features pull in path handling code that is never used.
-- `trust-dns-resolver`'s `dns-over-https` and `dns-over-tls` features pull in significant TLS stack code beyond what rustls already provides.
-- The `regex` crate's Unicode support tables are large; if provider patterns only use ASCII, `regex = { version = "1", default-features = false, features = ["std", "perf"] }` drops ~500KB.
-
-**Why it happens:**
-Cargo defaults to enabling all declared features. First-time napi-rs projects reach for `features = ["full"]` for tokio to make things "just work." The binary size is only visible at package time, not during development.
-
-**How to avoid:**
-After implementing all five functions, run `cargo bloat --release --crates` (install `cargo-bloat`) to identify the top contributors. Apply these specific `Cargo.toml` settings:
-```toml
-[profile.release]
-opt-level = "z"      # size optimization
-lto = true           # cross-crate dead code elimination
-codegen-units = 1    # enables full LTO
-strip = "symbols"    # remove debug symbols
-
-[dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
-```
-Disable unused features explicitly on each dependency. Target < 5 MB for the stripped release binary on Linux x64.
-
-**Warning signs:**
-- `cargo build --release` produces a `.node` > 15 MB before stripping.
-- `cargo bloat` shows `regex-unicode-tables` or `h2` or `hyper` in the top 10 — these indicate features or dependencies that were pulled in transitively and are not needed.
-- Application bundle size increases by > 20 MB per platform after switching from C++.
-
-**Phase to address:**
-Phase 3 (integration / cleanup) — size optimization is a final-pass task, but the structural decisions (tokio features, no-unicode regex) should be made during Phase 1 scaffolding to avoid lock-in.
+Phase 3 (IMAP implementation) — implement token refresh alongside the authentication layer,
+not as an afterthought.
 
 ---
 
@@ -288,12 +635,14 @@ Phase 3 (integration / cleanup) — size optimization is a final-pass task, but 
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| `tokio = { features = ["full"] }` | No missing-feature compile errors | 3–8 MB binary size increase, slower startup | Only during early prototyping; must be trimmed before release |
-| `native-tls` instead of `rustls` | Familiar API, no feature flags to configure | Linux TLS conflicts with Electron's BoringSSL; system SSL version dependency | Never — rustls is the correct choice for Electron addons |
-| Using `unwrap()` / `expect()` instead of `?` on N-API boundary | Faster initial code | Panics propagate to SIGABRT, not JavaScript exceptions; loses error context | Never — all napi export functions must return `Result<T, napi::Error>` |
-| Skipping per-call timeout on IMAP/SMTP | Simpler code | Promises hang indefinitely on bad server configs; hangs onboarding UI | Never — timeouts are mandatory |
-| Returning raw OS error strings | Simplest error propagation | UI shows `"tcp connect error: os error 111"`; breaks any TypeScript error message parsing | Never after the provider API is defined |
-| Bundling all platform binaries in a single npm package | Avoids optional-dependency arch mismatch | Larger node_modules per developer install | Acceptable for Electron apps where users download a packaged binary, not raw npm |
+| `println!` without flush for stdout | Simpler code | Deltas never arrive at Electron; UI never updates | Never — always flush explicitly |
+| Calling rusqlite directly in async fn | No wrapper crate needed | Starves tokio thread pool; deadlocks under load | Never — use tokio-rusqlite or spawn_blocking |
+| Single IDLE call without 29-min re-issue loop | Simpler loop code | Silent disconnection after ~30 min on most servers | Never — re-IDLE loop is mandatory |
+| Skipping CONDSTORE-only fallback (QRESYNC only) | One sync path to implement | Gmail never syncs incrementally | Never — Gmail is the largest email provider |
+| Embedding error strings as raw Rust strings | Fast to write | Must match `LocalizedErrorStrings` keys in TypeScript; mismatch causes fallback to raw error | Never — use constants from a shared protocol spec |
+| Using native-tls for IMAP/CalDAV TLS | Familiar API | Cross-compilation fails on Linux; CI build fails without OpenSSL headers | Never — same reason as v1.0 |
+| Sending the full model JSON in every delta | No change detection needed | SQLite "fat row" approach doubles write amplification | Acceptable — matches C++ engine's approach, keep for v2.0 |
+| Skipping ProcessState messages | Fewer message types to implement | Connection status indicator stuck at "offline" in UI | Never — OnlineStatusStore depends on these |
 
 ---
 
@@ -301,12 +650,14 @@ Phase 3 (integration / cleanup) — size optimization is a final-pass task, but 
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Electron asar packaging | Including `.node` binary inside the `.asar` archive | Always configure `asarUnpack: ["**/*.node"]` in electron-builder; native modules cannot be dlopen'd from inside an archive |
-| napi-rs in Electron main process | Loading addon in renderer process | Load only in main process or a dedicated utility process; the existing `mailsync-process.ts` pattern is correct |
-| async-imap + STARTTLS | Connecting on port 143 with TLS connector directly | Port 143 is plain TCP; must connect without TLS then call `STARTTLS` to upgrade; port 993 uses implicit TLS from the start |
-| lettre SMTP + OAuth2 | Setting credentials without disabling PLAIN/LOGIN auth fallback | Explicitly configure the SMTP transport to use only XOAUTH2 mechanism when token is provided; mixed auth configuration causes servers to pick wrong mechanism |
-| DNS MX resolution | Using `trust-dns-resolver`'s async API with `tokio::spawn` in napi async fn | The tokio runtime in napi-rs is the same runtime being used by trust-dns; do not spawn a new runtime inside an async fn — use `.await` directly |
-| providers.json path resolution | Using relative path from `process.cwd()` | Resolve relative to the `.node` file location using `__dirname` equivalent (pass path from JS consumer), not CWD; CWD is unpredictable in Electron |
+| Electron → Rust binary stdin | Writing all startup data at once without checking if binary is ready | The existing TS code waits for the first `stdout.once('data')` event before piping account JSON + identity JSON; the Rust binary must emit at least one byte to signal readiness |
+| Rust → Electron stdout delta | Using `println!` or `serde_json::to_writer` without flush | Lock stdout, write JSON, write `\n`, call `flush()` as an atomic group per message |
+| SQLite WAL mode with multiple readers | Readers block on writer's lock even in WAL mode | Enable WAL mode and set `busy_timeout = 5000`; readers should use a separate read connection from the writer |
+| IMAP IDLE + background sync | Running IDLE and folder iteration on the same session concurrently | IDLE occupies the IMAP session exclusively; use two connections per account: one for IDLE on INBOX, one for background folder sync |
+| CalDAV REPORT request | Sending REPORT without `Depth: 1` header | CalDAV REPORT must include `Depth: 1` to list calendar resources; missing header causes empty response from many servers |
+| CardDAV vCard parsing | Assuming all vCards are valid UTF-8 | vCards can contain arbitrary byte sequences; use a forgiving parser that skips invalid UTF-8 characters rather than returning an error |
+| Binary path in dev vs. production | Hardcoding the Cargo `target/release/` path in TypeScript | Use the existing fallback mechanism in `mailsync-process.ts`; update the dev fallback path to match Cargo output |
+| Task `queue-task` stdin message | Processing tasks before the initial account/identity handshake | The Rust engine must fully parse account JSON and identity JSON from stdin before processing any `queue-task` messages |
 
 ---
 
@@ -314,10 +665,11 @@ Phase 3 (integration / cleanup) — size optimization is a final-pass task, but 
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Compiling `regex::Regex` patterns on each `providerForEmail()` call | CPU spike on every keypress in email input field | Compile all provider regexes once at `registerProviders()` time and store in a `Vec<(Regex, ProviderId)>` | At any call frequency; regex compilation is 10–100x slower than matching |
-| DNS MX lookup blocking provider detection | 3–5 second delay before provider auto-detection result appears | Run MX lookup in parallel with domain matching; return domain-match result immediately, update with MX-match result async | Any time DNS is slow (corporate networks, slow resolvers) |
-| Spawning a new tokio runtime per function call | Overhead accumulates; tokio runtime creation is expensive | Use napi-rs's built-in tokio feature which provides a shared runtime per process | Measurable degradation after ~100 calls in a session |
-| Cloning `providers.json` data per lookup | Memory grows with provider count (500+) | Load once, share via `Arc<ProviderDatabase>` or static initialization; never clone the full database | At 500+ providers, each clone is measurable |
+| Full folder sync on every reconnect (no CONDSTORE) | Slow reconnection, excessive IMAP bandwidth | Store MODSEQ and UIDVALIDITY per folder in SQLite; use CONDSTORE SELECT on reconnect | First reconnect after 10k+ message folder |
+| Emitting individual deltas per message during initial sync | Electron UI update loop runs for every message — UI freezes | Batch deltas: emit `modelJSONs` arrays of up to 100 models per message during initial bulk sync | First sync of Gmail inbox with 50k+ messages |
+| SQLite without WAL causing reader/writer contention | Sync pauses while queries are running | Enable WAL mode at DB open; use separate read/write connections | Measurable as soon as background sync and UI queries run simultaneously |
+| Spawning a new tokio runtime per IMAP folder | Memory and CPU overhead grow with folder count | Single shared tokio runtime; one task per folder connection | At 20+ folders (labels) in Gmail accounts |
+| Regex compilation in iCalendar parsing hot path | CPU spikes during CalDAV sync | Compile iCalendar parsing regexes once at startup using `once_cell::Lazy<Regex>` | Any repeated calendar sync |
 
 ---
 
@@ -325,24 +677,30 @@ Phase 3 (integration / cleanup) — size optimization is a final-pass task, but 
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Logging OAuth2 tokens in error messages | Tokens appear in log files and Electron crash reports | Error messages must never include the token value; log `"OAuth2 token present: true"` not the token itself |
-| Accepting self-signed certificates silently | MITM attacks during IMAP/SMTP connection testing | In rustls, accept system roots only; do not call `dangerous().disable_certificate_verification()` even for testing |
-| Returning raw IMAP server banners in error messages | Server identification information exposed to JavaScript layer (minor) | Strip IMAP greeting and banner from error messages returned to JS; include only the parsed error condition |
-| Storing passwords in Rust static variables | Credentials survive beyond request lifetime | Ensure credentials are passed per-call, not stored in global state; napi-rs `#[napi]` fn arguments are stack-allocated and dropped after function returns |
+| Logging OAuth2 refresh tokens from the identity JSON | Tokens appear in `mailsync-*.log` files readable by other processes | Strip token values from all log output; log presence only: `"oauth2_refresh_token: present"` |
+| Storing account passwords in a Rust static | Passwords persist in process memory beyond the connection lifetime | Pass passwords per-connection; zero the memory after use with `zeroize` crate |
+| Trusting IMAP server banners without TLS | MITM can inject malicious server metadata | Always require TLS (or STARTTLS) before trusting any server capability or auth challenge |
+| Emitting account credentials in delta JSON | Credentials appear in Electron IPC and may be logged | The `ProcessAccountSecretsUpdated` model class is used specifically for this — emit it with the KeyManager pattern, never inline credentials in normal deltas |
+| Accepting self-signed certificates | MITM attacks | Use `rustls-platform-verifier` which applies OS trust decisions; never call `dangerous().disable_certificate_verification()` |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **IMAP connection test:** Addon connects and gets `{ success: true }` for Gmail with password auth — verify it also works with XOAUTH2 token and returns correct capabilities (`idle`, `condstore`, `xoauth2`, `gmail`).
-- [ ] **SMTP connection test:** Addon connects to `smtp.gmail.com:587` with STARTTLS — verify it also tests port 465 with implicit TLS and returns correct `{ success: true/false }`.
-- [ ] **Provider detection:** `providerForEmail("user@gmail.com")` returns provider — verify `providerForEmail("user@googlemail.com")` also returns the same provider (MX match), and `providerForEmail("user@nonexistent-domain-xyz.com")` returns null without crashing.
-- [ ] **Timeout behavior:** All three async functions (validateAccount, testIMAPConnection, testSMTPConnection) reject with a timeout error within 15 seconds when given `hostname: "192.0.2.1"` (an unreachable IP per RFC 5737).
-- [ ] **Electron load:** The `.node` binary loads cleanly when `require()`'d from Electron main process — not just from plain `node`.
-- [ ] **asar exclusion:** After electron-builder packaging, the `.node` file exists in `app.asar.unpacked/`, not embedded in `app.asar`.
-- [ ] **API compatibility:** TypeScript consumers `onboarding-helpers.ts` and `mailsync-process.ts` compile without type errors against the napi-rs-generated `.d.ts` file.
-- [ ] **Error strings match:** A failed authentication attempt returns `{ success: false, error: "Authentication failed" }` with the same string format the TypeScript consumers expect (check for any pattern matching on error strings in the consumers).
-- [ ] **Cross-platform binary sizes:** Release binary is < 8 MB stripped on Linux x64, < 10 MB on macOS arm64, < 8 MB on Windows x64.
+- [ ] **stdout flushing:** Run the binary with Electron, check that deltas appear within 1 second of a sync event — not only when the binary exits.
+- [ ] **stdin deadlock:** Queue a task with a 500 KB HTML body and verify the engine processes it without hanging.
+- [ ] **IMAP IDLE:** Leave the app running for 30 minutes with WiFi connected, verify new mail still appears (no silent IDLE disconnect).
+- [ ] **CONDSTORE fallback:** Test sync against a Gmail account — verify incremental sync works (CONDSTORE without QRESYNC).
+- [ ] **QRESYNC:** Test against a Fastmail/Dovecot account — verify VANISHED responses are handled correctly on reconnect.
+- [ ] **STARTTLS SNI:** Test IMAP on port 143 with a Fastmail account — verify TLS handshake succeeds with correct SNI hostname.
+- [ ] **OAuth2 token refresh:** Let a session run for 65 minutes with a Gmail OAuth2 account — verify sync continues without an auth failure.
+- [ ] **Delta format:** Verify `modelJSONs` (not `modelJsons`) in emitted JSON; verify `modelClass` (not `objectClass`) key name.
+- [ ] **ProcessState messages:** Verify the Electron UI connection status indicator changes state when the binary connects/disconnects.
+- [ ] **Mode handling:** Verify the binary exits 0 in "test" mode with the correct JSON result structure.
+- [ ] **SIGTERM handling:** Kill the binary with SIGTERM (Linux/macOS) and verify it exits 0 without SIGABRT — confirming no pending tokio tasks crash.
+- [ ] **asar unpacking:** Package the app with electron-builder and verify the binary is in `app.asar.unpacked/`, not inside `app.asar`.
+- [ ] **CalDAV ETag loop:** Verify a CalDAV sync against Google Calendar does not re-download the same events on every sync cycle.
+- [ ] **Binary size:** Stripped release binary is under 15 MB on each platform (the C++ engine was ~8-12 MB).
 
 ---
 
@@ -350,13 +708,16 @@ Phase 3 (integration / cleanup) — size optimization is a final-pass task, but 
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Tokio runtime crash in Electron | MEDIUM | Pin to latest napi-rs; add Electron integration test; add `timeout()` wrappers |
-| TLS library conflict (native-tls on Linux) | MEDIUM | Audit `Cargo.lock` for `openssl-sys`; replace `native-tls` feature flags with `rustls` on lettre and async-imap; rebuild and retest |
-| Wrong binary in Electron package | LOW | Update electron-builder `asarUnpack` config; switch from optionalDependencies to single-package with copy script; rebuild package |
-| XOAUTH2 encoding wrong | LOW | Fix base64 variant; fix `\x01` separator; add empty-response for error challenge; add unit test |
-| Provider regex false positives/negatives | MEDIUM | Cross-validate against C++ addon output on 50 representative addresses before removing C++ code; treat regex as a port, not a rewrite |
-| Binary size > 15 MB | LOW | Apply `profile.release` optimization flags; audit tokio features; run `cargo bloat` |
-| Opaque error messages | LOW | Add error enum with Display impl; map at domain boundary; update unit tests to assert message strings |
+| stdout not flushing | LOW | Add explicit `handle.flush()` after every write; trivial fix but requires testing to confirm |
+| stdin deadlock under large payloads | MEDIUM | Refactor stdin/stdout into dedicated tokio tasks with channel communication; structural change |
+| SQLite blocking tokio threads | HIGH | Introduce `tokio-rusqlite` across all database call sites; requires touching every query |
+| Delta format field name mismatch | LOW | Update `#[serde(rename)]` attributes; add contract test; rebuild |
+| IDLE disconnect after 30 min | LOW | Wrap IDLE wait in `tokio::time::timeout(25 * 60s)`; add DONE before retry |
+| CONDSTORE/QRESYNC sequence error | MEDIUM | Restructure connection setup to issue ENABLE before SELECT; audit all SELECT call sites |
+| Missing protocol mode handling | MEDIUM | Add mode dispatch at binary entry point; add integration test per mode |
+| OAuth2 token expiry | MEDIUM | Add expiry-aware token cache with background refresh; requires understanding C++ refresh flow |
+| CalDAV ETag sync loop | MEDIUM | Add GET-after-PUT when server omits ETag; add sync-token fallback |
+| Binary not found in production | LOW | Update `asarUnpack` config; update dev fallback path in `mailsync-process.ts` |
 
 ---
 
@@ -364,36 +725,45 @@ Phase 3 (integration / cleanup) — size optimization is a final-pass task, but 
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Tokio runtime lifecycle mismatch | Phase 1: Scaffolding | Addon loads in Electron main process without panic; all 5 functions callable |
-| TLS library conflict (BoringSSL) | Phase 1: Scaffolding | `cargo tree \| grep openssl` returns nothing; IMAP TLS handshake succeeds inside Electron on Linux |
-| V8 Memory Cage / external ArrayBuffer | Phase 1: Scaffolding | No `create_external_arraybuffer` in codebase; code review before merge |
-| Architecture mismatch in packaging | Phase 1: Scaffolding (strategy) + Phase 4: Packaging (implementation) | Packaged build opens correctly on x64 and arm64 |
-| IMAP/SMTP timeout | Phase 2: IMAP + Phase 3: SMTP | Test with unreachable host rejects within 15 seconds |
-| XOAUTH2 encoding | Phase 2: IMAP + Phase 3: SMTP | Unit test matches Google's reference encoding; OAuth2 IMAP login succeeds against Gmail |
-| Provider regex edge cases | Phase 1: Provider detection | 50-address cross-validation test against C++ addon output passes |
-| Opaque error messages | Phase 2: IMAP | Unit test asserts error message string; TypeScript consumer compilation passes |
-| Binary size bloat | Phase 3: Integration/cleanup | Stripped release binary < 8 MB on Linux; `cargo bloat` reviewed |
+| stdout buffering / no flush | Phase 1: IPC scaffolding | Delta arrives in Electron within 1 second; final JSON present after binary exit |
+| stdin deadlock under large payloads | Phase 1: IPC scaffolding | 500 KB payload processed without hang |
+| Delta JSON field name mismatch | Phase 1: IPC scaffolding | Contract test validates all field names against TypeScript parser |
+| Protocol mode handling (test/sync/migrate) | Phase 1: IPC scaffolding | Each mode integration test passes independently |
+| SQLite blocking async thread pool | Phase 2: SQLite layer | `tokio-rusqlite` used everywhere; no direct rusqlite calls in async fn |
+| WAL mode + busy_timeout | Phase 2: SQLite layer | Concurrent reader+writer test shows no `SQLITE_BUSY` errors |
+| TLS BoringSSL / OpenSSL dependency | Phase 1: Scaffolding | `cargo tree \| grep openssl` returns nothing in CI |
+| CONDSTORE-only fallback for Gmail | Phase 3: IMAP sync | Gmail test account syncs incrementally without QRESYNC |
+| QRESYNC ENABLE-before-SELECT ordering | Phase 3: IMAP sync | Fastmail/Dovecot test shows QRESYNC SELECT succeeds |
+| IMAP IDLE 29-min reconnect | Phase 3: IMAP IDLE | 30-minute passive test shows continuous mail receipt |
+| STARTTLS SNI | Phase 3: IMAP implementation | Port 143 STARTTLS succeeds against Fastmail |
+| OAuth2 token refresh during session | Phase 3: IMAP auth | 65-minute Gmail OAuth2 session stays connected |
+| CalDAV ETag sync loop | Phase 5: CalDAV sync | Same Google Calendar event not re-downloaded on second sync |
+| Binary path in dev vs. production | Phase 1: Scaffolding (plan) + Phase 6: Packaging | Packaged build opens and syncs on Windows and macOS |
 
 ---
 
 ## Sources
 
-- [napi-rs changelog (official)](https://napi.rs/changelog/napi) — tokio runtime fixes, Electron external TypedArray fix, Windows GetProcAddress fix
-- [napi-rs issue #1175: thread_local breaks Electron Windows](https://github.com/napi-rs/napi-rs/issues/1175)
-- [napi-rs issue #2460: SIGABRT on terminated worker thread](https://github.com/napi-rs/napi-rs/issues/2460)
-- [napi-rs issue #945: napi_env is not Send](https://github.com/napi-rs/napi-rs/issues/945)
-- [napi-rs issue #1346: Cannot allocate Buffer in Chromium V8](https://github.com/napi-rs/napi-rs/issues/1346)
-- [Electron blog: V8 Memory Cage (June 2022)](https://www.electronjs.org/blog/v8-memory-cage) — external ArrayBuffer prohibition from Electron 21+
-- [Electron issue #13176: Addons cannot use bundled OpenSSL](https://github.com/electron/electron/issues/13176)
-- [napi-rs/node-rs issue #376: arch mismatch with optional dependencies and Electron](https://github.com/napi-rs/node-rs/issues/376)
-- [Google XOAUTH2 Protocol specification](https://developers.google.com/gmail/imap/xoauth2-protocol) — exact format, base64 requirements, error challenge handling
-- [RFC 7628: SASL Mechanisms for OAuth](https://www.rfc-editor.org/rfc/rfc7628.html)
-- [rust-imap issue #167: no built-in connection timeout](https://github.com/jonhoo/rust-imap/issues/167)
-- [async-imap GitHub (chatmail fork)](https://github.com/chatmail/async-imap) — current maintained fork of async-imap
-- [napi-rs cross-build documentation](https://napi.rs/docs/cross-build)
-- [min-sized-rust: binary size optimization techniques](https://github.com/johnthagen/min-sized-rust)
-- [Electron native node modules documentation](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules)
+- [UnifyMail `mailsync-process.ts`](app/frontend/mailsync-process.ts) — stdin/stdout IPC protocol, mode handling, binary path resolution (HIGH confidence, live codebase)
+- [UnifyMail `mailsync-bridge.ts`](app/frontend/flux/mailsync-bridge.ts) — delta message format, task queuing, ProcessState handling (HIGH confidence, live codebase)
+- [Foundry376/Mailspring-Sync README](https://github.com/Foundry376/Mailspring-Sync) — newline-delimited JSON IPC protocol; stateless design; task queue in SQLite (MEDIUM confidence)
+- [RFC 7162: IMAP CONDSTORE and QRESYNC](https://www.rfc-editor.org/rfc/rfc7162.html) — ENABLE-before-SELECT requirement; VANISHED response; Gmail CONDSTORE-only (HIGH confidence)
+- [RFC 2177: IMAP IDLE](https://datatracker.ietf.org/doc/html/rfc2177) — 29-minute re-issue requirement (HIGH confidence)
+- [deltachat-core-rust issue #5093: IDLE CLOSE-WAIT after 30 min](https://github.com/deltachat/deltachat-core-rust/issues/5093) — real-world IDLE disconnect confirmed in Rust email client (HIGH confidence)
+- [deltachat-core-rust issue #2208: IMAP IDLE connection handling approach](https://github.com/deltachat/deltachat-core-rust/issues/2208) — short-loop timeout strategy (MEDIUM confidence)
+- [rusqlite issue #697: Transactions don't work with async/await](https://github.com/rusqlite/rusqlite/issues/697) — rusqlite is not Send; transaction lifetime issue (HIGH confidence)
+- [tokio-rusqlite docs](https://docs.rs/tokio-rusqlite/latest/tokio_rusqlite/) — dedicated background thread pattern; call() API (HIGH confidence)
+- [tokio issue #7174: stdout data loss without explicit flush](https://github.com/tokio-rs/tokio/issues/7174) — async stdout not flushed at process exit (HIGH confidence)
+- [rust-lang/rust issue #45572: piped stdout buffer deadlock](https://github.com/rust-lang/rust/issues/45572) — pipe buffer fills causing deadlock (HIGH confidence)
+- [rust-lang/rust issue #60673: stdout buffering when not connected to TTY](https://github.com/rust-lang/rust/issues/60673) — full block buffering for piped stdout (HIGH confidence)
+- [SQLite concurrent writes and "database is locked" errors](https://tenthousandmeters.com/blog/sqlite-concurrent-writes-and-database-is-locked-errors/) — WAL mode, busy_timeout, checkpoint starvation (HIGH confidence)
+- [matrix-rust-sdk issue #5362: SQLite locked errors](https://github.com/matrix-org/matrix-rust-sdk/issues/5362) — real-world SQLITE_BUSY in Rust async context (MEDIUM confidence)
+- [RFC 4791 §5.3.4: CalDAV ETag behavior after PUT](https://www.rfc-editor.org/rfc/rfc4791) — server may not return ETag if it mutates the resource (HIGH confidence)
+- [sabre/dav: Building a CalDAV client](https://sabre.io/dav/building-a-caldav-client/) — ETag-after-PUT pattern, sync-token fallback (MEDIUM confidence)
+- [Electron docs: Using Native Node Modules](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules) — asarUnpack requirement for native executables (HIGH confidence)
+- [electron-builder issue #1285: Native module not being unpacked](https://github.com/electron-userland/electron-builder/issues/1285) — asarUnpack configuration (MEDIUM confidence)
+- [How to rewrite a C++ codebase successfully](https://gaultier.github.io/blog/how_to_rewrite_a_cpp_codebase_successfully.html) — regression testing during rewrite; behavioral contract verification (MEDIUM confidence)
 
 ---
-*Pitfalls research for: Rust napi-rs native addon replacing C++ mailcore N-API addon in Electron*
-*Researched: 2026-03-01*
+*Pitfalls research for: Rust mailsync engine rewrite replacing C++ sync binary in Electron email client*
+*Researched: 2026-03-02*
