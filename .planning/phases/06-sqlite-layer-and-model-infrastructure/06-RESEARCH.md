@@ -1,6 +1,6 @@
 # Phase 6: SQLite Layer and Model Infrastructure - Research
 
-**Researched:** 2026-03-02 (updated 2026-03-02 with deep dive)
+**Researched:** 2026-03-02 (updated 2026-03-02 with deep dive rounds 1 and 2)
 **Domain:** Rust async SQLite (tokio-rusqlite), data model serialization, FTS5 schema migration, delta coalescing
 **Confidence:** HIGH (standard stack verified via official docs/crates.io; schema verified against C++ source; all open questions resolved from source code)
 
@@ -14,7 +14,7 @@
 | DATA-01 | SQLite database with WAL mode and `busy_timeout=5000` via tokio-rusqlite | tokio-rusqlite 0.7.0 `call()` closure + rusqlite `busy_timeout()` + `pragma_update("journal_mode", "WAL")` |
 | DATA-02 | Delta emission with persist/unpersist types, 500ms coalescing window, transaction batching | `tokio::sync::mpsc` + `tokio::time::sleep` + HashMap coalescing per model class; mirrors C++ `DeltaStream` buffering; 500ms confirmed from SyncWorker.cpp |
 | DATA-03 | All 13 data models implemented: Message, Thread, Folder, Label, Contact, ContactBook, ContactGroup, Calendar, Event, Task, File, Identity, ModelPluginMetadata | "Fat row" pattern: `data TEXT` JSON column + indexed columns; serde_json; full field mapping documented in Deep Dive section |
-| DATA-04 | Schema migration matching C++ baseline (all tables, indexes, FTS5 for ThreadSearch/EventSearch/ContactSearch) | rusqlite_migration 2.4.x with `M::up()` for V1–V9 SQL from constants.h; exact SQL documented in Deep Dive section; V5 no-op confirmed required |
+| DATA-04 | Schema migration matching C++ baseline (all tables, indexes, FTS5 for ThreadSearch/EventSearch/ContactSearch) | rusqlite_migration 2.3.x with `M::up()` for V1–V9 SQL from constants.h; exact SQL documented in Deep Dive section; V5 no-op confirmed required |
 | DATA-05 | Single-writer pattern via tokio-rusqlite prevents blocking on async threads | Single `tokio_rusqlite::Connection` in a Mutex or Arc; all writes via `.call()` closure sent to dedicated background thread |
 </phase_requirements>
 
@@ -28,7 +28,7 @@ The C++ `MailStore` uses a "fat row" design: every model table has a `data TEXT`
 
 The delta system mirrors the C++ `DeltaStream` singleton: saves and removes accumulate `DeltaStreamItem` values keyed by model class, same-object saves merge into a single entry (last-write wins with key-merge), and the buffer is flushed after a 500ms coalescing window. In Rust, this is a tokio task that receives `DeltaStreamItem` via mpsc channel, batches by model class in a `HashMap`, and flushes after a `tokio::time::sleep(500ms)` timer resets on each new arrival.
 
-**Primary recommendation:** Use `tokio-rusqlite 0.7.0` (with rusqlite 0.37.0 dependency) plus `rusqlite_migration 2.4.x` for schema management. Store all model JSON in a `data TEXT` column serialized with `serde_json`. Implement the delta coalescing task using `tokio::sync::mpsc` + `tokio::time::sleep` — do NOT use an external debounce crate (the per-class key-merge logic requires a bespoke HashMap approach).
+**Primary recommendation:** Use `tokio-rusqlite 0.7.0` (with rusqlite 0.37.0 dependency) plus `rusqlite_migration 2.3.x` for schema management. CRITICAL: do not use rusqlite_migration 2.4.x — it requires rusqlite ^0.38.0 which conflicts with tokio-rusqlite 0.7.0. Store all model JSON in a `data TEXT` column serialized with `serde_json`. Implement the delta coalescing task using `tokio::sync::mpsc` + `tokio::time::sleep` — do NOT use an external debounce crate (the per-class key-merge logic requires a bespoke HashMap approach).
 
 ---
 
@@ -42,7 +42,7 @@ The delta system mirrors the C++ `DeltaStream` singleton: saves and removes accu
 | rusqlite | 0.37.0 | Underlying SQLite bindings (re-exported by tokio-rusqlite) | tokio-rusqlite 0.7.0 pins rusqlite ^0.37.0; use feature `bundled,serde_json` |
 | serde | 1.x | Serialize/Deserialize derives for model structs | Universal Rust serialization framework |
 | serde_json | 1.x | JSON serialization for the `data TEXT` column and delta output | Needed for fat-row JSON storage and delta JSON emission |
-| rusqlite_migration | 2.4.x | Schema migration with `user_version` PRAGMA tracking | Manages V1-V9 migration chain; avoids hand-rolling migration state |
+| rusqlite_migration | 2.3.x | Schema migration with `user_version` PRAGMA tracking | Manages V1-V9 migration chain; avoids hand-rolling migration state. NOTE: must use 2.3.x not 2.4.x — see Deep Dive: Library Version Verification |
 
 ### Supporting
 
@@ -62,8 +62,11 @@ The delta system mirrors the C++ `DeltaStream` singleton: saves and removes accu
 **Installation:**
 ```toml
 [dependencies]
+# tokio-rusqlite 0.7.0 pins rusqlite ^0.37.0
 tokio-rusqlite = { version = "0.7", features = ["bundled", "serde_json"] }
-rusqlite_migration = "2.4"
+# rusqlite_migration 2.3.x is the last version compatible with rusqlite 0.37.x
+# DO NOT use 2.4.x -- it requires rusqlite ^0.38.0 which conflicts with tokio-rusqlite 0.7.0
+rusqlite_migration = "2.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
@@ -344,10 +347,10 @@ async fn delta_coalesce_task(
 
 ### Pattern 6: Schema Migration with rusqlite_migration
 
-**What:** Use `rusqlite_migration` 2.4.x with `M::up()` entries mirroring the C++ V1–V9 migration blocks. Migration runs once on database open via `to_latest()`. The `user_version` PRAGMA is managed automatically by the library.
+**What:** Use `rusqlite_migration` 2.3.x with `M::up()` entries mirroring the C++ V1–V9 migration blocks. Migration runs once on database open via `to_latest()`. The `user_version` PRAGMA is managed automatically by the library.
 
 ```rust
-// Source: rusqlite_migration 2.4.x docs + constants.h V1-V9 blocks
+// Source: rusqlite_migration 2.3.x docs + constants.h V1-V9 blocks
 use rusqlite_migration::{Migrations, M};
 
 fn build_migrations() -> Migrations<'static> {
@@ -409,7 +412,7 @@ conn.call(|db| {
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Schema migration with user_version tracking | Custom PRAGMA user_version + SQL runner | rusqlite_migration 2.4.x | Handles V1-V9 chain, user_version PRAGMA tracking, and M::up() batches correctly |
+| Schema migration with user_version tracking | Custom PRAGMA user_version + SQL runner | rusqlite_migration 2.3.x | Handles V1-V9 chain, user_version PRAGMA tracking, and M::up() batches correctly |
 | JSON serialization of model structs | Custom JSON builder | serde + serde_json | Standard; `#[serde(rename = "hMsgId")]` handles all the C++ key mappings |
 | SQLite `ToSql` / `FromSql` for `serde_json::Value` | Custom SQL binding for JSON | rusqlite's built-in `serde_json` feature | Already implemented; `Value` implements `ToSql` as TEXT and `FromSql` back |
 | Async SQLite access | `tokio::task::spawn_blocking` wrapping rusqlite calls | tokio-rusqlite 0.7.0 | Provides queued single-background-thread; `spawn_blocking` creates unbounded threads under load |
@@ -592,7 +595,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS `ContactSearch`
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
 | `spawn_blocking` wrapping rusqlite | tokio-rusqlite single background thread | 2021+ | Avoids thread pool exhaustion under load |
-| Manual PRAGMA user_version for migrations | rusqlite_migration with M::up() | 2022+ | Cleaner migration chain, no boilerplate |
+| Manual PRAGMA user_version for migrations | rusqlite_migration 2.3.x with M::up() | 2022+ | Cleaner migration chain, no boilerplate |
 | System SQLite (may lack FTS5) | `bundled` feature in rusqlite/tokio-rusqlite | rusqlite ~0.28 | Deterministic FTS5 availability |
 | tokio-rusqlite `bundled` as default | Must opt-in with `features = ["bundled"]` in 0.7.0 | Nov 2025 (0.7.0) | Breaking change — CI may silently use system SQLite |
 
@@ -1340,7 +1343,7 @@ Full MATCH.
 - [tokio-rusqlite GitHub releases](https://github.com/programatik29/tokio-rusqlite/releases) — version 0.7.0 confirmed Nov 2025, rusqlite ^0.37.0 dependency
 - [rusqlite docs.rs](https://docs.rs/rusqlite/latest/rusqlite/) — busy_timeout, pragma_update, execute_batch, serde_json feature
 - [rusqlite GitHub releases](https://github.com/rusqlite/rusqlite/releases) — version 0.38.0 (Dec 2024), bundled = FTS5 included
-- [rusqlite_migration docs.rs](https://docs.rs/rusqlite_migration/latest/rusqlite_migration/) — version 2.4.1, M::up(), Migrations::to_latest(), user_version tracking
+- [rusqlite_migration docs.rs](https://docs.rs/rusqlite_migration/latest/rusqlite_migration/) — version 2.4.1 (latest) requires rusqlite ^0.38.0; USE version 2.3.x which requires rusqlite ^0.37.0 to match tokio-rusqlite 0.7.0. M::up(), Migrations::to_latest(), user_version tracking API is identical between 2.3.x and 2.4.x
 - C++ source: `app/mailsync/MailSync/constants.h` — exact V1-V9 SQL schema (all tables, indexes, FTS5); V5 absence confirmed
 - C++ source: `app/mailsync/MailSync/DeltaStream.cpp` — delta wire format, coalescing logic, `queueDeltaForDelivery`, `flushWithin`; immediate emit (0ms) for ProcessState/ProcessAccountSecretsUpdated
 - C++ source: `app/mailsync/MailSync/MailStore.cpp` — save/remove pattern, transaction pattern, `_emit` logic, `CURRENT_VERSION = 9`, V5 gap confirmed in migrate()
@@ -1381,18 +1384,728 @@ Full MATCH.
 
 - WebSearch results on delta coalescing patterns with tokio — no authoritative single source; pattern derived from C++ source analysis
 
+### Round 2 Sources (HIGH confidence)
+
+- [tokio-rusqlite 0.7.0 feature flags](https://docs.rs/crate/tokio-rusqlite/0.7.0/features) — bundled feature confirmed opt-in; 42 rusqlite features re-exported
+- [rusqlite 0.38.0 docs.rs](https://docs.rs/crate/rusqlite/latest) — latest version 0.38.0 (2025-12-20), bundled SQLite 3.51.1
+- [rusqlite_migration 2.4.1 docs.rs](https://docs.rs/crate/rusqlite_migration/latest) — requires rusqlite ^0.38.0; VERSION CONFLICT with tokio-rusqlite 0.7.0; use 2.3.x instead
+- [rusqlite_migration changelog](https://cj.rs/rusqlite_migration_docs/changelog/) — confirmed 2.3.0 = rusqlite 0.37, 2.4.0 = rusqlite 0.38; tokio feature removed in 2.0.0
+- [M struct docs](https://docs.rs/rusqlite_migration/latest/rusqlite_migration/struct.M.html) — M::up(sql: &str) API; empty string is valid no-op
+- C++ source (round 2): Thread.cpp — afterSave() full SQL for ThreadCategory/ThreadCounts/ThreadSearch; afterRemove() delegation
+- C++ source (round 2): Contact.cpp — afterSave() ContactSearch INSERT/UPDATE; source != mail guard; searchContent() format
+- C++ source (round 2): Event.cpp — afterSave() EventSearch with _searchTitle guard; transient search fields from ICS only
+- C++ source (round 2): ContactGroup.cpp — afterRemove() ContactContactGroup cleanup; syncMembers() full SQL
+- C++ source (round 2): Folder.cpp — beforeSave() ThreadCounts INSERT OR IGNORE (v==1); afterRemove() DELETE
+- C++ source (round 2): Message.cpp — afterSave() thread propagation; afterRemove() MessageBody cleanup; _skipThreadUpdatesAfterSave
+- C++ source (round 2): MailModel.cpp — afterSave() ModelPluginMetadata DELETE+INSERT with expiration; beforeSave() DetatchedPluginMetadata attach
+- C++ source (round 2): Account.cpp — confirms Account is NOT a DB model (all methods assert(false))
+- C++ source (round 2): MailStore.cpp — save()/remove() codepath; transaction flow; _emit(); globalLabelsVersion; key-value store; DetatchedPluginMetadata CRUD; unsafeEraseTransactionDeltas
+- C++ source (round 2): MailStoreTransaction.cpp — RAII wrapper; 80ms slow transaction warning; noexcept rollback
+- C++ source (round 2): constants.h ACCOUNT_RESET_QUERIES — complete table list confirming all auxiliary table roles
+
 ---
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack (tokio-rusqlite, rusqlite_migration, serde): HIGH — versions confirmed from official docs and GitHub releases as of 2026-03-02
+- Standard stack (tokio-rusqlite, rusqlite_migration, serde): HIGH — CORRECTED: must use rusqlite_migration 2.3.x (not 2.4.x); rusqlite ^0.37 vs ^0.38 conflict confirmed via docs.rs
 - Architecture (fat row pattern, delta coalescing): HIGH — directly derived from C++ source code which is the authoritative reference
 - Schema (V1-V9 SQL): HIGH — verbatim from constants.h in the repository; extracted character-for-character
 - Model field mapping: HIGH — directly read from each model's .cpp file
 - Delta delay values: HIGH — confirmed by grep of all setStreamDelay() callers (SyncWorker.cpp=500ms, main.cpp=5ms, DeltaStream.cpp=0ms)
 - V5 gap: HIGH — confirmed by reading MailStore::migrate() line-by-line; no if(version<5) block exists
 - TypeScript cross-check: HIGH — read directly from all model .ts files; mismatches documented
+- afterSave/afterRemove side effects: HIGH — exact SQL extracted from Thread.cpp, Message.cpp, Contact.cpp, Event.cpp, ContactGroup.cpp, Folder.cpp, MailModel.cpp
+- Auxiliary tables: HIGH — purpose and SQL verified from MailStore.cpp + constants.h ACCOUNT_RESET_QUERIES
+- MailStore codepath: HIGH — traced line-by-line from MailStore.cpp and MailStoreTransaction.cpp
+- Library version conflict: HIGH — verified via docs.rs and rusqlite_migration changelog
 
 **Research date:** 2026-03-02
 **Valid until:** 2026-06-01 (tokio-rusqlite and rusqlite APIs are stable; schema derived from committed C++ source)
+
+---
+
+## Deep Dive: afterSave/afterRemove Side Effects (Round 2)
+
+Full SQL and logic for every model's lifecycle hooks. This section complements the field mapping above with the exact database side effects that must be replicated in Rust.
+
+### MailModel::afterSave() — Base Class (ModelPluginMetadata Maintenance)
+
+Source: `MailModel.cpp` lines 151-211
+
+Runs for ANY model where `supportsMetadata()` returns true (Message and Thread). Guards on whether metadata plugin IDs have changed since the model was loaded (`_initialMetadataPluginIds != metadataPluginIds`).
+
+```sql
+-- Step 1: Delete all existing metadata join rows for this model id
+DELETE FROM ModelPluginMetadata WHERE id = ?;
+-- [bind: model.id()]
+
+-- Step 2: Re-insert one row per non-empty metadata entry
+-- (metadata entries with empty value are skipped, which effectively "removes" a plugin
+--  metadata entry while keeping the version counter incrementing)
+INSERT INTO ModelPluginMetadata (id, accountId, objectType, value, expiration)
+VALUES (?, ?, ?, ?, ?);
+-- [bind: model.id(), model.accountId(), model.tableName(), pluginId, expiration_or_null]
+-- repeated once per metadata entry where value.size() > 0
+```
+
+**Expiration handling:** If any metadata entry has `value["expiration"]` as a number, that unix timestamp is bound to the `expiration` column. Otherwise NULL is bound. The lowest expiration across all entries is also reported to `MetadataExpirationWorker` via `isSavingMetadataWithExpiration()`.
+
+**`beforeSave()` in MailModel:** If `version() == 1` AND `supportsMetadata()`, it calls `store->findAndDeleteDetachedPluginMetadata(accountId, id)` and applies any waiting metadata via `upsertMetadata()`. This attaches "detatched" metadata that arrived before the model existed.
+
+### MailModel::afterRemove() — Base Class
+
+```sql
+DELETE FROM ModelPluginMetadata WHERE id = ?;
+-- [bind: model.id()]
+```
+
+Only runs for models where `supportsMetadata()` is true.
+
+---
+
+### Thread::afterSave()
+
+Source: `Thread.cpp` lines 348-415
+
+Three conditional side effects triggered by changes detected against `_initialCategoryIds`, `_initialLMRT`, and `_initialLMST` (captured in `captureInitialState()` on load):
+
+**Side Effect 1: ThreadCategory join table** (triggers if categories OR timestamps changed)
+
+```sql
+-- Delete all category rows for this thread
+DELETE FROM ThreadCategory WHERE id = ?;
+-- [bind: thread.id()]
+
+-- Re-insert one row per category (folder or label)
+INSERT INTO ThreadCategory (id, value, inAllMail, unread, lastMessageReceivedTimestamp, lastMessageSentTimestamp)
+VALUES (?, ?, ?, ?, ?, ?);
+-- [bind: thread.id(), categoryId, inAllMail, unread_bool, lmrt, lmst]
+-- repeated once per entry in captureCategoryIDs() result
+```
+
+**How categories are built — `captureCategoryIDs()`:**
+Returns a `map<string, bool>` where key = category id (folder id or label id), value = whether category has unread (`_u > 0`). Iterates `folders()` and `labels()` arrays in the Thread JSON. Each folder/label entry has `_refs` (reference count from messages) and `_u` (unread count).
+
+**Side Effect 2: ThreadCounts table** (triggers only if categories changed, NOT just timestamps)
+
+Computes a diff map from `_initialCategoryIds` vs new `categoryIds`. For each categoryId with a non-zero diff:
+
+```sql
+UPDATE ThreadCounts SET unread = unread + ?, total = total + ? WHERE categoryId = ?;
+-- [bind: unread_delta, total_delta, categoryId]
+-- unread_delta: new_unread - old_unread (negative if unread removed)
+-- total_delta: +1 if newly in category, -1 if removed, 0 if still in category
+```
+
+**Side Effect 3: ThreadSearch FTS5 update** (triggers only if categories changed AND thread is search-indexed)
+
+```sql
+UPDATE ThreadSearch SET categories = ? WHERE rowid = ?;
+-- [bind: categoriesSearchString(), thread.searchRowId()]
+```
+
+`categoriesSearchString()` builds a space-separated string of folder/label roles or paths (role preferred over path).
+
+### Thread::afterRemove()
+
+Source: `Thread.cpp` lines 418-432
+
+Calls `afterSave(this)` first (which clears ThreadCategory and adjusts ThreadCounts based on now-empty state), then:
+
+```sql
+DELETE FROM ThreadSearch WHERE rowid = ?;
+-- [bind: thread.searchRowId()]
+-- Only runs if searchRowId() > 0
+```
+
+**Critical:** `afterRemove` calls `afterSave` with the thread in its current (now-empty) state. Since the thread is being removed and all messages should already be removed (zeroing out folders/labels), this effectively clears the ThreadCategory entries and decrements ThreadCounts to zero for all categories.
+
+---
+
+### Thread::beforeSave() — NONE
+
+Thread has no `beforeSave()` override. Only `afterSave()` and `afterRemove()`.
+
+---
+
+### Message::afterSave()
+
+Source: `Message.cpp` lines 449-469
+
+Propagates message attribute changes to the parent Thread. Skips if `_skipThreadUpdatesAfterSave` is true or `threadId()` is empty.
+
+```
+1. Find Thread: store->find<Thread>(Query().equal("id", threadId()))
+   -- SELECT ... FROM Thread WHERE id = ?
+2. Get all labels cache: store->allLabelsCache(accountId())
+   -- uses _labelCache (invalidated on globalLabelsVersion change)
+3. Call thread->applyMessageAttributeChanges(_lastSnapshot, this, allLabels)
+   -- updates thread->folders(), labels(), unread, starred, attachmentCount, timestamps
+4. store->save(thread.get())
+   -- triggers Thread::afterSave() which maintains ThreadCategory + ThreadCounts
+5. _lastSnapshot = getSnapshot()
+   -- capture new state for next diff
+```
+
+**`_skipThreadUpdatesAfterSave`:** Set to true in `ThreadUtils::BuildAndSaveThread()` when bulk-rebuilding thread state from scratch. Prevents N^2 thread updates when adding N messages at once.
+
+### Message::afterRemove()
+
+Source: `Message.cpp` lines 471-497
+
+```
+1. Find parent Thread by threadId()
+2. Call thread->applyMessageAttributeChanges(_lastSnapshot, nullptr, allLabels)
+   -- nullptr means "this message is gone": decrements all its contributions
+3. If thread->folders().size() == 0:
+   store->remove(thread)         -- thread has no messages left, delete it
+   else:
+   store->save(thread.get())     -- thread still has other messages, update it
+4. DELETE FROM MessageBody WHERE id = ?
+   -- [bind: message.id()]
+   -- cleanup draft body on draft delete
+```
+
+---
+
+### Contact::afterSave()
+
+Source: `Contact.cpp` lines 174-188
+
+Two branches based on version number:
+
+```sql
+-- Branch 1: New contact (version == 1) — INSERT into FTS5
+INSERT INTO ContactSearch (content_id, content) VALUES (?, ?);
+-- [bind: contact.id(), contact.searchContent()]
+
+-- Branch 2: Updated non-mail contact (version > 1, source != 'mail') — UPDATE FTS5
+UPDATE ContactSearch SET content = ? WHERE content_id = ?;
+-- [bind: contact.searchContent(), contact.id()]
+```
+
+**When is ContactSearch skipped?** When `version() > 1` AND `source() == 'mail'`. Mail-sourced contacts (seen in email headers) are only indexed once on first save and never updated. Only contacts from CardDAV or Google People get updated FTS5 entries.
+
+**`searchContent()` string format:** The `@` in the email address is replaced with a space so both parts are separately tokenizable, then a space and the display name are appended. Example: `"user@example.com"` with name `"Alice"` becomes `"user example.com Alice"`.
+
+### Contact::afterRemove()
+
+```sql
+DELETE FROM ContactSearch WHERE content_id = ?;
+-- [bind: contact.id()]
+```
+
+---
+
+### Event::afterSave()
+
+Source: `Event.cpp` lines 197-224
+
+**Guard:** Skips entirely if `_searchTitle`, `_searchDescription`, `_searchLocation`, and `_searchParticipants` are all empty. These transient fields are only populated by `applyICSEventData()` (called when constructing from live ICS data). Events loaded from the DB or constructed from client JSON have empty search fields and do NOT update EventSearch.
+
+```sql
+-- New event (version == 1)
+INSERT INTO EventSearch (content_id, title, description, location, participants)
+VALUES (?, ?, ?, ?, ?);
+-- [bind: event.id(), _searchTitle, _searchDescription, _searchLocation, _searchParticipants]
+
+-- Updated event (version > 1)
+UPDATE EventSearch SET title = ?, description = ?, location = ?, participants = ?
+WHERE content_id = ?;
+-- [bind: _searchTitle, _searchDescription, _searchLocation, _searchParticipants, event.id()]
+```
+
+**`_searchParticipants` format:** Space-joined attendee strings from `ICalendarEvent.Attendees`.
+
+### Event::afterRemove()
+
+```sql
+DELETE FROM EventSearch WHERE content_id = ?;
+-- [bind: event.id()]
+```
+
+---
+
+### ContactGroup::afterRemove()
+
+Source: `ContactGroup.cpp` lines 75-82
+
+```sql
+DELETE FROM ContactContactGroup WHERE value = ?;
+-- [bind: contactGroup.id()]
+```
+
+Note: In the ContactContactGroup table, `id` = contact id, `value` = group id. So this deletes all rows where a contact was a member of this group (removes the group from all contacts).
+
+### ContactGroup::syncMembers() — Full Group Membership Maintenance
+
+Source: `ContactGroup.cpp` lines 94-139
+
+This is the full group-sync operation (not a lifecycle hook, but triggered during CardDAV sync):
+
+```sql
+-- 1. Read existing members
+SELECT id FROM ContactContactGroup WHERE value = ?;
+-- [bind: groupId]
+
+-- 2. Delete all join rows for this group
+DELETE FROM ContactContactGroup WHERE value = ?;
+-- [bind: groupId]
+
+-- 3. Re-insert new join rows
+INSERT OR IGNORE INTO ContactContactGroup (id, value) VALUES (?, ?);
+-- [bind: contactId, groupId]
+-- repeated per new member
+
+-- 4. Update affected Contact models (add/remove groupId from contact._data["gis"])
+-- This triggers store->save(contact) which in turn:
+--   a. increments contact.version
+--   b. runs Contact::afterSave() (updates ContactSearch)
+--   c. emits a persist delta for the contact
+```
+
+---
+
+### Folder::beforeSave() — ThreadCounts Creation
+
+Source: `Folder.cpp` lines 70-79
+
+```sql
+-- On first save (version == 1): ensure ThreadCounts row exists
+INSERT OR IGNORE INTO ThreadCounts (categoryId, unread, total) VALUES (?, 0, 0);
+-- [bind: folder.id()]
+```
+
+Label inherits this behavior since Label extends Folder (Label.cpp has no beforeSave override).
+
+### Folder::afterRemove() — ThreadCounts Cleanup
+
+Source: `Folder.cpp` lines 81-87
+
+```sql
+DELETE FROM ThreadCounts WHERE categoryId = ?;
+-- [bind: folder.id()]
+```
+
+Label inherits this behavior.
+
+---
+
+### Summary: Rust Implementation Requirements for Lifecycle Hooks
+
+| Model | Hook | Required SQL |
+|-------|------|-------------|
+| MailModel (base) | `after_save` | DELETE + INSERT ModelPluginMetadata (metadata-supporting models only) |
+| MailModel (base) | `before_save` | findAndDelete DetatchedPluginMetadata + upsertMetadata (metadata-supporting models, version==1 only) |
+| MailModel (base) | `after_remove` | DELETE ModelPluginMetadata (metadata-supporting models only) |
+| Thread | `after_save` | DELETE + INSERT ThreadCategory; UPDATE ThreadCounts (diff); UPDATE ThreadSearch categories |
+| Thread | `after_remove` | Calls after_save (clears ThreadCategory/ThreadCounts), then DELETE ThreadSearch row |
+| Message | `after_save` | Find Thread, applyMessageAttributeChanges, store.save(thread) |
+| Message | `after_remove` | Find Thread, applyMessageAttributeChanges(None), remove or save thread; DELETE MessageBody |
+| Contact | `after_save` | INSERT or UPDATE ContactSearch |
+| Contact | `after_remove` | DELETE ContactSearch |
+| Event | `after_save` | INSERT or UPDATE EventSearch (only when search fields populated from ICS) |
+| Event | `after_remove` | DELETE EventSearch |
+| ContactGroup | `after_remove` | DELETE ContactContactGroup WHERE value = groupId |
+| Folder | `before_save` | INSERT OR IGNORE ThreadCounts (version==1 only) |
+| Folder | `after_remove` | DELETE ThreadCounts WHERE categoryId = id |
+| Label | (inherits Folder) | Same as Folder |
+
+---
+
+## Deep Dive: Auxiliary Tables
+
+These tables exist in the V1 schema but are NOT among the 13 "fat row" data models. They are maintained by side effects in model lifecycle hooks or by dedicated store methods.
+
+### Account Table
+
+**Schema (from V1):**
+```sql
+CREATE TABLE IF NOT EXISTS `Account` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), email_address TEXT);
+```
+
+**Status:** Account is NOT a stored data model. `Account.cpp` has `tableName()`, `columnsForQuery()`, and `bindToQuery()` all calling `assert(false)` — they are never called. The Account table in the schema exists as a legacy artifact. The actual Account object is passed to the mailsync process at startup via stdin JSON (two-line handshake: identity JSON then account JSON), parsed once, and held in memory as a global.
+
+`ACCOUNT_RESET_QUERIES` includes `DELETE FROM Account WHERE id = ?` — so the table is cleared on account reset. This implies Account was saved to the DB historically, or this row is written by the Electron side, not the sync engine.
+
+**Rust implementation:** Do NOT implement Account as a MailModel. Parse from stdin JSON into an `Account` struct. The Account table row (if it exists) is written by the Electron main process, not the sync engine.
+
+---
+
+### MessageBody Table
+
+**Schema (from V1 + V3):**
+```sql
+CREATE TABLE IF NOT EXISTS `MessageBody` (id VARCHAR(40) PRIMARY KEY, `value` TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS MessageBodyIndex ON MessageBody(id);
+-- V3 adds:
+ALTER TABLE `MessageBody` ADD COLUMN fetchedAt DATETIME;
+```
+
+**Purpose:** Stores full email body HTML/text content separately from the Message table. Message rows store only headers and metadata in the `data` column. Bodies are fetched lazily on demand.
+
+**How it is used:**
+- `Message::toJSONDispatch()` adds `body` and `fullSyncComplete` to the delta JSON only when `_bodyForDispatch` is set (the fetched body is attached in memory during the body fetch phase)
+- `Message::afterRemove()` deletes the MessageBody row: `DELETE FROM MessageBody WHERE id = ?`
+- The `need-bodies` stdin command triggers a priority fetch for specific message ids
+- Body lookup: `SELECT value FROM MessageBody WHERE id = ?`
+- Body insert: `INSERT OR REPLACE INTO MessageBody (id, value, fetchedAt) VALUES (?, ?, datetime('now'))`
+
+**Rust implementation:** MessageBody is a separate table with no model struct. Access it directly via SQL in the body fetch worker (Phase 7). The `fetchedAt` column is used for the 3-month age policy (older bodies are evicted to save disk space).
+
+---
+
+### _State Table
+
+**Schema (from V1):**
+```sql
+CREATE TABLE IF NOT EXISTS `_State` (id VARCHAR(40) PRIMARY KEY, value TEXT);
+```
+
+**Purpose:** A simple key-value store for sync state. Used by `MailStore::getKeyValue()` and `MailStore::saveKeyValue()`.
+
+**Read/Write SQL:**
+```sql
+-- Read
+SELECT value FROM _State WHERE id = ?;
+
+-- Write (upsert)
+REPLACE INTO _State (id, value) VALUES (?, ?);
+```
+
+**Known key patterns (from C++ source):**
+
+| Key Pattern | Value | Used By |
+|-------------|-------|---------|
+| `"VACUUM_TIME"` | Unix timestamp string | `MailStore::migrate()` — 14-day VACUUM timer |
+| `"cursor-{accountId}"` | Cursor string | `MetadataWorker` — long-polling cursor for metadata server; reset to "0" on account reset |
+
+**Folder sync state:** Note that folder sync state (uidvalidity, highestmodseq, etc.) is NOT stored in `_State`. It is stored in `Folder._data["localStatus"]` JSON blob, written via `store->saveFolderStatus()` which does a merge-save of the Folder model.
+
+**Rust implementation:** Implement `get_key_value(key: &str) -> Option<String>` and `save_key_value(key: &str, value: &str)` methods on `MailStore`. Both are simple CRUD against `_State`. No model struct needed.
+
+---
+
+### ThreadReference Table
+
+**Schema (from V1):**
+```sql
+CREATE TABLE IF NOT EXISTS ThreadReference (
+    threadId VARCHAR(42),
+    accountId VARCHAR(8),
+    headerMessageId VARCHAR(255),
+    PRIMARY KEY (threadId, accountId, headerMessageId)
+);
+```
+
+**Purpose:** Maps email header message IDs to thread IDs. Used to associate replies with existing threads via the `In-Reply-To` and `References` headers. When a new message arrives, its `headerMessageId` and `replyToHeaderMessageId` are looked up in this table to find the existing thread to attach to.
+
+**How it is maintained:** Written by the IMAP sync code (MailProcessor / SyncWorker) when building and updating threads. Not maintained via model lifecycle hooks — managed directly by ThreadUtils.
+
+`ACCOUNT_RESET_QUERIES` includes `DELETE FROM ThreadReference WHERE accountId = ?` — cleared on account reset.
+
+**Rust implementation:** ThreadReference is not a model. Implement as direct SQL in the thread-building logic (Phase 7). The Phase 6 requirement is only to create the table schema, not the thread-building logic.
+
+---
+
+### DetatchedPluginMetadata Table
+
+**Schema (from V1):**
+```sql
+CREATE TABLE IF NOT EXISTS `DetatchedPluginMetadata` (
+    objectId VARCHAR(40),
+    objectType VARCHAR(15),
+    accountId VARCHAR(8),
+    pluginId VARCHAR(40),
+    value BLOB,
+    version INTEGER,
+    PRIMARY KEY (`objectId`, `accountId`, `pluginId`)
+);
+```
+
+**Note on spelling:** The C++ codebase consistently spells this "Detatched" (with two t's) rather than "Detached". The Rust implementation must use the same spelling in the table name to remain compatible with existing databases.
+
+**Purpose:** Stores plugin metadata that arrived from the metadata server BEFORE the target model (Message or Thread) was synced to the local DB. When the target model is eventually synced and saved for the first time (version==1), `MailModel::beforeSave()` calls `findAndDeleteDetachedPluginMetadata()` to retrieve and attach any waiting metadata.
+
+**Distinct from ModelPluginMetadata:** `ModelPluginMetadata` is the join table for metadata already attached to existing models. `DetatchedPluginMetadata` is the "waiting room" for metadata whose target model has not arrived yet.
+
+**Read/Write SQL (from MailStore.cpp):**
+```sql
+-- Read and delete all detatched metadata for a given objectId
+SELECT version, value, pluginId, objectType
+FROM DetatchedPluginMetadata WHERE objectId = ? AND accountId = ?;
+
+DELETE FROM DetatchedPluginMetadata WHERE objectId = ? AND accountId = ?;
+
+-- Write (upsert) — used by MetadataWorker when model does not exist yet
+REPLACE INTO DetatchedPluginMetadata (objectId, objectType, accountId, pluginId, value, version)
+VALUES (?, ?, ?, ?, ?, ?);
+```
+
+**Rust implementation:** Implement `find_and_delete_detached_plugin_metadata()` and `save_detached_plugin_metadata()` on `MailStore`. Used by Phase 9 MetadataWorker. In Phase 6, ensure the table is created by the V1 schema migration.
+
+---
+
+### ContactContactGroup Table
+
+**Schema (from V8):**
+```sql
+CREATE TABLE `ContactContactGroup` (`id` varchar(40), `value` varchar(40), PRIMARY KEY (id, value));
+```
+
+**Purpose:** Many-to-many join table between Contact and ContactGroup. `id` is the contact id; `value` is the group id.
+
+**Note on naming:** The column naming is counter-intuitive. `id` = contact id, `value` = group id. This mirrors the C++ join table pattern used for ThreadCategory (where `id` = thread id, `value` = category id).
+
+**How it is maintained:**
+- `ContactGroup::syncMembers()` — full replace: DELETE all + INSERT new for a group
+- `ContactGroup::afterRemove()` — DELETE all entries WHERE value = groupId (when a group is deleted)
+- Read pattern: `SELECT id FROM ContactContactGroup WHERE value = ?` (get all contact ids in a group)
+
+**Rust implementation:** No model struct. Maintained directly by `ContactGroup` sync logic (Phase 9). In Phase 6, ensure the table is created in the V8 migration block.
+
+---
+
+## Deep Dive: MailStore Save/Remove Full Flow
+
+Complete codepath traced from `MailStore.cpp` and `MailStoreTransaction.cpp`.
+
+### save() Codepath
+
+Source: `MailStore.cpp` lines 372-430
+
+```
+MailStore::save(model):
+1. assertCorrectThread()
+   -- Guards: only the owning thread may call save()
+   -- Rust equivalent: enforced by tokio-rusqlite single background thread
+
+2. model->incrementVersion()
+   -- _data["v"] += 1
+   -- version 0 -> 1 means INSERT; version > 1 means UPDATE
+
+3. model->beforeSave(this)
+   -- MailModel::beforeSave(): if version==1 AND supportsMetadata():
+   --   findAndDeleteDetachedPluginMetadata() then upsertMetadata()
+   -- Folder::beforeSave(): if version==1: INSERT OR IGNORE ThreadCounts row
+
+4. Build and cache prepared statement by tableName:
+   -- version > 1:
+   --   "UPDATE {tableName} SET col1=:col1, col2=:col2, ... WHERE id=:id"
+   --   Cached in _saveUpdateQueries[tableName]
+   -- version == 1:
+   --   "INSERT INTO {tableName} (col1, col2, ...) VALUES (:col1, :col2, ...)"
+   --   Cached in _saveInsertQueries[tableName]
+   -- Column list comes from model->columnsForQuery()
+
+5. query->reset() + query->clearBindings()
+   -- Resets the cached prepared statement for reuse
+
+6. model->bindToQuery(query.get())
+   -- Binds all column values (id, data JSON, accountId, version, indexed fields)
+   -- MailModel::bindToQuery() is called by all subclasses first
+
+7. query->exec()
+   -- Executes INSERT or UPDATE
+
+8. model->afterSave(this)
+   -- All side effects: ThreadCategory, ThreadCounts, ThreadSearch, FTS5, join tables
+
+9. if (tableName == "Label") globalLabelsVersion += 1
+   -- Atomic counter invalidates allLabelsCache() on next call
+
+10. DeltaStreamItem delta {DELTA_TYPE_PERSIST, model}
+    -- type: "persist", modelClass: tableName, modelJSONs: [model.toJSONDispatch()]
+
+11. _emit(delta)
+    -- If _transactionOpen: append to _transactionDeltas
+    -- Else: SharedDeltaStream()->emit(delta, _streamMaxDelay)
+```
+
+### remove() Codepath
+
+Source: `MailStore.cpp` lines 454-474
+
+```
+MailStore::remove(model):
+1. assertCorrectThread()
+
+2. Build and cache prepared statement:
+   -- "DELETE FROM {tableName} WHERE id = ?"
+   -- Cached in _removeQueries[tableName]
+
+3. query->reset() + clearBindings() + bind(model.id()) + exec()
+   -- Executes DELETE
+
+4. model->afterRemove(this)
+   -- All cleanup side effects (FTS5 tables, join tables, ThreadCounts)
+   -- afterRemove does NOT decrement version; model is already deleted
+
+5. if (tableName == "Label") globalLabelsVersion += 1
+
+6. DeltaStreamItem delta {DELTA_TYPE_UNPERSIST, model}
+   -- type: "unpersist", modelClass: tableName, modelJSONs: [model.toJSONDispatch()]
+   -- For unpersist, Electron only needs id and __cls to remove from its cache
+
+7. _emit(delta)
+```
+
+### Transaction Flow
+
+Source: `MailStore.cpp` lines 308-370, `MailStoreTransaction.cpp`
+
+```
+beginTransaction():
+1. "BEGIN IMMEDIATE TRANSACTION"
+   -- IMMEDIATE acquires write lock immediately, preventing SQLITE_BUSY from concurrent writers
+2. _transactionOpen = true
+
+rollbackTransaction():
+1. Clear _saveUpdateQueries, _saveInsertQueries, _removeQueries
+   -- Discards cached prepared statements that may reference uncommitted state
+2. "ROLLBACK"
+3. _transactionOpen = false
+
+commitTransaction():
+1. "COMMIT"
+2. if (_transactionDeltas.size() > 0):
+   SharedDeltaStream()->emit(_transactionDeltas, _streamMaxDelay)
+   _transactionDeltas = {}
+3. _transactionOpen = false
+```
+
+**MailStoreTransaction RAII wrapper (MailStoreTransaction.cpp):**
+```
+Constructor: store->beginTransaction()
+commit():    store->commitTransaction(); mCommited = true
+Destructor:  if (!mCommited) store->rollbackTransaction()
+             (noexcept — SQLite exceptions swallowed in destructor)
+```
+
+**Slow transaction warning:** MailStoreTransaction::commit() logs a warning if the transaction takes >80ms.
+
+### _emit() — Delta Routing
+
+```
+_emit(delta):
+  if _transactionOpen:
+    _transactionDeltas.push_back(delta)  -- accumulate during transaction
+  else:
+    SharedDeltaStream()->emit(delta, _streamMaxDelay)  -- flush to coalescing buffer
+```
+
+### unsafeEraseTransactionDeltas()
+
+A special escape hatch. Calling `store->unsafeEraseTransactionDeltas()` drops all accumulated transaction deltas. Used where internal-only DB changes (e.g., updating sync state) must not notify the Electron UI. C++ comment: "If you KNOW the transaction is only changing internal data, you can safely do this."
+
+**Rust equivalent:** Implement as `mail_store.erase_transaction_deltas()` which clears the accumulated delta Vec.
+
+### globalLabelsVersion Atomic
+
+Source: `MailStore.cpp` line 25
+
+```cpp
+std::atomic<int> globalLabelsVersion {1};
+```
+
+Incremented every time a Label is saved or removed. `allLabelsCache()` compares the stored `_labelCacheVersion` against `globalLabelsVersion` to detect staleness. When stale, it re-fetches all labels via `findAll<Label>()`.
+
+**Rust equivalent:** Use `std::sync::atomic::AtomicI32` as a process-level global (or `Arc<AtomicI32>` passed into `MailStore`). Since all access is on the same tokio-rusqlite background thread, mutation never races.
+
+### Statement Caching
+
+The C++ MailStore caches prepared statements in three maps:
+- `_saveUpdateQueries`: one UPDATE statement per table name
+- `_saveInsertQueries`: one INSERT statement per table name
+- `_removeQueries`: one DELETE statement per table name
+
+Each cached statement is `reset()` and `clearBindings()` before reuse. **Rust equivalent:** Use `rusqlite::Connection::prepare_cached()` inside the `call()` closure. This is the Connection's built-in LRU statement cache. Since all calls go through the single tokio-rusqlite background thread, the cache is never accessed concurrently.
+
+### saveFolderStatus() — Special Case
+
+`saveFolderStatus(folder, initialStatus)` updates only the `localStatus` sub-object within a Folder's `data` JSON, doing a merge rather than a full replace:
+1. Checks if `localStatus` actually changed (avoids unnecessary saves)
+2. Opens a nested `MailStoreTransaction`
+3. Re-fetches the folder from DB
+4. Merges the changed keys from `changedStatus` into the DB version
+5. Calls `save(current.get())`
+6. Commits
+
+This avoids overwriting IMAP sync state that may have been updated by another operation between when the folder was loaded and when this call runs.
+
+---
+
+## Deep Dive: Library Version Verification (Round 2)
+
+Verified via docs.rs and cljoly/rusqlite_migration changelog as of 2026-03-02.
+
+### tokio-rusqlite
+
+| Property | Verified Value | Source |
+|----------|---------------|--------|
+| Latest version | 0.7.0 (released 2025-11-16) | docs.rs/crate/tokio-rusqlite/latest |
+| rusqlite dependency | `^0.37.0` | docs.rs/crate/tokio-rusqlite/latest |
+| `bundled` feature | Present, NOT enabled by default | docs.rs/crate/tokio-rusqlite/0.7.0/features |
+| Feature count | 42 total, 0 enabled by default | docs.rs feature list |
+| Feature behavior | Re-exports ALL 42 rusqlite feature flags | WebSearch: tokio-rusqlite 0.7.0 changelog |
+
+**Confirmed:** The `bundled` feature in 0.7.0 is opt-in (not the default). The existing Standard Stack section correctly documents this breaking change.
+
+### rusqlite
+
+| Property | Verified Value | Source |
+|----------|---------------|--------|
+| Latest version | 0.38.0 (released 2025-12-20) | docs.rs/crate/rusqlite/latest |
+| Bundled SQLite version | 3.51.1 | docs.rs/crate/rusqlite/latest |
+| Minimum SQLite (system) | 3.34.1 | docs.rs/crate/rusqlite/latest |
+| tokio-rusqlite 0.7.0 pins | `^0.37.0` — NOT 0.38.0 | tokio-rusqlite 0.7.0 crate metadata |
+
+### rusqlite_migration
+
+| Property | Verified Value | Source |
+|----------|---------------|--------|
+| Latest version | 2.4.1 (released 2026-01-25) | docs.rs/crate/rusqlite_migration/latest |
+| rusqlite dependency in 2.4.x | `^0.38.0` | docs.rs/crate/rusqlite_migration/latest |
+| rusqlite dependency in 2.3.x | `^0.37.0` | cljoly changelog: "2.3.0: rusqlite updated from 0.36 to 0.37" |
+| tokio-rusqlite integration | Removed in 2.0.0 | cljoly changelog |
+| `M::up("")` empty string | Accepted — runs as no-op SQL batch | M struct docs, rusqlite execute_batch("") behavior |
+| user_version tracking | Uses PRAGMA user_version | docs.rs |
+
+### CRITICAL VERSION CONFLICT — Standard Stack Correction Required
+
+**rusqlite_migration 2.4.x requires `rusqlite ^0.38.0`. tokio-rusqlite 0.7.0 requires `rusqlite ^0.37.0`. These are incompatible when both are listed as direct dependencies in Cargo.toml.**
+
+Cargo resolves semver by finding a version satisfying ALL constraints. `^0.37.0` allows 0.37.x only; `^0.38.0` allows 0.38.x only. These ranges do not overlap — Cargo will refuse to build.
+
+**The existing Standard Stack section incorrectly lists `rusqlite_migration = "2.4"`. This must be changed to `rusqlite_migration = "2.3"`.**
+
+**Resolution: Use rusqlite_migration 2.3.x**
+
+rusqlite_migration 2.3.0 updated its rusqlite dependency from 0.36 to 0.37, making it the last 2.x version compatible with tokio-rusqlite 0.7.0's rusqlite ^0.37.0 pin.
+
+**Corrected Cargo.toml (replaces the Standard Stack installation block):**
+
+```toml
+[dependencies]
+# tokio-rusqlite 0.7.0 pins rusqlite ^0.37.0
+tokio-rusqlite = { version = "0.7", features = ["bundled", "serde_json"] }
+# rusqlite_migration 2.3.x is the last version compatible with rusqlite 0.37.x
+# DO NOT use 2.4.x — it requires rusqlite ^0.38.0 which conflicts with tokio-rusqlite 0.7.0
+rusqlite_migration = "2.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+```
+
+**Note:** If tokio-rusqlite releases 0.8.0 with rusqlite ^0.38.0, upgrade both crates together. As of 2026-03-02, 0.8.0 is not available.
+
+### tokio-rusqlite + rusqlite_migration Async Integration
+
+tokio-rusqlite and rusqlite_migration do NOT share an async integration. rusqlite_migration 2.0.0 removed its `alpha-async-tokio-rusqlite` feature entirely. The recommended pattern (from rusqlite_migration maintainer) is to run synchronous migrations inside a `tokio_rusqlite::Connection::call()` closure — which is exactly the pattern documented in the existing Code Examples section. CONFIRMED correct.
+
+### M::up("") Empty String Behavior
+
+`M::up(sql: &'u str)` accepts any `&str`. The implementation calls `db.execute_batch(sql)`. Calling `execute_batch("")` on rusqlite with an empty SQL string is a valid no-op — SQLite's C API `sqlite3_exec("")` succeeds immediately. The existing V5 no-op `M::up("")` recommendation is confirmed correct.
+
+---
