@@ -81,39 +81,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAF-01 | — | Pending |
-| SCAF-02 | — | Pending |
-| SCAF-03 | — | Pending |
-| SCAF-04 | — | Pending |
-| PROV-01 | — | Pending |
-| PROV-02 | — | Pending |
-| PROV-03 | — | Pending |
-| PROV-04 | — | Pending |
-| IMAP-01 | — | Pending |
-| IMAP-02 | — | Pending |
-| IMAP-03 | — | Pending |
-| IMAP-04 | — | Pending |
-| IMAP-05 | — | Pending |
-| IMAP-06 | — | Pending |
-| SMTP-01 | — | Pending |
-| SMTP-02 | — | Pending |
-| SMTP-03 | — | Pending |
-| SMTP-04 | — | Pending |
-| SMTP-05 | — | Pending |
-| VALD-01 | — | Pending |
-| VALD-02 | — | Pending |
-| VALD-03 | — | Pending |
-| VALD-04 | — | Pending |
-| INTG-01 | — | Pending |
-| INTG-02 | — | Pending |
-| INTG-03 | — | Pending |
-| INTG-04 | — | Pending |
+| SCAF-01 | Phase 1 | Pending |
+| SCAF-02 | Phase 1 | Pending |
+| SCAF-03 | Phase 4 | Pending |
+| SCAF-04 | Phase 4 | Pending |
+| PROV-01 | Phase 1 | Pending |
+| PROV-02 | Phase 1 | Pending |
+| PROV-03 | Phase 1 | Pending |
+| PROV-04 | Phase 1 | Pending |
+| IMAP-01 | Phase 2 | Pending |
+| IMAP-02 | Phase 2 | Pending |
+| IMAP-03 | Phase 2 | Pending |
+| IMAP-04 | Phase 2 | Pending |
+| IMAP-05 | Phase 2 | Pending |
+| IMAP-06 | Phase 2 | Pending |
+| SMTP-01 | Phase 3 | Pending |
+| SMTP-02 | Phase 3 | Pending |
+| SMTP-03 | Phase 3 | Pending |
+| SMTP-04 | Phase 3 | Pending |
+| SMTP-05 | Phase 3 | Pending |
+| VALD-01 | Phase 3 | Pending |
+| VALD-02 | Phase 3 | Pending |
+| VALD-03 | Phase 3 | Pending |
+| VALD-04 | Phase 3 | Pending |
+| INTG-01 | Phase 4 | Pending |
+| INTG-02 | Phase 4 | Pending |
+| INTG-03 | Phase 4 | Pending |
+| INTG-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 (pending roadmap creation)
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after initial definition*
+*Last updated: 2026-03-02 after roadmap creation*
