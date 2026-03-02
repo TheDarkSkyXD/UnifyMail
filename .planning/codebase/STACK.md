@@ -9,7 +9,7 @@
 - C++11 - Native sync engine (`app/mailsync/MailSync/`)
 
 **Secondary:**
-- JavaScript (CommonJS) - Legacy modules, build scripts, bootstrap entry point (`app/unifymail-backend/src/main.js`)
+- JavaScript (CommonJS) - Legacy modules, build scripts, bootstrap entry point (`app/backend/main.js`)
 - LESS - Stylesheets within internal packages (`app/internal_packages/*/styles/`)
 - CSS (Tailwind) - Modern utility-first styles (`app/static/style/tailwind.src.css`)
 
@@ -30,8 +30,8 @@
 ## Frameworks
 
 **Core:**
-- React 16.9.0 - UI rendering (`app/unifymail-frontend/src/components/`)
-- Reflux 0.1.13 - Flux-based state management (`app/unifymail-frontend/src/flux/`)
+- React 16.9.0 - UI rendering (`app/frontend/components/`)
+- Reflux 0.1.13 - Flux-based state management (`app/frontend/flux/`)
 - RxJS (rx-lite 4.0.8) - Reactive observable queries
 - Slate (custom fork) - Rich text editor for email composer (`@bengotow/slate-edit-list`, `slate-react`)
 
@@ -51,8 +51,8 @@
 ## Key Dependencies
 
 **Critical:**
-- `better-sqlite3` ^12.5.0 - Local SQLite database access (read-only in Electron, WAL mode) (`app/unifymail-frontend/src/flux/stores/database-store.ts`)
-- `electron-updater` ^6.7.3 - Auto-update via GitHub Releases (`app/unifymail-backend/src/autoupdate-manager.ts`)
+- `better-sqlite3` ^12.5.0 - Local SQLite database access (read-only in Electron, WAL mode) (`app/frontend/flux/stores/database-store.ts`)
+- `electron-updater` ^6.7.3 - Auto-update via GitHub Releases (`app/backend/autoupdate-manager.ts`)
 - `@electron/remote` ^2.1.2 - Cross-process Electron API access
 - `google-auth-library` ^10.5.0 - Google OAuth support
 - `dompurify` ^3.3.1 - HTML sanitization for email content
@@ -74,7 +74,7 @@
 - `xml2js` ^0.6.2 - XML parsing (Thunderbird autoconfig)
 
 **Infrastructure:**
-- `raven` 2.1.2 - Sentry error reporting (`app/unifymail-frontend/src/error-logger-extensions/raven-error-reporter.js`)
+- `raven` 2.1.2 - Sentry error reporting (`app/frontend/error-logger-extensions/raven-error-reporter.js`)
 - `electron-log` ^5.4.3 - Structured logging
 - `lru-cache` ^10.4.3 - In-memory caching for database queries
 - `event-kit` ^1.0.2 - Event emitter/disposable pattern
@@ -98,7 +98,7 @@
 - Config stored in `~/.config/UnifyMail/` (production) or `~/.config/UnifyMail-dev/` (dev mode)
 - `app/default-config/config.json` - Default configuration template
 - `app/default-config/keymap.json` - Default keyboard shortcuts
-- Credentials stored via Electron `safeStorage` API, encrypted in config file (`app/unifymail-frontend/src/key-manager.ts`)
+- Credentials stored via Electron `safeStorage` API, encrypted in config file (`app/frontend/key-manager.ts`)
 - No `.env` files detected in the repository
 
 **Required Environment Variables (for mailsync process):**
@@ -111,8 +111,8 @@
 - Target: ES2017
 - Module: CommonJS
 - JSX: React
-- Path aliases: `*` resolves to `node_modules/*` and `unifymail-frontend/src/global/*`
-- Includes: `unifymail-frontend/src/**/*`, `unifymail-backend/src/**/*`, `internal_packages/**/*`
+- Path aliases: `*` resolves to `node_modules/*` and `frontend/global/*`
+- Includes: `frontend/**/*`, `backend/**/*`, `internal_packages/**/*`
 
 **Build:**
 - `build/Gruntfile.js` - Main build configuration

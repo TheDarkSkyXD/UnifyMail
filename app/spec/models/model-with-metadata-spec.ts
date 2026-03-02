@@ -1,4 +1,4 @@
-import { ModelWithMetadata } from '../../unifymail-frontend/src/flux/models/model-with-metadata';
+import { ModelWithMetadata } from '../../frontend/flux/models/model-with-metadata';
 
 class TestModel extends ModelWithMetadata {}
 

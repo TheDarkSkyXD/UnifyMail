@@ -64,9 +64,9 @@
 2. Electron modules (`electron`, `@electron/remote`)
 3. Third-party libraries (`underscore`, `react`, `react-dom`, `moment`, `better-sqlite3`)
 4. UnifyMail global modules (`unifymail-exports`, `unifymail-component-kit`, `unifymail-store`)
-5. Relative internal imports (`../../unifymail-frontend/src/flux/...`, `../lib/...`)
+5. Relative internal imports (`../../frontend/flux/...`, `../lib/...`)
 
-**Example pattern from `app/unifymail-frontend/src/flux/stores/draft-store.ts`:**
+**Example pattern from `app/frontend/flux/stores/draft-store.ts`:**
 ```typescript
 import { ipcRenderer } from 'electron';
 import UnifyMailStore from 'unifymail-store';
@@ -78,11 +78,11 @@ import * as Actions from '../actions';
 ```
 
 **Path Aliases:**
-- `unifymail-exports` - Global API exports (`app/unifymail-frontend/src/global/unifymail-exports.js`)
-- `unifymail-component-kit` - Reusable UI components (`app/unifymail-frontend/src/global/unifymail-component-kit.js`)
-- `unifymail-store` - Base store class (`app/unifymail-frontend/src/global/unifymail-store.ts`)
-- `unifymail-observables` - Observable utilities (`app/unifymail-frontend/src/global/unifymail-observables.ts`)
-- These are configured in `app/tsconfig.json` via `paths` and resolve to `app/unifymail-frontend/src/global/*`
+- `unifymail-exports` - Global API exports (`app/frontend/global/unifymail-exports.js`)
+- `unifymail-component-kit` - Reusable UI components (`app/frontend/global/unifymail-component-kit.js`)
+- `unifymail-store` - Base store class (`app/frontend/global/unifymail-store.ts`)
+- `unifymail-observables` - Observable utilities (`app/frontend/global/unifymail-observables.ts`)
+- These are configured in `app/tsconfig.json` via `paths` and resolve to `app/frontend/global/*`
 
 **Import style:**
 - Use named imports for models and multiple exports: `import { Thread, Message, Contact } from 'unifymail-exports'`
@@ -93,7 +93,7 @@ import * as Actions from '../actions';
 ## Error Handling
 
 **Patterns:**
-- Custom error classes are used sparingly. Only `APIError` exists in `app/unifymail-frontend/src/flux/errors.ts`
+- Custom error classes are used sparingly. Only `APIError` exists in `app/frontend/flux/errors.ts`
 - Prefer native `new Error("descriptive message")` for most error cases
 - Tasks validate in `willBeQueued()` by throwing errors:
   ```typescript
@@ -104,7 +104,7 @@ import * as Actions from '../actions';
     super.willBeQueued();
   }
   ```
-- Database errors are handled via `handleUnrecoverableDatabaseError()` in `app/unifymail-frontend/src/flux/stores/database-store.ts` which reports to error logger and triggers DB reset
+- Database errors are handled via `handleUnrecoverableDatabaseError()` in `app/frontend/flux/stores/database-store.ts` which reports to error logger and triggers DB reset
 - Promises use `.catch()` chains rather than try/catch in many places (legacy pattern)
 - Error reporting uses `AppEnv.errorLogger.reportError(err)` for production error tracking
 - Store validation uses thrown string errors: `throw 'Listener is not able to listen to itself'` (in `unifymail-store.ts`)
@@ -184,8 +184,8 @@ import * as Actions from '../actions';
 - **Plugin entry points** export `activate()`, `deactivate()`, and optionally `serialize()` as named exports
 
 **Barrel Files:**
-- `app/unifymail-frontend/src/global/unifymail-exports.js` acts as the main barrel file, using lazy-loading via `Object.defineProperty` getters
-- `app/unifymail-frontend/src/global/unifymail-component-kit.js` similarly lazy-loads UI components
+- `app/frontend/global/unifymail-exports.js` acts as the main barrel file, using lazy-loading via `Object.defineProperty` getters
+- `app/frontend/global/unifymail-component-kit.js` similarly lazy-loads UI components
 - Internal packages import from these barrels: `import { Thread, Actions, DatabaseStore } from 'unifymail-exports'`
 
 ## React Component Patterns
@@ -212,7 +212,7 @@ import * as Actions from '../actions';
 - Plugins specify which window types they load in via `package.json` `windowTypes` field
 
 **Store Pattern:**
-- Stores extend `UnifyMailStore` (custom Flux implementation in `app/unifymail-frontend/src/global/unifymail-store.ts`)
+- Stores extend `UnifyMailStore` (custom Flux implementation in `app/frontend/global/unifymail-store.ts`)
 - Stores use `this.listenTo(Actions.someAction, this._handler)` in constructor
 - Stores call `this.trigger()` to notify subscribers of state changes
 - No Redux, no MobX - this is a custom lightweight Flux implementation

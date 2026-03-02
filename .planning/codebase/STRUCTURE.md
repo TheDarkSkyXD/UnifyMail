@@ -7,9 +7,9 @@
 ```
 UnifyMail/
 ├── app/                              # Main application directory
-│   ├── unifymail-backend/            # Electron main process code
+│   ├── backend/            # Electron main process code
 │   │   └── src/                      # Backend source files
-│   ├── unifymail-frontend/           # Electron renderer process code
+│   ├── frontend/           # Electron renderer process code
 │   │   └── src/                      # Frontend source files
 │   │       ├── components/           # Reusable React UI components (~70 files)
 │   │       ├── flux/                 # Flux architecture core
@@ -110,7 +110,7 @@ UnifyMail/
 
 ## Directory Purposes
 
-**`app/unifymail-backend/src/`:**
+**`app/backend/`:**
 - Purpose: Electron main process -- everything that runs before any window opens
 - Contains: Application singleton, window management, auto-updater, system tray, protocol handlers, notification IPC, quickpreview IPC
 - Key files:
@@ -125,7 +125,7 @@ UnifyMail/
   - `windows-taskbar-manager.ts` -- Windows taskbar integration
   - `notification-ipc.ts` -- Windows toast notification handling
 
-**`app/unifymail-frontend/src/`:**
+**`app/frontend/`:**
 - Purpose: Everything that runs inside renderer processes (the actual UI and business logic)
 - Contains: AppEnv global, Flux architecture, React components, services, registries
 - Key files:
@@ -141,7 +141,7 @@ UnifyMail/
   - `mailbox-perspective.ts` -- Mailbox perspective (inbox, starred, sent, custom)
   - `spellchecker.ts` -- Spell checking integration
 
-**`app/unifymail-frontend/src/flux/`:**
+**`app/frontend/flux/`:**
 - Purpose: Core Flux architecture -- the data layer of the application
 - Contains: Actions, stores, models, tasks, sync bridges
 - Key files:
@@ -150,7 +150,7 @@ UnifyMail/
   - `action-bridge.ts` -- IPC bridge for cross-window action propagation
   - `unifymail-api-request.ts` -- HTTP request helper for UnifyMail API
 
-**`app/unifymail-frontend/src/flux/models/`:**
+**`app/frontend/flux/models/`:**
 - Purpose: Data model definitions with attribute-based serialization
 - Contains: All entity models used throughout the app
 - Key files:
@@ -168,7 +168,7 @@ UnifyMail/
   - `query-subscription.ts` -- Live-updating reactive query subscription
   - `model-with-metadata.ts` -- Base for models supporting plugin metadata
 
-**`app/unifymail-frontend/src/flux/stores/`:**
+**`app/frontend/flux/stores/`:**
 - Purpose: Application state management -- Flux stores
 - Contains: 35+ stores managing all application state
 - Key files:
@@ -190,7 +190,7 @@ UnifyMail/
   - `modal-store.tsx` -- Modal dialog state
   - `popover-store.tsx` -- Popover state
 
-**`app/unifymail-frontend/src/flux/tasks/`:**
+**`app/frontend/flux/tasks/`:**
 - Purpose: Task definitions for operations executed by the sync engine
 - Contains: 28 task classes for all mail operations
 - Key files:
@@ -205,7 +205,7 @@ UnifyMail/
   - `syncback-metadata-task.ts` -- Sync plugin metadata
   - `task-factory.ts` -- Helper factory for creating common tasks
 
-**`app/unifymail-frontend/src/components/`:**
+**`app/frontend/components/`:**
 - Purpose: Shared React UI component library
 - Contains: ~70 reusable components
 - Key files:
@@ -224,7 +224,7 @@ UnifyMail/
   - `attachment-items.tsx` -- Attachment display components
   - `retina-img.tsx` -- Retina-aware image component
 
-**`app/unifymail-frontend/src/registries/`:**
+**`app/frontend/registries/`:**
 - Purpose: Dynamic registration systems for extensibility
 - Contains: 7 registry classes
 - Key files:
@@ -235,7 +235,7 @@ UnifyMail/
   - `service-registry.ts` -- Named service registration
   - `sound-registry.ts` -- Sound effect registration
 
-**`app/unifymail-frontend/src/global/`:**
+**`app/frontend/global/`:**
 - Purpose: Module barrel files that plugins import from
 - Contains: Lazy-loaded exports accessible via `require('unifymail-exports')` and `require('unifymail-component-kit')`
 - Key files:
@@ -283,13 +283,13 @@ UnifyMail/
 ## Key File Locations
 
 **Entry Points:**
-- `app/unifymail-backend/src/main.js`: Application entry point (main process)
-- `app/unifymail-backend/src/application.ts`: Application singleton
+- `app/backend/main.js`: Application entry point (main process)
+- `app/backend/application.ts`: Application singleton
 - `app/static/index.html`: Window HTML shell
 - `app/static/index.js`: Window bootstrap loader
-- `app/unifymail-frontend/src/window-bootstrap.ts`: Main window renderer bootstrap
-- `app/unifymail-frontend/src/secondary-window-bootstrap.ts`: Secondary window bootstrap
-- `app/unifymail-frontend/src/app-env.ts`: `AppEnv` global singleton
+- `app/frontend/window-bootstrap.ts`: Main window renderer bootstrap
+- `app/frontend/secondary-window-bootstrap.ts`: Secondary window bootstrap
+- `app/frontend/app-env.ts`: `AppEnv` global singleton
 
 **Configuration:**
 - `app/package.json`: App-level package manifest with dependencies
@@ -300,12 +300,12 @@ UnifyMail/
 - `app/menus/darwin.js` / `linux.js` / `win32.js`: Platform menus
 
 **Core Logic:**
-- `app/unifymail-frontend/src/flux/actions.ts`: All Reflux actions
-- `app/unifymail-frontend/src/flux/mailsync-bridge.ts`: Sync engine communication
-- `app/unifymail-frontend/src/flux/action-bridge.ts`: Cross-window IPC
-- `app/unifymail-frontend/src/mailsync-process.ts`: Sync engine process management
-- `app/unifymail-frontend/src/global/unifymail-exports.js`: Plugin API surface
-- `app/unifymail-frontend/src/global/unifymail-component-kit.js`: Component API surface
+- `app/frontend/flux/actions.ts`: All Reflux actions
+- `app/frontend/flux/mailsync-bridge.ts`: Sync engine communication
+- `app/frontend/flux/action-bridge.ts`: Cross-window IPC
+- `app/frontend/mailsync-process.ts`: Sync engine process management
+- `app/frontend/global/unifymail-exports.js`: Plugin API surface
+- `app/frontend/global/unifymail-component-kit.js`: Component API surface
 
 **Testing:**
 - `app/spec/`: All test specs
@@ -348,35 +348,35 @@ UnifyMail/
 - Register components via `ComponentRegistry.register()` in `activate()`
 
 **New React Component (shared/reusable):**
-- Add to: `app/unifymail-frontend/src/components/{component-name}.tsx`
-- Export in: `app/unifymail-frontend/src/global/unifymail-component-kit.js` using `lazyLoad('ComponentName', 'component-name')`
-- Add TypeScript declaration in: `app/unifymail-frontend/src/global/unifymail-component-kit.d.ts`
+- Add to: `app/frontend/components/{component-name}.tsx`
+- Export in: `app/frontend/global/unifymail-component-kit.js` using `lazyLoad('ComponentName', 'component-name')`
+- Add TypeScript declaration in: `app/frontend/global/unifymail-component-kit.d.ts`
 
 **New Flux Model:**
-- Add model class to: `app/unifymail-frontend/src/flux/models/{model-name}.ts`
+- Add model class to: `app/frontend/flux/models/{model-name}.ts`
 - Extend `Model` or `ModelWithMetadata`
 - Define `static attributes` with `Attributes.*` types
-- Register in: `app/unifymail-frontend/src/global/unifymail-exports.js` using `lazyLoadAndRegisterModel('ModelName', 'model-name')`
+- Register in: `app/frontend/global/unifymail-exports.js` using `lazyLoadAndRegisterModel('ModelName', 'model-name')`
 
 **New Flux Task:**
-- Add task class to: `app/unifymail-frontend/src/flux/tasks/{task-name}.ts`
+- Add task class to: `app/frontend/flux/tasks/{task-name}.ts`
 - Extend `Task`
-- Register in: `app/unifymail-frontend/src/global/unifymail-exports.js` using `lazyLoadAndRegisterTask('TaskName', 'task-name')`
+- Register in: `app/frontend/global/unifymail-exports.js` using `lazyLoadAndRegisterTask('TaskName', 'task-name')`
 
 **New Flux Store:**
-- Add store class to: `app/unifymail-frontend/src/flux/stores/{store-name}.ts`
+- Add store class to: `app/frontend/flux/stores/{store-name}.ts`
 - Extend `UnifyMailStore` (from `unifymail-store`)
 - Use `listenTo()` to subscribe to actions/other stores
-- Register in: `app/unifymail-frontend/src/global/unifymail-exports.js` using `load('StoreName', 'flux/stores/store-name')`
+- Register in: `app/frontend/global/unifymail-exports.js` using `load('StoreName', 'flux/stores/store-name')`
 - Use `load()` (not `lazyLoad()`) so store is instantiated immediately on startup
 
 **New Service:**
-- Add to: `app/unifymail-frontend/src/services/{service-name}.ts`
+- Add to: `app/frontend/services/{service-name}.ts`
 - Register in `unifymail-exports.js` if plugins need access
 
 **New Extension Type:**
-- Add base class to: `app/unifymail-frontend/src/extensions/{extension-name}.ts`
-- Create registry in: `app/unifymail-frontend/src/registries/extension-registry.ts` (add new `Registry` instance)
+- Add base class to: `app/frontend/extensions/{extension-name}.ts`
+- Create registry in: `app/frontend/registries/extension-registry.ts` (add new `Registry` instance)
 
 **New Test Spec:**
 - Add to: `app/spec/{category}/{thing-being-tested}-spec.ts`

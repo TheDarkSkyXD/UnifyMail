@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import QuotedHTMLTransformer from '../../unifymail-frontend/src/services/quoted-html-transformer';
+import QuotedHTMLTransformer from '../../frontend/services/quoted-html-transformer';
 
 describe('QuotedHTMLTransformer', function() {
   const readFile = function(fname) {

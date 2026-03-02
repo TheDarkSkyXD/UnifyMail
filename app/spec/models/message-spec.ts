@@ -1,6 +1,6 @@
-import * as Utils from '../../unifymail-frontend/src/flux/models/utils';
-import { Message } from '../../unifymail-frontend/src/flux/models/message';
-import { Contact } from '../../unifymail-frontend/src/flux/models/contact';
+import * as Utils from '../../frontend/flux/models/utils';
+import { Message } from '../../frontend/flux/models/message';
+import { Contact } from '../../frontend/flux/models/contact';
 
 const evan = new Contact({
   name: 'Evan Morikawa',

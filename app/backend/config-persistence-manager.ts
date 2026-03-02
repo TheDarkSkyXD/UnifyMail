@@ -1,11 +1,11 @@
 import path from 'path';
 import fs from 'fs-plus';
 import { BrowserWindow, dialog, app } from 'electron';
-import { atomicWriteFileSync } from '../../unifymail-frontend/src/fs-utils';
-import { localized } from '../../unifymail-frontend/src/intl';
+import { atomicWriteFileSync } from '../../frontend/fs-utils';
+import { localized } from '../../frontend/intl';
 
 let _ = require('underscore');
-_ = Object.assign(_, require('../../unifymail-frontend/src/config-utils'));
+_ = Object.assign(_, require('../../frontend/config-utils'));
 
 const RETRY_SAVES = 3;
 

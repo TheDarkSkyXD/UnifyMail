@@ -1,4 +1,4 @@
-const FocusedContactsStore = require('../../unifymail-frontend/src/flux/stores/focused-contacts-store');
+const FocusedContactsStore = require('../../frontend/flux/stores/focused-contacts-store');
 
 xdescribe('FocusedContactsStore', function() {
   beforeEach(function() {

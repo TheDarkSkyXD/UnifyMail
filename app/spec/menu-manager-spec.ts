@@ -1,4 +1,4 @@
-import MenuManager from '../unifymail-frontend/src/menu-manager';
+import MenuManager from '../frontend/menu-manager';
 
 describe('MenuManager', function() {
   let menu = null;

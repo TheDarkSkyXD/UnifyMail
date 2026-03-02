@@ -1,10 +1,10 @@
-import DatabaseStore from '../../unifymail-frontend/src/flux/stores/database-store';
+import DatabaseStore from '../../frontend/flux/stores/database-store';
 
-import { QueryRange } from '../../unifymail-frontend/src/flux/models/query-range';
-import { MutableQueryResultSet } from '../../unifymail-frontend/src/flux/models/mutable-query-result-set';
-import { QuerySubscription } from '../../unifymail-frontend/src/flux/models/query-subscription';
-import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
-import * as Utils from '../../unifymail-frontend/src/flux/models/utils';
+import { QueryRange } from '../../frontend/flux/models/query-range';
+import { MutableQueryResultSet } from '../../frontend/flux/models/mutable-query-result-set';
+import { QuerySubscription } from '../../frontend/flux/models/query-subscription';
+import { Thread } from '../../frontend/flux/models/thread';
+import * as Utils from '../../frontend/flux/models/utils';
 
 describe('QuerySubscription', function QuerySubscriptionSpecs() {
   describe('constructor', () =>

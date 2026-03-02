@@ -1,4 +1,4 @@
-import Config from '../../unifymail-frontend/src/config';
+import Config from '../../frontend/config';
 
 export default class ConfigMigrator {
   config: Config;

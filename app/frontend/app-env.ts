@@ -60,8 +60,8 @@ export default class AppEnvConstructor {
 
     initializeLocalization({ configDirPath });
 
-    // Add 'unifymail-frontend/src/global/' to module search path.
-    const globalPath = path.join(resourcePath, 'unifymail-frontend', 'src', 'global');
+    // Add 'frontend/global/' to module search path.
+    const globalPath = path.join(resourcePath, 'frontend', 'global');
     require('app-module-path').addPath(globalPath);
 
     const Config = require('./config').default;

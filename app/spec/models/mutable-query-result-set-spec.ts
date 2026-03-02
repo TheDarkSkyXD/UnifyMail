@@ -1,6 +1,6 @@
 /* eslint quote-props: 0 */
-import { MutableQueryResultSet } from '../../unifymail-frontend/src/flux/models/mutable-query-result-set';
-import { QueryRange } from '../../unifymail-frontend/src/flux/models/query-range';
+import { MutableQueryResultSet } from '../../frontend/flux/models/mutable-query-result-set';
+import { QueryRange } from '../../frontend/flux/models/query-range';
 
 describe('MutableQueryResultSet', function MutableQueryResultSetSpecs() {
   describe('clipToRange', () => {

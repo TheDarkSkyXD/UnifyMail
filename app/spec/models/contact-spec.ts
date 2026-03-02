@@ -1,6 +1,6 @@
-import { Contact } from '../../unifymail-frontend/src/flux/models/contact';
-import { AccountStore } from '../../unifymail-frontend/src/flux/stores/account-store';
-import { Account } from '../../unifymail-frontend/src/flux/models/account';
+import { Contact } from '../../frontend/flux/models/contact';
+import { AccountStore } from '../../frontend/flux/stores/account-store';
+import { Account } from '../../frontend/flux/models/account';
 
 const contact_1 = {
   name: 'Evan Morikawa',

@@ -42,7 +42,7 @@ function setupWindow(loadSettings) {
     copyEnvFromMainProcess();
   }
 
-  var CompileCache = require('../unifymail-frontend/src/compile-cache');
+  var CompileCache = require('../frontend/compile-cache');
   CompileCache.setHomeDirectory(loadSettings.configDirPath);
 
   require(loadSettings.bootstrapScript);

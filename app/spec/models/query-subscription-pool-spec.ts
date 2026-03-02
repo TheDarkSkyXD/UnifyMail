@@ -1,6 +1,6 @@
-import QuerySubscriptionPool from '../../unifymail-frontend/src/flux/models/query-subscription-pool';
-import DatabaseStore from '../../unifymail-frontend/src/flux/stores/database-store';
-import { Label } from '../../unifymail-frontend/src/flux/models/label';
+import QuerySubscriptionPool from '../../frontend/flux/models/query-subscription-pool';
+import DatabaseStore from '../../frontend/flux/stores/database-store';
+import { Label } from '../../frontend/flux/models/label';
 
 describe('QuerySubscriptionPool', function QuerySubscriptionPoolSpecs() {
   beforeEach(() => {

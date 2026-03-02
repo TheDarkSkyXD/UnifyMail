@@ -17,21 +17,21 @@
 
 **Main Process (Backend):**
 - Purpose: Application lifecycle, window management, system integration, IPC routing
-- Location: `app/unifymail-backend/src/`
+- Location: `app/backend/`
 - Contains: `Application` singleton, `WindowManager`, `AutoUpdateManager`, `SystemTrayManager`, menu/touchbar management, protocol handlers
 - Depends on: Electron APIs, some shared frontend modules (config, intl, mailsync-process)
 - Used by: Renderer processes via IPC (`ipcMain`/`ipcRenderer`)
 
 **Renderer Process (Frontend):**
 - Purpose: UI rendering, state management, plugin hosting, sync engine communication
-- Location: `app/unifymail-frontend/src/`
+- Location: `app/frontend/`
 - Contains: React components, Flux stores/actions/models/tasks, services, registries, AppEnv global
 - Depends on: Electron renderer APIs, `@electron/remote`, better-sqlite3 (read-only), React, Reflux, RxJS
 - Used by: Internal packages (plugins) via `unifymail-exports` and `unifymail-component-kit` modules
 
 **Flux Layer:**
 - Purpose: Unidirectional data flow -- Actions, Stores, Models, Tasks
-- Location: `app/unifymail-frontend/src/flux/`
+- Location: `app/frontend/flux/`
 - Contains:
   - `actions.ts` -- Reflux actions with scopes (window/global/main)
   - `stores/` -- Flux stores extending `UnifyMailStore`
@@ -51,14 +51,14 @@
 
 **Component Layer:**
 - Purpose: Reusable UI primitives and shared React components
-- Location: `app/unifymail-frontend/src/components/`
+- Location: `app/frontend/components/`
 - Contains: 70+ React components (lists, editors, modals, popovers, scroll regions, attachment items, etc.)
 - Depends on: React, classnames, Flux stores
 - Used by: Exported via `unifymail-component-kit` module for use by internal packages
 
 **Registry Layer:**
 - Purpose: Dynamic registration of components, extensions, database objects, commands, services, and sounds
-- Location: `app/unifymail-frontend/src/registries/`
+- Location: `app/frontend/registries/`
 - Contains:
   - `component-registry.ts` -- Maps React components to UI locations/roles
   - `extension-registry.ts` -- Registers composer/message-view/thread-list/sidebar extensions
@@ -71,7 +71,7 @@
 
 **Services Layer:**
 - Purpose: HTML transformation, search, sanitization
-- Location: `app/unifymail-frontend/src/services/`
+- Location: `app/frontend/services/`
 - Contains: `autolinker.ts`, `sanitize-transformer.ts`, `quoted-html-transformer.ts`, `inline-style-transformer.ts`, search query parser/AST/backends
 - Depends on: DOMPurify, cheerio
 - Used by: Message rendering pipeline, composer, search
@@ -81,7 +81,7 @@
 - Location: Binary at `app/mailsync` (or `app/mailsync.cmd` on Windows), spawned as child process
 - Contains: C++ compiled binary (`UnifyMail-Sync`)
 - Depends on: libcurl, SQLite (write access), IMAP/SMTP libraries
-- Used by: `MailsyncProcess` class in `app/unifymail-frontend/src/mailsync-process.ts`
+- Used by: `MailsyncProcess` class in `app/frontend/mailsync-process.ts`
 
 ## Data Flow
 
@@ -114,7 +114,7 @@
 5. `Rx.Observable.fromQuery()` wraps this as an RxJS observable for reactive composition
 
 **State Management:**
-- Global application state is managed by Flux stores (30+ stores in `app/unifymail-frontend/src/flux/stores/`)
+- Global application state is managed by Flux stores (30+ stores in `app/frontend/flux/stores/`)
 - Each store extends `UnifyMailStore` which provides `listen()` and `trigger()` methods built on `EventEmitter`
 - Stores listen to Actions and DatabaseStore changes, compute derived state, and trigger UI updates
 - `AppEnv` singleton (assigned to `window.AppEnv`) provides access to config, packages, keymaps, commands, themes, styles
@@ -122,65 +122,65 @@
 
 ## Key Abstractions
 
-**Model (`app/unifymail-frontend/src/flux/models/model.ts`):**
+**Model (`app/frontend/flux/models/model.ts`):**
 - Purpose: Base class for all data entities (Thread, Message, Contact, Account, etc.)
-- Examples: `app/unifymail-frontend/src/flux/models/thread.ts`, `app/unifymail-frontend/src/flux/models/message.ts`, `app/unifymail-frontend/src/flux/models/contact.ts`
+- Examples: `app/frontend/flux/models/thread.ts`, `app/frontend/flux/models/message.ts`, `app/frontend/flux/models/contact.ts`
 - Pattern: Declarative `static attributes` define schema for JSON serialization/deserialization, SQL query generation, and attribute matching. `__cls` field enables polymorphic deserialization via `DatabaseObjectRegistry`.
 
-**Task (`app/unifymail-frontend/src/flux/tasks/task.ts`):**
+**Task (`app/frontend/flux/tasks/task.ts`):**
 - Purpose: Represents an async mutation to be executed by the sync engine
-- Examples: `app/unifymail-frontend/src/flux/tasks/send-draft-task.ts`, `app/unifymail-frontend/src/flux/tasks/change-starred-task.ts`, `app/unifymail-frontend/src/flux/tasks/change-folder-task.ts`
+- Examples: `app/frontend/flux/tasks/send-draft-task.ts`, `app/frontend/flux/tasks/change-starred-task.ts`, `app/frontend/flux/tasks/change-folder-task.ts`
 - Pattern: Extends `Model` (so it is persisted in the database). Has status lifecycle (local -> remote -> complete/cancelled). Supports undo via `canBeUndone` + `createUndoTask()`. Queued via `Actions.queueTask()`.
 
-**UnifyMailStore (`app/unifymail-frontend/src/global/unifymail-store.ts`):**
+**UnifyMailStore (`app/frontend/global/unifymail-store.ts`):**
 - Purpose: Base class for Flux stores providing listen/trigger pub-sub
-- Examples: `app/unifymail-frontend/src/flux/stores/account-store.ts`, `app/unifymail-frontend/src/flux/stores/draft-store.ts`
+- Examples: `app/frontend/flux/stores/account-store.ts`, `app/frontend/flux/stores/draft-store.ts`
 - Pattern: Stores extend `UnifyMailStore`, use `listenTo()` to subscribe to Actions/other stores, call `trigger()` to notify UI. React components subscribe in `componentDidMount` and unsubscribe in `componentWillUnmount`.
 
-**QuerySubscription (`app/unifymail-frontend/src/flux/models/query-subscription.ts`):**
+**QuerySubscription (`app/frontend/flux/models/query-subscription.ts`):**
 - Purpose: Live-updating reactive query that automatically refreshes when underlying data changes
 - Examples: Used throughout stores and components for data binding
 - Pattern: Wraps a `ModelQuery`, executes it, listens to `DatabaseStore` for change records, re-evaluates when relevant changes arrive. Can be composed with `Rx.Observable.fromQuery()`.
 
-**Package (`app/unifymail-frontend/src/package.ts`):**
+**Package (`app/frontend/package.ts`):**
 - Purpose: Encapsulates a plugin with metadata, lifecycle hooks, and window targeting
 - Examples: Every directory in `app/internal_packages/` is a Package
 - Pattern: `package.json` declares `windowTypes`, `main` entry point, `syncInit` flag. Entry module exports `activate()`, `deactivate()`, and optionally `serialize()`. Packages register components/extensions in `activate()` and unregister in `deactivate()`.
 
-**ComponentRegistry (`app/unifymail-frontend/src/registries/component-registry.ts`):**
+**ComponentRegistry (`app/frontend/registries/component-registry.ts`):**
 - Purpose: Runtime registry mapping React components to named locations, roles, and workspace modes
 - Examples: `ComponentRegistry.register(ComposerView, { role: 'Composer' })`, `ComponentRegistry.register(ComposeButton, { location: WorkspaceStore.Location.RootSidebar.Toolbar })`
 - Pattern: Plugins register components by location (toolbar slot, sidebar, center) or role (Composer, MessageHeader). `InjectedComponent` and `InjectedComponentSet` render whatever is registered at a given location/role.
 
-**WorkspaceStore (`app/unifymail-frontend/src/flux/stores/workspace-store.ts`):**
+**WorkspaceStore (`app/frontend/flux/stores/workspace-store.ts`):**
 - Purpose: Manages sheet stack (navigation), layout modes (list/split), and location definitions
 - Examples: `WorkspaceStore.Sheet.Thread`, `WorkspaceStore.Location.ThreadList`, `WorkspaceStore.Location.RootSidebar.Toolbar`
 - Pattern: Defines `Sheet` and `Location` objects dynamically. Components use `SheetContainer` to render the current sheet stack with transitions. Layout mode (list vs split) can be toggled.
 
 **Global Module Exports:**
-- `unifymail-exports` (`app/unifymail-frontend/src/global/unifymail-exports.js`): Lazy-loaded barrel exposing all core APIs (Actions, Models, Tasks, Stores, Utils, etc.) to plugins via `require('unifymail-exports')`
-- `unifymail-component-kit` (`app/unifymail-frontend/src/global/unifymail-component-kit.js`): Lazy-loaded barrel exposing reusable UI components to plugins via `require('unifymail-component-kit')`
+- `unifymail-exports` (`app/frontend/global/unifymail-exports.js`): Lazy-loaded barrel exposing all core APIs (Actions, Models, Tasks, Stores, Utils, etc.) to plugins via `require('unifymail-exports')`
+- `unifymail-component-kit` (`app/frontend/global/unifymail-component-kit.js`): Lazy-loaded barrel exposing reusable UI components to plugins via `require('unifymail-component-kit')`
 - Both use `Object.defineProperty` getters for lazy loading to improve startup performance
 
 ## Entry Points
 
-**Application Entry (`app/unifymail-backend/src/main.js`):**
-- Location: `app/unifymail-backend/src/main.js`
+**Application Entry (`app/backend/main.js`):**
+- Location: `app/backend/main.js`
 - Triggers: Electron `app.ready` event
 - Responsibilities: Parse CLI args, set up config directory, initialize compile cache, create `Application` singleton, configure CSP headers, handle Squirrel (Windows installer) events
 
-**Application Singleton (`app/unifymail-backend/src/application.ts`):**
-- Location: `app/unifymail-backend/src/application.ts`
+**Application Singleton (`app/backend/application.ts`):**
+- Location: `app/backend/application.ts`
 - Triggers: Created in `main.js` on app ready
 - Responsibilities: Initialize all main-process managers (WindowManager, AutoUpdateManager, SystemTrayManager, ApplicationMenu, etc.), handle IPC events, manage window lifecycle, route URL/file opens
 
-**Main Window Bootstrap (`app/unifymail-frontend/src/window-bootstrap.ts`):**
-- Location: `app/unifymail-frontend/src/window-bootstrap.ts`
+**Main Window Bootstrap (`app/frontend/window-bootstrap.ts`):**
+- Location: `app/frontend/window-bootstrap.ts`
 - Triggers: Loaded by `app/static/index.js` when main window's HTML page loads
 - Responsibilities: Create `AppEnv` singleton, call `AppEnv.startRootWindow()` which initializes all renderer-side managers, loads packages, creates ActionBridge and MailsyncBridge, mounts React root
 
-**Secondary Window Bootstrap (`app/unifymail-frontend/src/secondary-window-bootstrap.ts`):**
-- Location: `app/unifymail-frontend/src/secondary-window-bootstrap.ts`
+**Secondary Window Bootstrap (`app/frontend/secondary-window-bootstrap.ts`):**
+- Location: `app/frontend/secondary-window-bootstrap.ts`
 - Triggers: Loaded by hot windows (composer popouts, onboarding, calendar, contacts, thread popouts)
 - Responsibilities: Create `AppEnv` singleton, call `AppEnv.startSecondaryWindow()` -- lighter initialization, no MailsyncBridge (receives changes via IPC rebroadcast from main window)
 
@@ -199,7 +199,7 @@
 **Strategy:** Multi-layered error handling with global error logger, unrecoverable database error recovery, and crash tracking for sync workers.
 
 **Patterns:**
-- Global `process.on('uncaughtException')` and `process.on('unhandledRejection')` in main process route to `ErrorLogger` (`app/unifymail-frontend/src/error-logger.js`)
+- Global `process.on('uncaughtException')` and `process.on('unhandledRejection')` in main process route to `ErrorLogger` (`app/frontend/error-logger.js`)
 - `handleUnrecoverableDatabaseError()` in `DatabaseStore` sends IPC to main process to reset database and relaunch
 - `CrashTracker` in `MailsyncBridge` monitors sync process crashes -- if >5 crashes in 5 minutes, marks account as error state and stops relaunching
 - Task errors are handled via `task.onError()` callback when sync engine reports completion with error
@@ -213,11 +213,11 @@
 
 **Validation:** Task validation in `willBeQueued()` method. `MailsyncBridge._onQueueTask()` validates task is registered in `DatabaseObjectRegistry` and has `id` and `accountId`. Model attribute validation via typed `Attributes` (String, Boolean, Number, DateTime, Collection, etc.).
 
-**Authentication:** Account credentials managed by `KeyManager` (`app/unifymail-frontend/src/key-manager.ts`) which stores secrets separately from account JSON. OAuth handled via onboarding flow (`app/internal_packages/onboarding/`). Google auth uses `google-auth-library`. Microsoft OAuth uses direct HTTP with CSP header manipulation to remove Origin header.
+**Authentication:** Account credentials managed by `KeyManager` (`app/frontend/key-manager.ts`) which stores secrets separately from account JSON. OAuth handled via onboarding flow (`app/internal_packages/onboarding/`). Google auth uses `google-auth-library`. Microsoft OAuth uses direct HTTP with CSP header manipulation to remove Origin header.
 
-**Localization:** `app/unifymail-frontend/src/intl.ts` provides `localized()` function. 100+ locale JSON files in `app/lang/`. Supports RTL detection via `isRTL()`.
+**Localization:** `app/frontend/intl.ts` provides `localized()` function. 100+ locale JSON files in `app/lang/`. Supports RTL detection via `isRTL()`.
 
-**Security:** CSP headers enforced both in `index.html` meta tag and via `session.defaultSession.webRequest.onHeadersReceived()`. `window.eval` disabled. HTML sanitization via DOMPurify (`app/unifymail-frontend/src/services/sanitize-transformer.ts`). Inline style parsing via `juice` in main process IPC handler.
+**Security:** CSP headers enforced both in `index.html` meta tag and via `session.defaultSession.webRequest.onHeadersReceived()`. `window.eval` disabled. HTML sanitization via DOMPurify (`app/frontend/services/sanitize-transformer.ts`). Inline style parsing via `juice` in main process IPC handler.
 
 **Theming:** Theme packages in `app/internal_packages/ui-*` (dark, light, darkside, less-is-more, taiga, ubuntu). LESS stylesheets compiled at runtime. Tailwind CSS added as supplementary styling (`app/static/style/tailwind.css`).
 

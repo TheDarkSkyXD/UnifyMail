@@ -1,8 +1,8 @@
 /* eslint quote-props: 0 */
-import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
+import { Thread } from '../../frontend/flux/models/thread';
 import TestModel from '../fixtures/db-test-model';
-import ModelQuery from '../../unifymail-frontend/src/flux/models/query';
-import DatabaseStore from '../../unifymail-frontend/src/flux/stores/database-store';
+import ModelQuery from '../../frontend/flux/models/query';
+import DatabaseStore from '../../frontend/flux/stores/database-store';
 
 const testMatchers = { id: 'b' };
 

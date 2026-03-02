@@ -1,8 +1,8 @@
 /* eslint no-new-wrappers: 0 */
 /* eslint no-new-object: 0 */
-import * as Utils from '../../unifymail-frontend/src/flux/models/utils';
-import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
-import { Contact } from '../../unifymail-frontend/src/flux/models/contact';
+import * as Utils from '../../frontend/flux/models/utils';
+import { Thread } from '../../frontend/flux/models/thread';
+import { Contact } from '../../frontend/flux/models/contact';
 
 class Foo {
   static initClass() {

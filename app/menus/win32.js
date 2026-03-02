@@ -1,4 +1,4 @@
-const { localized } = require('../unifymail-frontend/src/intl');
+const { localized } = require('../frontend/intl');
 
 module.exports = {
   menu: [

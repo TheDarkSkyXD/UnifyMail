@@ -13,7 +13,7 @@
     "tailwind:dev": "tailwindcss -i ./static/style/tailwind.src.css -o ./static/style/tailwind.css --watch",
     "tailwind:build": "tailwindcss -i ./static/style/tailwind.src.css -o ./static/style/tailwind.css --minify"
   },
-  "main": "./unifymail-backend/src/main.js",
+  "main": "./backend/main.js",
   "dependencies": {
     "@bengotow/slate-edit-list": "github:bengotow/slate-edit-list#b868e108",
     "@electron/remote": "^2.1.2",

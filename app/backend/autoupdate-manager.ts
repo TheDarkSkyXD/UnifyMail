@@ -3,7 +3,7 @@ import { dialog, nativeImage } from 'electron';
 import { EventEmitter } from 'events';
 import path from 'path';
 import fs from 'fs';
-import { localized } from '../../unifymail-frontend/src/intl';
+import { localized } from '../../frontend/intl';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 
@@ -22,7 +22,7 @@ const ErrorState = 'error';
 export default class AutoUpdateManager extends EventEmitter {
   state = IdleState;
   version: string;
-  config: import('../../unifymail-frontend/src/config').default;
+  config: import('../../frontend/config').default;
   specMode: boolean;
   releaseNotes: string;
   releaseVersion: string;

@@ -1,6 +1,6 @@
-import * as Actions from '../unifymail-frontend/src/flux/actions';
-import { Message } from '../unifymail-frontend/src/flux/models/message';
-import ActionBridge from '../unifymail-frontend/src/flux/action-bridge';
+import * as Actions from '../frontend/flux/actions';
+import { Message } from '../frontend/flux/models/message';
+import ActionBridge from '../frontend/flux/action-bridge';
 
 const ipc = {
   on() {},

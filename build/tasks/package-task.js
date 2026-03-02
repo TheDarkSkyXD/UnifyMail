@@ -62,7 +62,7 @@ module.exports = grunt => {
    */
   function resolveRealSymlinkPaths(appDir) {
     console.log('---> Resolving symlinks');
-    const dirs = ['internal_packages', 'unifymail-frontend', 'unifymail-backend', 'spec', 'node_modules'];
+    const dirs = ['internal_packages', 'frontend', 'backend', 'spec', 'node_modules'];
 
     dirs.forEach(dir => {
       const absoluteDir = path.join(appDir, dir);
@@ -167,8 +167,8 @@ module.exports = grunt => {
             '*.node',
             '**/vendor/**',
             'examples/**',
-            '**/unifymail-frontend/src/tasks/**',
-            '**/unifymail-frontend/src/quickpreview/**',
+            '**/frontend/tasks/**',
+            '**/frontend/quickpreview/**',
             '**/static/all_licenses.html',
             '**/static/extensions/**',
             '**/node_modules/spellchecker/**',

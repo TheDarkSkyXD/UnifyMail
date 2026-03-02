@@ -1,5 +1,5 @@
-import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
-import { Folder } from '../../unifymail-frontend/src/flux/models/folder';
+import { Thread } from '../../frontend/flux/models/thread';
+import { Folder } from '../../frontend/flux/models/folder';
 import _ from 'underscore';
 
 describe('Thread', function() {

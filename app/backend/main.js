@@ -52,12 +52,12 @@ const setupConfigDir = args => {
 };
 
 const setupCompileCache = configDirPath => {
-  const compileCache = require('../../unifymail-frontend/src/compile-cache');
+  const compileCache = require('../../frontend/compile-cache');
   return compileCache.setHomeDirectory(configDirPath);
 };
 
 const setupErrorLogger = (args = {}) => {
-  const ErrorLogger = require('../../unifymail-frontend/src/error-logger');
+  const ErrorLogger = require('../../frontend/error-logger');
   const errorLogger = new ErrorLogger({
     inSpecMode: args.specMode,
     inDevMode: args.devMode,
@@ -408,7 +408,7 @@ const start = () => {
     });
 
     // eslint-disable-next-line
-    const Application = require(path.join(options.resourcePath, 'unifymail-backend', 'src', 'application'))
+    const Application = require(path.join(options.resourcePath, 'backend', 'application'))
       .default;
     global.application = new Application();
     global.application.start(options);

@@ -1,4 +1,4 @@
-import BadgeStore from '../../unifymail-frontend/src/flux/stores/badge-store';
+import BadgeStore from '../../frontend/flux/stores/badge-store';
 
 describe('BadgeStore', () =>
   describe('_setBadgeForCount', () =>

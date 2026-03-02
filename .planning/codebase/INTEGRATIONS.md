@@ -25,7 +25,7 @@
   - Implementation: `app/internal_packages/onboarding/lib/onboarding-helpers.ts` (functions `buildO365AuthURL`, `buildMicrosoftAccountFromAuthResponse`)
   - O365 page: `app/internal_packages/onboarding/lib/page-account-settings-o365.tsx`
   - Outlook page: `app/internal_packages/onboarding/lib/page-account-settings-outlook.tsx`
-  - Note: Origin header stripped for Microsoft OAuth requests in main process to avoid AADSTS90023 errors (`app/unifymail-backend/src/main.js`, lines 375-391)
+  - Note: Origin header stripped for Microsoft OAuth requests in main process to avoid AADSTS90023 errors (`app/backend/main.js`, lines 375-391)
 
 **Thunderbird ISPDB Autoconfig:**
 - Automatic IMAP/SMTP server discovery for generic email providers
@@ -50,7 +50,7 @@
 **Sentry (Error Reporting):**
 - Error tracking via Raven SDK
   - Client: `raven` 2.1.2
-  - Implementation: `app/unifymail-frontend/src/error-logger-extensions/raven-error-reporter.js`
+  - Implementation: `app/frontend/error-logger-extensions/raven-error-reporter.js`
   - Device identification via hashed MAC address (using `getmac` package)
   - Disabled in dev mode and spec mode
 
@@ -58,8 +58,8 @@
 - Application auto-update distribution
   - Client: `electron-updater` ^6.7.3
   - Feed: GitHub releases from `TheDarkSkyXD/UnifyMail`
-  - Implementation: `app/unifymail-backend/src/autoupdate-manager.ts`
-  - Windows: Squirrel-based updates (`app/unifymail-backend/src/autoupdate-impl-win32.ts`, `app/unifymail-backend/src/windows-updater.js`)
+  - Implementation: `app/backend/autoupdate-manager.ts`
+  - Windows: Squirrel-based updates (`app/backend/autoupdate-impl-win32.ts`, `app/backend/windows-updater.js`)
 
 ## Supported Email Providers
 
@@ -85,10 +85,10 @@
 - SQLite (via `better-sqlite3` ^12.5.0 in Electron, direct SQLite in C++ sync engine)
   - Database file: `{configDir}/edgehill.db`
   - WAL mode enabled for concurrent read access
-  - Connection: Read-only in Electron renderer (`app/unifymail-frontend/src/flux/stores/database-store.ts`)
+  - Connection: Read-only in Electron renderer (`app/frontend/flux/stores/database-store.ts`)
   - Write access: Exclusively via C++ mailsync process (`app/mailsync/MailSync/MailStore.hpp`)
   - Page size: 8192, Cache size: 20000
-  - Agent process for background queries: `app/unifymail-frontend/src/flux/stores/database-agent.js`
+  - Agent process for background queries: `app/frontend/flux/stores/database-agent.js`
 
 **File Storage:**
 - Local filesystem only
@@ -98,14 +98,14 @@
 
 **Caching:**
 - LRU cache for database query results (`lru-cache` ^10.4.3 in `database-store.ts`)
-- `FileListCache` for file listing optimization (`app/unifymail-backend/src/file-list-cache.ts`)
+- `FileListCache` for file listing optimization (`app/backend/file-list-cache.ts`)
 
 ## Authentication & Identity
 
 **Email Account Auth:**
 - OAuth 2.0 (Gmail, O365, Outlook) - Tokens stored locally via `KeyManager`
 - IMAP/SMTP credentials (all other providers) - Passwords stored locally via `KeyManager`
-- Implementation: `app/unifymail-frontend/src/key-manager.ts`
+- Implementation: `app/frontend/key-manager.ts`
 - Storage: Encrypted using Electron `safeStorage` API, stored in config file under `credentials` key
 - Per-account secrets stored as: `{email}-imap`, `{email}-smtp`, `{email}-refresh-token`
 
@@ -117,12 +117,12 @@
 
 **UnifyMail Identity (Legacy):**
 - Identity management for feature gating (Pro vs Basic)
-  - Store: `app/unifymail-frontend/src/flux/stores/identity-store.ts`
+  - Store: `app/frontend/flux/stores/identity-store.ts`
   - Identity server: `http://localhost:5101` (all environments - appears to be a placeholder/disabled)
   - API endpoints: `/api/me`, `/api/login-link`, `/api/save-public-asset`, `/api/share-static-page`
   - Token stored in keychain under name "UnifyMail Account"
   - Polls identity every 10 minutes in main window
-  - Implementation: `app/unifymail-frontend/src/flux/unifymail-api-request.ts`
+  - Implementation: `app/frontend/flux/unifymail-api-request.ts`
 
 ## Communication Protocols
 
@@ -142,21 +142,21 @@
 **Electron <-> Mailsync Process:**
 - stdin: JSON messages from Electron to mailsync (task requests, commands)
 - stdout: Newline-delimited JSON from mailsync to Electron (database change deltas)
-- Implementation: `app/unifymail-frontend/src/mailsync-process.ts`, `app/unifymail-frontend/src/flux/mailsync-bridge.ts`
+- Implementation: `app/frontend/mailsync-process.ts`, `app/frontend/flux/mailsync-bridge.ts`
 - One mailsync process spawned per email account
 
 **Electron Main <-> Renderer:**
 - `ipcMain` / `ipcRenderer` for cross-process messaging
 - `@electron/remote` for synchronous API access from renderer
-- Action bridge: `app/unifymail-frontend/src/flux/action-bridge.ts`
-- Mailsync bridge: `app/unifymail-frontend/src/flux/mailsync-bridge.ts`
+- Action bridge: `app/frontend/flux/action-bridge.ts`
+- Mailsync bridge: `app/frontend/flux/mailsync-bridge.ts`
 
 ## Monitoring & Observability
 
 **Error Tracking:**
 - Sentry via Raven SDK (production only)
 - Device hashing via MAC address for anonymous identification
-- Implementation: `app/unifymail-frontend/src/error-logger-extensions/raven-error-reporter.js`
+- Implementation: `app/frontend/error-logger-extensions/raven-error-reporter.js`
 
 **Logs:**
 - `electron-log` for structured logging (auto-updater)
@@ -218,13 +218,13 @@
 - `UnifyMail://open-preferences` - Open preferences
 - `UnifyMail://plugins` - Change plugin state
 - `UnifyMail://notification-*` - Handle Windows toast notification actions
-- Implementation: `app/unifymail-backend/src/application.ts` (method `openUrl`)
-- Registration: `app/unifymail-backend/src/unifymail-protocol-handler.ts`
+- Implementation: `app/backend/application.ts` (method `openUrl`)
+- Registration: `app/backend/unifymail-protocol-handler.ts`
 
 **`mailto:` protocol:**
 - Opens compose window with pre-filled recipients and attachments
 - Handles `?attach=file:///path` for file attachments
-- Implementation: `app/unifymail-backend/src/main.js` (function `extractMailtoLink`)
+- Implementation: `app/backend/main.js` (function `extractMailtoLink`)
 
 ---
 

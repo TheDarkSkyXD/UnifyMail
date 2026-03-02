@@ -21,13 +21,13 @@
     "paths": {
       "*": [
         "node_modules/*",
-        "unifymail-frontend/src/global/*"
+        "frontend/global/*"
       ]
     }
   },
   "include": [
-    "unifymail-frontend/src/**/*",
-    "unifymail-backend/src/**/*",
+    "frontend/**/*",
+    "backend/**/*",
     "internal_packages/**/*"
   ]
 }

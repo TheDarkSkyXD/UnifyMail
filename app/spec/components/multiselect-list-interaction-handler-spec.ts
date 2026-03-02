@@ -1,6 +1,6 @@
-import MultiselectListInteractionHandler from '../../unifymail-frontend/src/components/multiselect-list-interaction-handler';
-import WorkspaceStore from '../../unifymail-frontend/src/flux/stores/workspace-store';
-import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
+import MultiselectListInteractionHandler from '../../frontend/components/multiselect-list-interaction-handler';
+import WorkspaceStore from '../../frontend/flux/stores/workspace-store';
+import { Thread } from '../../frontend/flux/models/thread';
 import _ from 'underscore';
 
 describe('MultiselectListInteractionHandler', function() {

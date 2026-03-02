@@ -1,5 +1,5 @@
-import { Thread } from '../../unifymail-frontend/src/flux/models/thread';
-import FocusedContentStore from '../../unifymail-frontend/src/flux/stores/focused-content-store';
+import { Thread } from '../../frontend/flux/models/thread';
+import FocusedContentStore from '../../frontend/flux/stores/focused-content-store';
 
 const testThread = new Thread({ id: '123', accountId: TEST_ACCOUNT_ID });
 

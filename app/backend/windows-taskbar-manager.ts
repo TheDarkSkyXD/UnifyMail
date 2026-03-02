@@ -1,5 +1,5 @@
 import { app, ipcMain, nativeImage, NativeImage } from 'electron';
-import { localized } from '../../unifymail-frontend/src/intl';
+import { localized } from '../../frontend/intl';
 import Application from './application';
 
 /**
