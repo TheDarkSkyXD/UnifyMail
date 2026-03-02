@@ -1,8 +1,8 @@
 # Phase 9: CalDAV, CardDAV, and Metadata Workers - Research
 
-**Researched:** 2026-03-02, updated 2026-03-03 (deep-dive corrections)
-**Domain:** libdav 0.10.2 CalDAV/CardDAV, calcard (iCalendar + vCard), Google People API v1, reqwest long-polling, RFC 6578 sync-collection, RFC 6585 rate limiting
-**Confidence:** HIGH (libdav 0.10.2 API verified via crates.io + source + docs.rs; C++ DAVWorker.cpp, GoogleContactsWorker.cpp, MetadataWorker.cpp, MetadataExpirationWorker.cpp read directly; Google People API verified via official docs 2026-03-03; calcard verified via source + docs.rs; reqwest streaming timeout verified via test suite)
+**Researched:** 2026-03-02
+**Domain:** libdav 0.10.2 CalDAV/CardDAV, icalendar crate, Google People API v1, reqwest long-polling, RFC 6578 sync-collection, RFC 6585 rate limiting
+**Confidence:** HIGH (libdav API verified via mirror.whynothugo.nl docs; C++ DAVWorker.cpp, GoogleContactsWorker.cpp, MetadataWorker.cpp, MetadataExpirationWorker.cpp read directly; Google People API verified via official docs; RFC 6578/6585 verified; reqwest 0.13.x confirmed)
 
 ---
 
@@ -37,23 +37,19 @@ The CalDAV/CardDAV sync design follows two paths: sync-token (RFC 6578, efficien
 
 The metadata worker uses HTTP streaming (long-polling): a persistent connection to the identity server's `/deltas/{id}/streaming` endpoint delivers newline-delimited JSON. In Rust, reqwest 0.13.x `bytes_stream()` provides the equivalent of curl's write callback. The metadata expiration worker is a separate tokio task using `tokio::time::sleep_until()` + a `tokio::sync::Notify` for wake-up, replacing the C++ `condition_variable`.
 
-**Primary recommendation:** Use libdav 0.10.2 with hyper-rustls for HTTP/WebDAV transport via typed `DavRequest` structs; auth via Tower middleware (`AddAuthorizationLayer`); construct sync-collection REPORT XML manually via `request_raw()` + roxmltree parsing; use **calcard 0.1.x** (NOT icalendar) for both ICS and vCard parsing (has RECURRENCE-ID exception resolution that icalendar lacks); use reqwest 0.13.x with `read_timeout(30s)` for metadata long-polling and Google People API; follow the C++ implementation as the primary specification for all four workers.
+**Primary recommendation:** Use libdav 0.10.2 for HTTP/WebDAV transport and named property constants; construct sync-collection REPORT XML bodies manually matching the C++ reference; use icalendar 0.17.x (with `parser` feature) for ICS parsing; use reqwest 0.13.x for metadata long-polling; follow the C++ implementation as the primary specification for all four workers.
 
 ---
 
 ## Standard Stack
 
-> **CORRECTION (2026-03-03):** Deep-dive research found that libdav 0.10.x has a significantly different API from what mirror docs suggested. Auth is external (Tower middleware), all operations use typed request structs, and `icalendar` lacks RECURRENCE-ID exception resolution. `calcard` replaces both `icalendar` and any vCard crate.
-
 ### Core
 
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| libdav | 0.10.2 | CalDAV/CardDAV HTTP transport, discovery, resource CRUD via typed request structs | Mandated by STATE.md; replaces ~1,000 lines of PROPFIND/XML; provides `CalDavClient`, `CardDavClient`, typed `DavRequest` structs, `FoundCollection.supports_sync` detection |
-| hyper + hyper-util + hyper-rustls | 1.x / 0.1.x / 0.27.x | HTTP client underlying libdav; TLS via rustls | libdav uses hyper directly (NOT reqwest); caller provides TLS connector via generic `C: Service<...>` parameter; hyper-rustls provides rustls integration |
-| tower-http | 0.6.x | Auth middleware layer for libdav HTTP client | libdav v0.6.0+ moved auth out of the library; `AddAuthorizationLayer::basic()` or `::bearer()` wraps the hyper client before passing to `WebDavClient::new()` |
-| reqwest | 0.13.x | HTTP client for Google People API + metadata long-polling streaming | Separate from libdav's hyper; `bytes_stream()` for streaming; `read_timeout()` for low-speed disconnect |
-| calcard | 0.1.3+ | Parse and generate both iCalendar (RFC 5545) AND vCard (2.1/3.0/4.0) | Stalwart Labs ecosystem; full RECURRENCE-ID exception resolution via `expand_dates()` incl. THISANDFUTURE; `KIND:group` + `MEMBER` for iCloud contacts; replaces both `icalendar` and any vCard crate |
+| libdav | 0.10.2 | CalDAV/CardDAV HTTP transport, discovery, resource CRUD, named XML properties | Mandated by STATE.md; replaces ~1,000 lines of PROPFIND/XML; provides `CalDavClient`, `CardDavClient`, `names::*` constants |
+| reqwest | 0.13.x | HTTP client for Google People API + metadata long-polling streaming | Binary already uses tokio; reqwest 0.13.x is the current tokio-native async HTTP client; `bytes_stream()` for streaming |
+| icalendar | 0.17.6 | Parse and generate RFC 5545 iCalendar (.ics) data | Active maintenance; `contents.parse::<Calendar>()` gives typed Event access; supports RRULE, RECURRENCE-ID, DTSTART, DTEND, UID |
 | serde + serde_json | 1.x | JSON serialization for Google People API responses and metadata protocol | Already in binary from Phases 5–8 |
 | tokio | 1.x | Async runtime, mpsc channels, `Notify` for expiration wake, `sleep_until` | Already mandated; all workers are tokio tasks |
 
@@ -61,45 +57,30 @@ The metadata worker uses HTTP streaming (long-polling): a persistent connection 
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
+| base64 | 0.22.x | Basic auth header encoding (`user:pass` → base64) | Non-OAuth CalDAV/CardDAV accounts |
 | httpdate | 1.0.x | Parse HTTP-date format in Retry-After headers | `Retry-After: Fri, 31 Dec 2024 23:59:59 GMT` format |
 | url | 2.x | URL parsing and path manipulation | Replacing C++ `replacePath()` for building full URLs from hrefs |
-| roxmltree | 0.21.x | Parse multi-status XML responses from sync-collection REPORT | libdav uses roxmltree internally; reuse for manual REPORT response parsing |
 | anyhow | 1.x | Error type propagation across worker code | Already in binary |
 
 ### Alternatives Considered
 
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| calcard | icalendar 0.17.x + vcard_parser | icalendar has NO RECURRENCE-ID exception resolution (open issue #88); vcard_parser is unmaintained (last Jan 2024); calcard handles both formats with full recurrence support |
-| calcard | ical-rs (Peltoche) | **ARCHIVED Aug 2024 — do not use** |
-| reqwest (for People API) | hyper directly | reqwest wraps hyper; direct hyper gives more control but is significantly more code; since libdav already uses hyper, reqwest is only for People API + metadata |
-| manual sync-collection XML | libdav `sync_collection` API | libdav 0.10.2 does NOT expose a `sync_collection()` method in any version; `FoundCollection.supports_sync` detects capability; raw `request_raw()` must be used |
-| manual sync-collection XML | fast-dav-rs 0.4.2 | Has native `sync_collection()` but is LGPL-3.0 licensed and less mature than libdav; would add a second WebDAV library; use libdav `request_raw()` instead |
+| icalendar 0.17.x | calcard (stalwartlabs) | calcard supports ICS+vCard+JSCalendar in one crate with RRULE expansion; but is less mature than icalendar; icalendar is adequate for Phase 9's read/modify use case |
+| icalendar 0.17.x | ical (ical-rs) | ical is a lower-level tokenizer; requires more manual parsing; icalendar provides typed access to Event.uid(), .starts(), .ends() |
+| reqwest | hyper directly | reqwest wraps hyper; direct hyper gives more control but is significantly more code |
+| manual sync-collection XML | libdav `sync_collection` API | libdav 0.10.2 does NOT expose a `sync_collection()` method; `names::SYNC_COLLECTION` XML property is available; raw `request()` must be used |
 
 **Installation:**
 ```toml
 [dependencies]
-# CalDAV/CardDAV transport
 libdav = "0.10.2"
-hyper = { version = "1", features = ["http1", "client"] }
-hyper-util = { version = "0.1", features = ["client", "client-legacy", "http1", "tokio"] }
-hyper-rustls = { version = "0.27", features = ["native-tokio"] }
-tower-http = { version = "0.6", features = ["auth"] }
-tower = "0.5"
-
-# Google People API + metadata streaming
-reqwest = { version = "0.13", features = ["json", "stream", "rustls-tls"], default-features = false }
-
-# iCalendar + vCard parsing (single crate for both)
-calcard = "0.1"
-
-# Supporting
-roxmltree = "0.21"
+reqwest = { version = "0.13", features = ["json", "stream"] }
+icalendar = { version = "0.17", features = ["parser"] }
+base64 = "0.22"
 httpdate = "1.0"
 url = "2"
 ```
-
-**MSRV note:** libdav 0.10.2 requires Rust 1.86.0 minimum.
 
 ---
 
@@ -117,33 +98,25 @@ mailsync-rs/src/
 │   └── metadata_expiry.rs   # MetadataExpirationWorker: stale metadata cleanup
 ├── dav/
 │   ├── mod.rs               # DAV type exports
-│   ├── client.rs            # libdav client builder + Tower auth middleware (Basic/Bearer)
-│   ├── caldav.rs            # CalDAV discovery, sync-collection REPORT via request_raw(), PUT/DELETE
-│   ├── carddav.rs           # CardDAV discovery, sync-collection REPORT via request_raw(), PUT/DELETE
-│   ├── multistatus.rs       # roxmltree-based multi-status XML response parser (sync-collection + multiget)
+│   ├── client.rs            # libdav client builder + auth header helpers
+│   ├── caldav.rs            # CalDAV discovery, sync-collection REPORT, PUT/DELETE
+│   ├── carddav.rs           # CardDAV discovery, sync-collection REPORT, PUT/DELETE
 │   ├── rate_limit.rs        # RateLimitState: Retry-After parsing, backoff, success tracking
-│   ├── oauth_middleware.rs  # Custom Tower Layer for OAuth2 token refresh on 401
 │   └── href_utils.rs        # normalizeHref, replacePath, urlDecode helpers
-└── formats/
-    ├── mod.rs               # Format parse/serialize exports
-    ├── ical.rs              # calcard iCalendar wrappers (Event ↔ ICS, RECURRENCE-ID handling)
-    └── vcard.rs             # calcard vCard wrappers (Contact ↔ VCF, KIND:group for iCloud)
+└── ical/
+    ├── mod.rs               # iCalendar parse/serialize wrappers
+    └── vcard.rs             # vCard parse/serialize wrappers
 ```
 
-### Pattern 1: libdav Client Construction (v0.10.2 Corrected API)
+### Pattern 1: libdav Client Construction
 
-**What:** Build libdav clients with Tower middleware for auth. libdav does NOT handle TLS or auth internally — the caller provides a fully-configured hyper client via the generic `C: Service<...>` parameter. `bootstrap_via_service_discovery()` (renamed from `new_via_bootstrap()` in v0.7.0) performs the .well-known + PROPFIND principal discovery chain.
+**What:** Build libdav clients with Basic or Bearer auth. libdav handles rustls TLS automatically (no OpenSSL). The `CalDavClient::new_via_bootstrap()` performs the .well-known + PROPFIND principal discovery chain.
 
 **When to use:** Account setup, after receiving `sync-calendar` stdin command.
 
 ```rust
-// Source: libdav 0.10.2 source + pimsync config.rs pattern (verified 2026-03-03)
-use libdav::{CalDavClient, CardDavClient, dav::WebDavClient};
-use hyper_util::client::legacy::Client;
-use hyper_util::rt::TokioExecutor;
-use hyper_rustls::HttpsConnectorBuilder;
-use tower::ServiceBuilder;
-use tower_http::auth::AddAuthorizationLayer;
+// Source: mirror.whynothugo.nl/vdirsyncer/main/libdav/struct.CalDavClient.html
+use libdav::{CalDavClient, auth::Auth, dav::WebDavClient};
 use http::Uri;
 
 async fn build_caldav_client(
@@ -151,41 +124,26 @@ async fn build_caldav_client(
     username: &str,
     password: Option<&str>,
     oauth_token: Option<&str>,
-) -> anyhow::Result<CalDavClient<impl tower::Service<http::Request<String>, Response = http::Response<hyper::body::Incoming>> + Send + Sync>> {
-    // 1. Build raw HTTPS client with rustls (no OpenSSL)
-    let connector = HttpsConnectorBuilder::new()
-        .with_native_roots().unwrap()
-        .https_or_http()
-        .enable_http1()
-        .build();
-    let raw_client = Client::builder(TokioExecutor::new()).build(connector);
-
-    // 2. Layer auth via tower-http (libdav v0.6.0+ moved auth out of library)
-    let http_client = match oauth_token {
-        Some(token) => ServiceBuilder::new()
-            .layer(AddAuthorizationLayer::bearer(token).as_sensitive(true))
-            .service(raw_client),
-        None => ServiceBuilder::new()
-            .layer(AddAuthorizationLayer::basic(
-                username,
-                password.unwrap_or("")
-            ).as_sensitive(true))
-            .service(raw_client),
+) -> anyhow::Result<CalDavClient<impl hyper::client::connect::Connect>> {
+    let auth = match oauth_token {
+        Some(token) => Auth::Bearer(token.to_string()),
+        None => Auth::Basic {
+            username: username.to_string(),
+            password: password.unwrap_or("").to_string(),
+        },
     };
-
-    // 3. Build WebDavClient then CalDavClient
     let uri: Uri = base_url.parse()?;
-    let webdav = WebDavClient::new(uri, http_client);
-    let client = CalDavClient::bootstrap_via_service_discovery(webdav).await?;
+    let webdav = WebDavClient::new(uri, auth, /* connector */);
+    let client = CalDavClient::new_via_bootstrap(webdav).await?;
     Ok(client)
 }
 ```
 
-**Critical:** For Gmail accounts, the CalDAV host is `apidata.googleusercontent.com` and the principal path is `/caldav/v2/{email}` — do NOT use bootstrap discovery. Use `CalDavClient::new(webdav)` with the hardcoded URL.
+**Critical:** For Gmail accounts, the CalDAV host is `apidata.googleusercontent.com` and the principal path is `/caldav/v2/{email}` — do NOT use bootstrap discovery. Set these statically as the C++ does.
 
-### Pattern 2: CalDAV/CardDAV sync-collection REPORT (Manual XML via request_raw)
+### Pattern 2: CalDAV/CardDAV sync-collection REPORT (Manual XML)
 
-**What:** libdav 0.10.2 does not expose a `sync_collection()` method in any version (confirmed exhaustively). Use `client.request_raw()` with a manually constructed HTTP REPORT request. The `FoundCollection.supports_sync: bool` field detects whether the server advertises sync-collection support. Parse the multi-status XML response with `roxmltree`.
+**What:** libdav 0.10.2 does not expose a `sync_collection()` method. Use `client.request()` with a manually constructed REPORT body. The `names::SYNC_COLLECTION`, `names::SYNC_TOKEN`, `names::SYNC_LEVEL` constants are available from `libdav::names`.
 
 **When to use:** Every incremental sync cycle (with non-empty sync token) and initial discovery sync (empty token).
 
@@ -259,7 +217,7 @@ let calendar_query = format!(
 // Multiget chunks: max 90 hrefs per request (matching C++ chunksOfVector pattern)
 ```
 
-### Pattern 4: ETag Handling — Always GET-After-PUT (v0.10.2 Typed API)
+### Pattern 4: ETag Handling — Always GET-After-PUT
 
 **What:** After every CalDAV PUT or CardDAV PUT, unconditionally perform a calendar-multiget (or addressbook-multiget) REPORT to read back the server's version and obtain the new ETag. This is the C++ `writeAndResyncEvent()` pattern — it does NOT try to use the PUT response ETag because many servers (iCloud, Fastmail, Nextcloud) omit ETag from PUT responses or modify server-side fields.
 
@@ -267,38 +225,34 @@ let calendar_query = format!(
 
 ```rust
 // Source: C++ DAVWorker::writeAndResyncEvent() lines 1990-2034
-// libdav 0.10.2 typed request API (corrected 2026-03-03)
-use libdav::dav::{PutResource, Delete};
-use libdav::caldav::GetCalendarResources;
-
-async fn write_and_resync_event<C>(
+// Always do multiget after PUT regardless of whether update_resource() returned Some(etag)
+async fn write_and_resync_event(
     client: &CalDavClient<C>,
     calendar_url: &str,
     href: &str,
-    ics_data: String,
+    ics_data: Vec<u8>,
     existing_etag: &str,
-) -> anyhow::Result<(String, String)>  // Returns (new_etag, server_ics_data)
-where C: Service<http::Request<String>, Response = Response<Incoming>> + Send + Sync + 'static
-{
-    // PUT the event via typed request structs (v0.10.x API)
+) -> anyhow::Result<(String, String)> { // Returns (new_etag, server_ics_data)
+    // PUT the event (use update_resource for existing, create_resource for new)
     if existing_etag.is_empty() {
-        client.request(
-            PutResource::new(href).create(ics_data, "text/calendar")
-        ).await?;
+        let _ = client.create_resource(href, ics_data, b"text/calendar; charset=utf-8").await?;
     } else {
-        client.request(
-            PutResource::new(href).update(ics_data, "text/calendar", existing_etag)
-        ).await?;
+        let _ = client.update_resource(href, ics_data, existing_etag, b"text/calendar; charset=utf-8").await?;
     }
 
-    // Always do GET-after-PUT via GetCalendarResources with specific href
+    // Always do GET-after-PUT via calendar-multiget REPORT
     // This guarantees ETag consistency even for servers that omit ETag from PUT responses
-    let response = client.request(
-        GetCalendarResources::new(calendar_url).with_hrefs([href])
-    ).await?;
-    // response.resources: Vec<FetchedResource> — parse [0] for new etag and ics content
-    let resource = &response.resources[0];
-    Ok((resource.etag.clone().unwrap_or_default(), resource.data.clone()))
+    let multiget = format!(
+        r#"<c:calendar-multiget xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop><d:getetag /><c:calendar-data /></d:prop>
+  <d:href>{href}</d:href>
+</c:calendar-multiget>"#,
+        href = href
+    );
+    let resources = client.get_calendar_resources(calendar_url, [href]).await?;
+    // Parse resources[0] for new etag and ics content
+    // ...
+    todo!()
 }
 ```
 
@@ -457,12 +411,11 @@ async fn fetch_deltas_blocking(
         urlencoded_imap_host
     );
 
-    // Low-speed timeout via reqwest read_timeout (verified 2026-03-03):
-    // read_timeout resets after each successful chunk read — it IS the per-chunk idle timeout
+    // 30-second low-speed timeout: disconnect if < 1 byte in 30 seconds
     // Server sends 16 x "\n" every 10 seconds (heartbeat), so 30 seconds is safe
-    // Build client with: reqwest::Client::builder().read_timeout(Duration::from_secs(30)).build()
     let response = client.get(&url)
         .bearer_auth(access_token)
+        .timeout(Duration::from_secs(90))  // hard timeout as safety net
         .send().await?;
 
     let mut stream = response.bytes_stream();
@@ -563,62 +516,6 @@ fn normalize_href(href: &str) -> String {
 }
 ```
 
-### Pattern 10: libdav v0.10.2 Typed Request API Reference (Added 2026-03-03)
-
-**What:** In libdav 0.10.0+, ALL operations use typed request structs passed to `client.request(TypedStruct)`. There are no more direct methods like `create_resource()` or `find_calendars()` on the client. The `DavRequest` trait unifies all operations.
-
-**CalDAV typed request structs (`libdav::caldav`):**
-
-| Struct | Purpose | Usage |
-|--------|---------|-------|
-| `FindCalendarHomeSet` | PROPFIND for calendar-home-set href | `client.request(FindCalendarHomeSet::new(&principal_uri))` |
-| `FindCalendars` | PROPFIND calendars, returns `Vec<FoundCollection>` | `client.request(FindCalendars::new(&home_set_uri))` |
-| `GetCalendarResources` | Fetch ICS data; auto-selects multiget or query | `client.request(GetCalendarResources::new(collection).with_hrefs([href]))` |
-| `ListCalendarResources` | List resources with component/time-range filter | `client.request(ListCalendarResources::new(url).with_component_and_time_range(start, end))` |
-| `CreateCalendar` | MKCALENDAR | `client.request(CreateCalendar::new(&path))` |
-| `GetSupportedComponents` | Fetch supported calendar component set | `client.request(GetSupportedComponents::new(&url))` |
-
-**CardDAV typed request structs (`libdav::carddav`):**
-
-| Struct | Purpose | Usage |
-|--------|---------|-------|
-| `FindAddressBookHomeSet` | PROPFIND for addressbook-home-set href | `client.request(FindAddressBookHomeSet::new(&principal_uri))` |
-| `FindAddressBooks` | PROPFIND addressbooks, returns `Vec<FoundCollection>` | `client.request(FindAddressBooks::new(&home_set_uri))` |
-| `GetAddressBookResources` | Fetch vCard data; auto-selects multiget or query | `client.request(GetAddressBookResources::new(collection).with_hrefs([href]))` |
-
-**Core WebDAV typed request structs (`libdav::dav`):**
-
-| Struct | Purpose | Usage |
-|--------|---------|-------|
-| `PutResource` | Create or update via PUT | `.create(data, content_type)` or `.update(data, content_type, etag)` |
-| `Delete` | Delete resource | `.with_etag(etag)` or `.force()` |
-| `ListResources` | PROPFIND depth-1, returns hrefs + ETags | `client.request(ListResources::new(collection))` |
-| `GetEtag` | Retrieve current ETag of a resource | `client.request(GetEtag::new(href))` |
-
-**FoundCollection (returned by FindCalendars/FindAddressBooks):**
-```rust
-pub struct FoundCollection {
-    pub href: String,
-    pub etag: Option<String>,
-    pub supports_sync: bool,  // true if server advertises DAV:sync-collection
-}
-```
-
-**Escape hatch for manual XML (sync-collection REPORT):**
-```rust
-use http::{Request, Method};
-
-let req = Request::builder()
-    .method(Method::from_bytes(b"REPORT").unwrap())
-    .uri("/calendars/personal/")
-    .header("Content-Type", "application/xml; charset=utf-8")
-    .header("Depth", "1")
-    .body(sync_collection_xml)?;
-
-let (parts, body_bytes) = client.request_raw(req).await?;
-// Parse body_bytes with roxmltree for multi-status response
-```
-
 ### Anti-Patterns to Avoid
 
 - **Using the PUT response ETag directly without GET-after-PUT:** Servers modify event data server-side (iCloud adjusts DTSTART/DTEND, Fastmail regenerates UID). Always multiget after PUT.
@@ -637,9 +534,7 @@ let (parts, body_bytes) = client.request_raw(req).await?;
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
 | WebDAV HTTP requests (PROPFIND, REPORT, PUT, DELETE) | Custom HTTP + XML client | libdav 0.10.2 | Authentication, rustls TLS, named XML property constants, typed responses |
-| iCalendar parsing from .ics strings | Custom VCALENDAR tokenizer | calcard 0.1.x | RFC 5545 is complex; calcard has full RECURRENCE-ID exception resolution via `expand_dates()` incl. THISANDFUTURE; icalendar 0.17.x lacks exception resolution (issue #88) |
-| vCard parsing from .vcf strings | Custom vCard tokenizer | calcard 0.1.x | Handles vCard 2.1/3.0/4.0; `KIND:group` + `MEMBER` for iCloud contact groups; Postel's Law parsing |
-| RECURRENCE-ID exception grouping | Manual UID grouping + override matching | calcard `expand_dates()` | Groups master + exception VEVENTs by UID; applies DATE vs DATE-TIME RECURRENCE-ID; handles THISANDFUTURE |
+| iCalendar parsing from .ics strings | Custom VCALENDAR tokenizer | icalendar 0.17.x with `parser` feature | RFC 5545 is complex; RRULE, RECURRENCE-ID, timezone handling all built in |
 | Retry-After HTTP-date parsing | Custom date parser | httpdate 1.0.x | Handles RFC 7231 HTTP-date format; handles all edge cases |
 | OAuth2 Bearer token management | Custom token refresh | Use token manager from Phase 7 | OAuth2 token management already implemented; re-use XOAuth2TokenManager equivalent |
 | sync-token state persistence | In-memory only | tokio-rusqlite MailStore key-value store | sync-tokens and cursors must survive process restarts; C++ uses `store->saveKeyValue()` / `store->getKeyValue()` |
@@ -923,30 +818,25 @@ This is the research-flagged area from STATE.md. Key findings from the C++ codeb
 
 ## Open Questions
 
-### Resolved (2026-03-03 deep dive)
+1. **libdav 0.10.2 exact CardDavClient method list**
+   - What we know: `CardDavClient::new_via_bootstrap()`, `find_addressbooks()` equivalent via `find_collections()`, `create_resource()`, `update_resource()`, `delete()` confirmed via WebDavClient Deref.
+   - What's unclear: Whether `CardDavClient` has `get_address_book_resources()` equivalent to `CalDavClient::get_calendar_resources()`. The mirror docs showed only the CalDavClient.
+   - Recommendation: Check `CardDavClient` docs specifically during implementation. If missing, use `client.request()` for addressbook-multiget REPORT manually.
 
-1. ~~**libdav 0.10.2 exact CardDavClient method list**~~ **RESOLVED:** CardDavClient has no direct methods for addressbook operations. Use typed request structs: `client.request(FindAddressBooks::new(...))`, `client.request(GetAddressBookResources::new(...).with_hrefs([...]))`. Confirmed from source.
-
-2. ~~**reqwest 0.13.x Streaming Timeout Behavior**~~ **RESOLVED:** `reqwest::ClientBuilder::read_timeout(Duration)` resets after each successful chunk read. This IS the low-speed timeout equivalent. Verified via reqwest test suite (`read_timeout_allows_slow_response_body`). Use `.read_timeout(Duration::from_secs(30))` on the client builder. Alternative: `tokio_stream::StreamExt::timeout()` wraps `bytes_stream()` for explicit per-chunk error handling.
-
-3. ~~**icalendar 0.17.x RECURRENCE-ID Parsing**~~ **RESOLVED by switching to calcard:** icalendar 0.17.x parses RECURRENCE-ID but has NO exception resolution logic (open issue #88 since Feb 2024). calcard (Stalwart Labs) provides full `expand_dates()` with exception handling including THISANDFUTURE, resolving DATE vs DATE-TIME via `to_date_time_with_tz()`.
-
-### Still Open
-
-4. **Identity Server API Stability for /api/resolve-dav-hosts**
+2. **Identity Server API Stability for /api/resolve-dav-hosts**
    - What we know: C++ calls `PerformIdentityRequest("/api/resolve-dav-hosts", "POST", payload)` to resolve CardDAV host from domain + imapHost. This is a Mailspring identity server API.
    - What's unclear: Whether this endpoint is documented, stable, and accessible from the Rust binary with the same credentials as the metadata worker.
-   - Recommendation: Verify endpoint availability against the identity server before Phase 9 implementation. If unavailable, implement local DNS SRV lookup as fallback. Note: libdav itself uses `domain 0.11.0` (with `resolv` feature) for DNS SRV lookup — could potentially reuse.
+   - Recommendation: Verify endpoint availability against the identity server before Phase 9 implementation. If unavailable, implement local DNS SRV lookup as fallback using the `trust-dns-resolver` or `hickory-resolver` crate.
 
-5. **calcard 0.1.x maturity for CalDAV production use**
-   - What we know: calcard is from Stalwart Labs (active mail server ecosystem), published to crates.io with 8 versions. Has `expand_dates()` with RECURRENCE-ID resolution.
-   - What's unclear: Whether calcard handles all CalDAV server quirks (e.g., Google's empty calendar-data responses, servers returning non-standard ICS). It follows Postel's Law (liberal parsing) which is a good sign.
-   - Recommendation: Write integration tests against real ICS samples from Google Calendar, iCloud, and Fastmail before committing to calcard. Have icalendar 0.17.x as a fallback for raw parsing if calcard's higher-level API doesn't handle edge cases.
+3. **reqwest 0.13.x Streaming Timeout Behavior**
+   - What we know: The C++ uses `CURLOPT_LOW_SPEED_LIMIT=1` and `CURLOPT_LOW_SPEED_TIME=30` to disconnect if < 1 byte/30 seconds. reqwest 0.13.x does not have a direct low-speed timeout.
+   - What's unclear: How to replicate the low-speed timeout with `bytes_stream()`. Options: tokio::time::timeout per chunk, or a background task that monitors idle duration.
+   - Recommendation: Use `tokio::time::timeout(Duration::from_secs(35), stream.next())` per chunk as the low-speed equivalent. If `None` or timeout fires, reconnect.
 
-6. **Tower middleware for OAuth2 token refresh**
-   - What we know: libdav v0.6.0+ requires auth via Tower middleware. `AddAuthorizationLayer::bearer(token)` works for static tokens. OAuth2 token refresh requires custom middleware to swap the token when it expires.
-   - What's unclear: Exact pattern for a Tower middleware that intercepts 401 responses, refreshes the OAuth2 token, and retries. pimsync is planning this but hasn't published it.
-   - Recommendation: Build a custom Tower `Layer` that wraps the HTTP client, intercepts 401 responses, calls the token refresh endpoint, updates the Bearer header, and retries once. Can reuse the OAuth2 token manager from Phase 7.
+4. **icalendar 0.17.x RECURRENCE-ID Parsing**
+   - What we know: C++ reads `icsEvent->RecurrenceId` for recurrence exception detection. icalendar 0.17.x supports RECURRENCE-ID but parsing behavior for different DATE vs DATE-TIME formats may vary.
+   - What's unclear: Whether icalendar 0.17.x correctly exposes RECURRENCE-ID on exception events when the ICS file contains both master and exception VEVENTs.
+   - Recommendation: Test against a real recurring event ICS from Google Calendar (which uses DATE-TIME) and iCloud (which uses DATE) before finalizing the Event model update logic.
 
 ---
 
@@ -991,16 +881,13 @@ This is the research-flagged area from STATE.md. Key findings from the C++ codeb
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack (libdav 0.10.2 + hyper-rustls, reqwest 0.13, calcard 0.1): HIGH — versions confirmed from crates.io + source + docs.rs (2026-03-03)
-- libdav API surface (typed DavRequest structs, WebDavClient::request_raw): HIGH — verified from source repository (git.sr.ht/~whynothugo/libdav) and crates.io API listing (2026-03-03)
-- libdav auth model (Tower middleware, not internal Auth): HIGH — confirmed from v0.6.0 changelog + pimsync config.rs source (2026-03-03)
-- libdav sync_collection absence: HIGH — confirmed absent in ALL versions 0.1.0–0.10.2; `FoundCollection.supports_sync` detection only (2026-03-03)
+- Standard stack (libdav 0.10.2, reqwest 0.13, icalendar 0.17): HIGH — versions confirmed from mirror docs and docs.rs
+- libdav API surface (CalDavClient methods): HIGH — mirror.whynothugo.nl docs read directly
+- libdav sync_collection absence: HIGH — exhaustive method listing confirms no such method exists; raw request() must be used
 - CalDAV/CardDAV sync algorithms: HIGH — C++ source read line-by-line; all edge cases documented in code comments
-- Google People API: HIGH — official Google developer docs verified current 2026-03-03; no v2, no deprecation of v1; `requestMask` deprecated → use `personFields`
-- calcard iCalendar + vCard: MEDIUM-HIGH — source verified for RECURRENCE-ID exception resolution via expand_dates(); production maturity needs integration testing
+- Google People API: HIGH — official Google developer docs read directly; sync token 7-day TTL confirmed
 - Metadata worker protocol: HIGH — C++ source read completely; wire format documented
-- reqwest streaming timeout: HIGH — `read_timeout()` resets per chunk, verified via reqwest test suite (2026-03-03)
 - Server compatibility matrix: MEDIUM — derived from C++ code comments citing python-caldav project; not independently re-tested against current server versions
 
-**Research date:** 2026-03-02, deep-dive update 2026-03-03
+**Research date:** 2026-03-02
 **Valid until:** 2026-06-01 (libdav API is stable at 0.10.2; Google People API v1 is stable; C++ reference is the ground truth)
