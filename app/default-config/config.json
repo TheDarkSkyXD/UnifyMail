@@ -1,0 +1,21 @@
+{
+  "*": {
+    "env": "production",
+    "core": {
+      "themes": [
+        "ui-light"
+      ],
+      "disabledPackages": [
+        "message-view-on-github",
+        "personal-level-indicators",
+        "phishing-detection",
+        "github-contact-card",
+        "send-and-archive",
+        "main-calendar",
+        "composer-markdown",
+        "composer-scheduler",
+        "composer-mail-merge"
+      ]
+    }
+  }
+}

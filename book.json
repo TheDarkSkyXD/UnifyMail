@@ -1,7 +1,7 @@
 {
     "gitbook": "3.2.2",
     "title": "UnifyMail Plugin SDK",
-    "root": "./app/build/docs_src/",
+    "root": "./build/docs_src/",
     "plugins": [
         "search",
         "lunr",

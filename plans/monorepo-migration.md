@@ -41,8 +41,8 @@ app/
 ### Config & Build
 - `app/package.json` — `main` entry → `./unifymail-backend/main.js`
 - `app/tsconfig.json` — `include` and `paths` updated for new dirs
-- `app/build/Gruntfile.js` — TypeScript source globs updated
-- `app/build/tasks/package-task.js` — Symlink resolution dirs + asar unpack patterns
+- `build/Gruntfile.js` — TypeScript source globs updated
+- `build/tasks/package-task.js` — Symlink resolution dirs + asar unpack patterns
 
 ### Backend (12 files)
 All `../` imports in `unifymail-backend/src/` that pointed to the old `app/src/` were rewritten to `../../unifymail-frontend/src/`.

@@ -31,7 +31,7 @@ export default class ConfigPersistenceManager {
   initializeConfigDirectory() {
     if (!fs.existsSync(this.configDirPath)) {
       fs.makeTreeSync(this.configDirPath);
-      const templateConfigDirPath = path.join(this.resourcePath, 'dot-UnifyMail');
+      const templateConfigDirPath = path.join(this.resourcePath, 'default-config');
       fs.copySync(templateConfigDirPath, this.configDirPath);
     }
 
@@ -51,7 +51,7 @@ export default class ConfigPersistenceManager {
   }
 
   writeTemplateConfigFile() {
-    const templateConfigPath = path.join(this.resourcePath, 'dot-UnifyMail', 'config.json');
+    const templateConfigPath = path.join(this.resourcePath, 'default-config', 'config.json');
     const templateConfig = fs.readFileSync(templateConfigPath).toString();
     fs.writeFileSync(this.configFilePath, templateConfig);
   }

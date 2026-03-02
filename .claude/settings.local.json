@@ -38,7 +38,18 @@
       "Bash(grep -l \"CalDAV\\\\|CardDAV\" *.cpp *.hpp)",
       "Bash(xargs grep -l \"mailsync\")",
       "Bash(gh repo view --json nameWithOwner -q .nameWithOwner)",
-      "Bash(gh repo view --json nameWithOwner,url --jq '.nameWithOwner + \"\" \"\" + .url')"
+      "Bash(gh repo view --json nameWithOwner,url --jq '.nameWithOwner + \"\" \"\" + .url')",
+      "Bash(gh issue view 11 --json title,body,labels,state)",
+      "Bash(xargs grep -l \"mailcore\\\\|mailcore-napi\")",
+      "Bash(gh issue edit 11 --title \"Refactor mailsync engine and mailcore N-API bindings from C++ to Rust\")",
+      "Bash(gh issue create --title \"Migrate mailcore N-API bindings from C++ to Rust \\(napi-rs\\)\" --label \"enhancement\" --body-file \"C:/tmp/mailcore_issue.md\")",
+      "Bash(gh issue view 13 --json body -q '.body')",
+      "Bash(gh issue view 14)",
+      "Bash(gh issue close 14)",
+      "Bash(gh issue view 13)",
+      "Bash(gh label list)",
+      "Bash(gh issue edit 13 --add-label \"enhancement\")",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

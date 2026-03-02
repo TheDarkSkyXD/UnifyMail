@@ -1,0 +1,44 @@
+/* eslint import/no-dynamic-require:0 */
+/**
+ * NOTE: Due to path issues, this script must be run outside of grunt
+ * directly from a powershell command.
+ *
+ * Code signing is handled separately by Azure Trusted Signing action in the
+ * GitHub workflow. This script creates an unsigned installer which is then
+ * signed by the workflow after creation.
+ */
+const path = require('path');
+const { createWindowsInstaller } = require('electron-winstaller');
+
+const rootDir = path.join(__dirname, '..');
+const appDir = path.join(rootDir, 'app');
+const { version } = require(path.join(appDir, 'package.json'));
+
+const config = {
+  usePackageJson: false,
+  outputDirectory: path.join(appDir, 'dist'),
+  appDirectory: path.join(appDir, 'dist', 'UnifyMail-win32-x64'),
+  loadingGif: path.join(__dirname, 'resources', 'win', 'loading.gif'),
+  iconUrl: 'https://raw.githubusercontent.com/TheDarkSkyXD/UnifyMail/master/build/resources/win/UnifyMail.ico',
+  description: 'UnifyMail',
+  version: version,
+  title: 'UnifyMail',
+  authors: 'Foundry 376, LLC',
+  setupIcon: path.join(__dirname, 'resources', 'win', 'UnifyMail.ico'),
+  setupExe: 'UnifyMailSetup.exe',
+  exe: 'UnifyMail.exe',
+  name: 'UnifyMail',
+};
+
+console.log(config);
+console.log('---> Starting');
+
+createWindowsInstaller(config)
+  .then(() => {
+    console.log('createWindowsInstaller succeeded.');
+    process.exit(0);
+  })
+  .catch(e => {
+    console.error(`createWindowsInstaller failed: ${e.message}`);
+    process.exit(1);
+  });

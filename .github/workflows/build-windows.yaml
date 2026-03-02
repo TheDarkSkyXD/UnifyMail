@@ -99,7 +99,7 @@ jobs:
           timestamp-digest: SHA256
 
       - name: Create Windows Installer
-        run: node app/build/create-signed-windows-installer.js
+        run: node build/create-signed-windows-installer.js
 
       - name: Sign Windows Installer with Azure Trusted Signing
         uses: azure/trusted-signing-action@v0

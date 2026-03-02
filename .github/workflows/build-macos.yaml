@@ -73,7 +73,7 @@ jobs:
           mv app/dist/UnifyMail.zip app/dist/UnifyMail-AppleSilicon.zip
 
       - name: Generate latest-mac.yml
-        run: node app/build/generate-latest-mac-yml.js
+        run: node build/generate-latest-mac-yml.js
         env:
           ARCH: ${{ matrix.arch }}
 
