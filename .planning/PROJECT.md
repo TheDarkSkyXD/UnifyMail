@@ -52,7 +52,24 @@ Users can set up email accounts quickly and reliably through automatic provider 
 - Full IMAP client implementation — only connection testing needed, mailsync C++ engine handles ongoing sync
 - POP3/NNTP protocol support — compiled in old C++ but never used by N-API layer
 - Mobile platform builds — desktop only (Windows, macOS, Linux)
-- Sync engine rewrite — only the N-API addon is being replaced, not the mailsync C++ process
+- Sync engine rewrite — deferred to v2.0 milestone
+
+## Next Milestone: v2.0 Rewrite mailsync Engine in Rust
+
+**Goal:** Replace the `app/mailsync/` C++ sync engine (~16,200 LOC) with a Rust implementation, eliminating all vendored C++ dependencies (libetpan, mailcore2) while maintaining the stdin/stdout JSON protocol and multi-threaded sync architecture.
+
+**Target features:**
+- Rust sync engine binary with identical stdin/stdout JSON protocol
+- IMAP sync (background folder iteration + foreground IDLE) using async Rust
+- SMTP send (via lettre or equivalent)
+- CalDAV calendar sync and CardDAV contact sync
+- SQLite database layer with delta emission
+- Task processor (send, move, label, star, delete, metadata sync)
+- OAuth2 token management
+- Cross-platform builds (Windows, macOS, Linux)
+- Full cleanup of C++ mailsync source and vendored dependencies
+
+**Depends on:** v1.0 completion (mailcore N-API rewrite)
 
 ## Context
 
@@ -84,4 +101,4 @@ Users can set up email accounts quickly and reliably through automatic provider 
 | Reuse providers.json as-is | JSON database is format-agnostic, no conversion needed | -- Pending |
 
 ---
-*Last updated: 2026-03-01 after milestone v1.0 initialization*
+*Last updated: 2026-03-02 after milestone v2.0 definition*
