@@ -3,30 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-03T22:39:05.986Z"
-last_activity: "2026-03-03 — Completed Plan 01-01: Rust napi-rs scaffold with provider detection (16 tests passing)"
-progress:
-  total_phases: 10
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 2
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-03T22:14:58.392Z"
-last_activity: "2026-03-03 — Completed Plan 01-01: Rust napi-rs scaffold with provider detection (16 tests passing)"
+stopped_at: "Completed 02-01-PLAN.md"
+last_updated: "2026-03-03T23:00:11Z"
+last_activity: "2026-03-03 — Completed Plan 02-01: testIMAPConnection Rust implementation with TLS/STARTTLS/clear, XOAUTH2, 7 capabilities, 15s timeout"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  total_plans: 4
+  completed_plans: 3
 ---
 
 # Project State
@@ -36,36 +20,36 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Users can set up email accounts quickly and reliably through automatic provider detection and connection validation
-**Current focus:** Phase 1 — Scaffolding and Provider Detection (v1.0 active milestone)
+**Current focus:** Phase 2 — IMAP Connection Testing (v1.0 active milestone)
 
 ## Current Position
 
-Phase: 1 of 4 (Scaffolding and Provider Detection)
-Plan: 1 of 2 in current phase
+Phase: 2 of 4 (IMAP Connection Testing)
+Plan: 1 of 2 in current phase (Plan 02-01 complete)
 Status: In progress
-Last activity: 2026-03-03 — Completed Plan 01-01: Rust napi-rs scaffold with provider detection (16 tests passing)
+Last activity: 2026-03-03 — Completed Plan 02-01: testIMAPConnection Rust implementation (TLS/STARTTLS/clear, XOAUTH2, 7 capabilities, 15s timeout, no OpenSSL)
 
-Progress: [██████████] 100%
+Progress: [███████░░░░░░░░░░░░░] ~35%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
+- Total plans completed: 3
 - Average duration: 11 min
-- Total execution time: 0.2 hours
+- Total execution time: 0.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-scaffolding-and-provider-detection | 1 | 11 min | 11 min |
+| 01-scaffolding-and-provider-detection | 2 | 19 min | 10 min |
+| 02-imap-connection-testing | 1 | 14 min | 14 min |
 
 **Recent Trend:**
-- Last 5 plans: 11 min
-- Trend: —
+- Last 5 plans: 11 min avg
+- Trend: stable
 
 *Updated after each plan completion*
-| Phase 01-scaffolding-and-provider-detection P02 | 8 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -84,6 +68,10 @@ Recent decisions affecting current work:
 - [01-01]: TEST_MUTEX pattern for serializing integration tests that share LazyLock<RwLock<...>> global singleton
 - [Phase 01]: Custom hand-written index.js replaces napi-generated loader: GNU .node loads in MSVC Node.js via N-API stable ABI, bypassing flawed process.config shlib_suffix detection
 - [Phase 01]: Wrapper module (mailcore-wrapper) uses same package name as C++ addon so require('mailcore-napi') transparently routes to Rust without consumer code changes
+- [02-01]: async-imap 0.11 requires default-features = false — its default feature is runtime-async-std which conflicts with runtime-tokio; both enabled causes compile_error!() and E0252 duplicate imports
+- [02-01]: InternalResult<T> = std::result::Result<T, BoxError> for internal functions — napi::Result requires AsRef<str> on error type which BoxError does not implement; conversion to napi::Error only at napi export boundary
+- [02-01]: rustls-platform-verifier ConfigVerifierExt::with_platform_verifier() returns Result<ClientConfig, rustls::Error>, must ? propagate (not infallible as shown in research examples)
+- [02-01]: STARTTLS Client::new after TLS upgrade is safe — async_imap does not auto-read greeting; the initial plain TCP Client consumed the greeting in Step 2, subsequent Client::new on TLS stream is ready for auth immediately
 - [v2.0 Pre-Phase 5]: Rust mailsync is a standalone binary (not N-API addon) — owns its own tokio runtime and has no BoringSSL conflict; stdin/stdout IPC replaces N-API boundary
 - [v2.0 Pre-Phase 5]: Use CONDSTORE-only for IMAP incremental sync (no QRESYNC) — async-imap 0.11.2 has select_condstore() but no typed QRESYNC API; QRESYNC deferred to v2.x
 - [v2.0 Pre-Phase 5]: Use tokio-rusqlite for all database access — synchronous rusqlite on async threads causes tokio thread starvation; single-writer pattern via tokio-rusqlite is mandatory
@@ -92,11 +80,11 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-- [Phase 2 risk]: IMAP STARTTLS stream upgrade (TcpStream to TlsStream inside async-imap) is not abstracted by the library — consult deltachat-core-rust patterns before implementing
+- [Phase 2 resolved]: IMAP STARTTLS stream upgrade — resolved: Client::new on TLS stream after STARTTLS is safe; no greeting re-read happens
 - [Phase 4 risk]: electron-builder asarUnpack interaction with napi-rs single-package binary distribution needs hands-on verification; napi-rs/node-rs issue #376 documents the problem
 - [Phase 8 research flag]: Validate lettre multipart MIME builder API coverage for inline images (CID references) and text/html + text/plain alternatives before Phase 8 coding begins
 - [Phase 9 research flag]: CalDAV server compatibility matrix (ETag after PUT, sync-token expiry, Exchange Online, iCloud, Nextcloud) — targeted research pass recommended before implementing sync-collection state machine
@@ -104,9 +92,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-03T22:39:05.984Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-cross-platform-packaging-and-cleanup/04-CONTEXT.md
+Last session: 2026-03-03T23:00:11Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: .planning/phases/02-imap-connection-testing/02-02-PLAN.md
 
 ---
 *Last updated: 2026-03-03*

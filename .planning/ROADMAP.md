@@ -49,7 +49,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Implement testIMAPConnection in Rust: all TLS paths, auth methods, capability detection, timeout, error classification
+- [x] 02-01-PLAN.md — Implement testIMAPConnection in Rust: all TLS paths, auth methods, capability detection, timeout, error classification
 - [ ] 02-02-PLAN.md — Mock IMAP server test suite and wrapper switchover from C++ to Rust
 
 ### Phase 3: SMTP Testing and Account Validation
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Scaffolding and Provider Detection | 2/2 | Complete   | 2026-03-03 |
-| 2. IMAP Connection Testing | 0/2 | Not started | - |
+| 2. IMAP Connection Testing | 1/2 | In progress | - |
 | 3. SMTP Testing and Account Validation | 0/? | Not started | - |
 | 4. Cross-Platform Packaging and Cleanup | 0/? | Not started | - |
 
