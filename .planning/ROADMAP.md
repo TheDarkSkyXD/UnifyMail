@@ -13,7 +13,7 @@ Replace the `app/mailcore/` C++ N-API addon (backed by the full mailcore2 librar
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Scaffolding and Provider Detection** - Prove Electron integration is sound; implement sync provider lookup with full regex cross-validation (completed 2026-03-03)
-- [ ] **Phase 2: IMAP Connection Testing** - Implement testIMAPConnection with all three TLS paths, XOAUTH2 auth, and 7 capability detections
+- [x] **Phase 2: IMAP Connection Testing** - Implement testIMAPConnection with all three TLS paths, XOAUTH2 auth, and 7 capability detections (completed 2026-03-03)
 - [ ] **Phase 3: SMTP Testing and Account Validation** - Implement testSMTPConnection and validateAccount composing all proven components
 - [ ] **Phase 4: Cross-Platform Packaging and Cleanup** - GitHub Actions CI for all 5 targets, binary size validation, remove all C++ code
 
@@ -46,7 +46,7 @@ Plans:
   4. Both password and XOAUTH2 (SASL) authentication methods succeed against a live server
   5. The returned capabilities object correctly reports idle, condstore, qresync, compress, namespace, xoauth2, and gmail flags
   6. Any connection or auth attempt that takes longer than 15 seconds resolves with a timeout error rather than hanging
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — Implement testIMAPConnection in Rust: all TLS paths, auth methods, capability detection, timeout, error classification
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Scaffolding and Provider Detection | 2/2 | Complete   | 2026-03-03 |
-| 2. IMAP Connection Testing | 1/2 | In progress | - |
+| 2. IMAP Connection Testing | 2/2 | Complete   | 2026-03-03 |
 | 3. SMTP Testing and Account Validation | 0/? | Not started | - |
 | 4. Cross-Platform Packaging and Cleanup | 0/? | Not started | - |
 

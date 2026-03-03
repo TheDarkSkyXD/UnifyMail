@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 02-01-PLAN.md"
-last_updated: "2026-03-03T23:00:11Z"
-last_activity: "2026-03-03 — Completed Plan 02-01: testIMAPConnection Rust implementation with TLS/STARTTLS/clear, XOAUTH2, 7 capabilities, 15s timeout"
+stopped_at: "Completed 02-02-PLAN.md"
+last_updated: "2026-03-03T23:19:52Z"
+last_activity: "2026-03-03 — Completed Plan 02-02: mock IMAP server tests (12 tests), greeting bug fix, testIMAPConnection live via Rust wrapper"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -20,33 +20,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Users can set up email accounts quickly and reliably through automatic provider detection and connection validation
-**Current focus:** Phase 2 — IMAP Connection Testing (v1.0 active milestone)
+**Current focus:** Phase 2 complete — moving to Phase 3 (SMTP Connection Testing)
 
 ## Current Position
 
-Phase: 2 of 4 (IMAP Connection Testing)
-Plan: 1 of 2 in current phase (Plan 02-01 complete)
+Phase: 2 of 4 (IMAP Connection Testing) — Complete
+Plan: 2 of 2 in current phase (Plan 02-02 complete — Phase 2 done)
 Status: In progress
-Last activity: 2026-03-03 — Completed Plan 02-01: testIMAPConnection Rust implementation (TLS/STARTTLS/clear, XOAUTH2, 7 capabilities, 15s timeout, no OpenSSL)
+Last activity: 2026-03-03 — Completed Plan 02-02: 12 mock IMAP server tests, greeting consumption bug fix, testIMAPConnection live in Rust wrapper
 
-Progress: [███████░░░░░░░░░░░░░] ~35%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 11 min
-- Total execution time: 0.4 hours
+- Total plans completed: 4
+- Average duration: 12 min
+- Total execution time: 0.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-scaffolding-and-provider-detection | 2 | 19 min | 10 min |
-| 02-imap-connection-testing | 1 | 14 min | 14 min |
+| 02-imap-connection-testing | 2 | 28 min | 14 min |
 
 **Recent Trend:**
-- Last 5 plans: 11 min avg
+- Last 5 plans: 12 min avg
 - Trend: stable
 
 *Updated after each plan completion*
@@ -72,6 +72,8 @@ Recent decisions affecting current work:
 - [02-01]: InternalResult<T> = std::result::Result<T, BoxError> for internal functions — napi::Result requires AsRef<str> on error type which BoxError does not implement; conversion to napi::Error only at napi export boundary
 - [02-01]: rustls-platform-verifier ConfigVerifierExt::with_platform_verifier() returns Result<ClientConfig, rustls::Error>, must ? propagate (not infallible as shown in research examples)
 - [02-01]: STARTTLS Client::new after TLS upgrade is safe — async_imap does not auto-read greeting; the initial plain TCP Client consumed the greeting in Step 2, subsequent Client::new on TLS stream is ready for auth immediately
+- [02-02]: Read IMAP greeting after Client::new in connect_clear and connect_tls — async-imap requires explicit greeting consumption; do_auth_handshake (XOAUTH2) misroutes greeting as SASL challenge causing deadlock
+- [02-02]: loader.js must export each new function per phase — Phase 1 loader only had Phase 1 exports; wrapper getRust() calls fail silently if loader does not re-export the function
 - [v2.0 Pre-Phase 5]: Rust mailsync is a standalone binary (not N-API addon) — owns its own tokio runtime and has no BoringSSL conflict; stdin/stdout IPC replaces N-API boundary
 - [v2.0 Pre-Phase 5]: Use CONDSTORE-only for IMAP incremental sync (no QRESYNC) — async-imap 0.11.2 has select_condstore() but no typed QRESYNC API; QRESYNC deferred to v2.x
 - [v2.0 Pre-Phase 5]: Use tokio-rusqlite for all database access — synchronous rusqlite on async threads causes tokio thread starvation; single-writer pattern via tokio-rusqlite is mandatory
@@ -84,7 +86,7 @@ None.
 
 ### Blockers/Concerns
 
-- [Phase 2 resolved]: IMAP STARTTLS stream upgrade — resolved: Client::new on TLS stream after STARTTLS is safe; no greeting re-read happens
+- [Phase 3 note]: SMTP implementation should read SMTP 220 greeting after connect (same pattern as IMAP fix in 02-02)
 - [Phase 4 risk]: electron-builder asarUnpack interaction with napi-rs single-package binary distribution needs hands-on verification; napi-rs/node-rs issue #376 documents the problem
 - [Phase 8 research flag]: Validate lettre multipart MIME builder API coverage for inline images (CID references) and text/html + text/plain alternatives before Phase 8 coding begins
 - [Phase 9 research flag]: CalDAV server compatibility matrix (ETag after PUT, sync-token expiry, Exchange Online, iCloud, Nextcloud) — targeted research pass recommended before implementing sync-collection state machine
@@ -92,9 +94,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-03T23:00:11Z
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-imap-connection-testing/02-02-PLAN.md
+Last session: 2026-03-03T23:19:52Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: None (Phase 2 complete — next is Phase 3 SMTP)
 
 ---
 *Last updated: 2026-03-03*
