@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Scaffolding and Provider Detection
-**Goal**: The napi-rs addon loads cleanly in Electron main process and provider lookup works correctly against all 500+ providers
+**Goal**: The napi-rs addon loads cleanly in Electron main process and provider lookup works correctly against all 37 providers
 **Depends on**: Nothing (first phase)
 **Requirements**: SCAF-01, SCAF-02, PROV-01, PROV-02, PROV-03, PROV-04
 **Success Criteria** (what must be TRUE):
@@ -28,11 +28,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Calling `registerProviders(jsonPath)` loads the provider database from a JSON file without error
   3. Provider database auto-initializes on module load via embedded `providers.json` (no explicit registerProviders call needed)
   4. Calling `providerForEmail(email)` returns a provider object with IMAP/SMTP configs for recognized domains
-  5. Domain-regex and MX-regex matching produces identical results to the C++ addon for 50 representative email addresses (cross-validation test passes)
-**Plans**: TBD
+  5. Domain-regex matching produces identical results to the C++ addon for 50 representative email addresses (cross-validation test passes)
+**Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Scaffold Rust napi-rs crate and implement provider detection logic with tests
+- [ ] 01-02-PLAN.md — Wrapper module, Electron integration, cross-validation, and documentation
 
 ### Phase 2: IMAP Connection Testing
 **Goal**: testIMAPConnection handles all three TLS paths, both auth methods, and correctly detects all 7 IMAP capabilities
@@ -88,7 +89,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffolding and Provider Detection | 0/? | Not started | - |
+| 1. Scaffolding and Provider Detection | 0/2 | Planning complete | - |
 | 2. IMAP Connection Testing | 0/? | Not started | - |
 | 3. SMTP Testing and Account Validation | 0/? | Not started | - |
 | 4. Cross-Platform Packaging and Cleanup | 0/? | Not started | - |
