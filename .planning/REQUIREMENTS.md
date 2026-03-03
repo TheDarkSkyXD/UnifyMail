@@ -9,16 +9,16 @@ Requirements for milestone v1.0 — Rewrite mailcore N-API in Rust. Each maps to
 
 ### Scaffolding
 
-- [ ] **SCAF-01**: napi-rs v3 project initialized at `app/mailcore-rs/` with Cargo.toml, build.rs, and package.json
+- [x] **SCAF-01**: napi-rs v3 project initialized at `app/mailcore-rs/` with Cargo.toml, build.rs, and package.json
 - [ ] **SCAF-02**: Addon loads successfully in Electron main process without crashes (tokio runtime, rustls TLS, no OpenSSL symbols)
 - [ ] **SCAF-03**: GitHub Actions CI builds for all 5 targets (win-x64, mac-arm64, mac-x64, linux-x64, linux-arm64)
 - [ ] **SCAF-04**: Release binary < 8MB on Linux x64 with LTO + strip
 
 ### Provider Detection
 
-- [ ] **PROV-01**: User can call `registerProviders(jsonPath)` to load provider database from JSON file
-- [ ] **PROV-02**: Provider database auto-initializes on module load via embedded `providers.json`
-- [ ] **PROV-03**: User can call `providerForEmail(email)` and receive matching provider with IMAP/SMTP/POP server configs
+- [x] **PROV-01**: User can call `registerProviders(jsonPath)` to load provider database from JSON file
+- [x] **PROV-02**: Provider database auto-initializes on module load via embedded `providers.json`
+- [x] **PROV-03**: User can call `providerForEmail(email)` and receive matching provider with IMAP/SMTP/POP server configs
 - [ ] **PROV-04**: Domain-regex and MX-regex matching produces identical results to C++ addon for 50 representative addresses
 
 ### IMAP Testing
@@ -81,13 +81,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAF-01 | Phase 1 | Pending |
+| SCAF-01 | Phase 1 | Complete |
 | SCAF-02 | Phase 1 | Pending |
 | SCAF-03 | Phase 4 | Pending |
 | SCAF-04 | Phase 4 | Pending |
-| PROV-01 | Phase 1 | Pending |
-| PROV-02 | Phase 1 | Pending |
-| PROV-03 | Phase 1 | Pending |
+| PROV-01 | Phase 1 | Complete |
+| PROV-02 | Phase 1 | Complete |
+| PROV-03 | Phase 1 | Complete |
 | PROV-04 | Phase 1 | Pending |
 | IMAP-01 | Phase 2 | Pending |
 | IMAP-02 | Phase 2 | Pending |

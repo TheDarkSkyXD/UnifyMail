@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Scaffold Rust napi-rs crate and implement provider detection logic with tests
+- [x] 01-01-PLAN.md — Scaffold Rust napi-rs crate and implement provider detection logic with tests
 - [ ] 01-02-PLAN.md — Wrapper module, Electron integration, cross-validation, and documentation
 
 ### Phase 2: IMAP Connection Testing
@@ -89,7 +89,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffolding and Provider Detection | 0/2 | Planning complete | - |
+| 1. Scaffolding and Provider Detection | 1/2 | In progress | - |
 | 2. IMAP Connection Testing | 0/? | Not started | - |
 | 3. SMTP Testing and Account Validation | 0/? | Not started | - |
 | 4. Cross-Platform Packaging and Cleanup | 0/? | Not started | - |
