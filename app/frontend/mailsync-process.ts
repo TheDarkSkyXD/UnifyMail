@@ -15,7 +15,7 @@ import { IIdentity, Account } from 'unifymail-exports';
 import {
   GMAIL_CLIENT_ID,
   GMAIL_OAUTH_PROXY_URL,
-} from '../../internal_packages/onboarding/lib/onboarding-constants';
+} from '../internal_packages/onboarding/lib/onboarding-constants';
 
 let Utils = null;
 

@@ -29,7 +29,13 @@ function writeCachedJavascript(relativeCachePath, code) {
   const cachePath = path.join(cacheDirectory, relativeCachePath);
   mkdirp.sync(path.dirname(cacheTmpPath));
   fs.writeFileSync(cacheTmpPath, code, 'utf8');
-  fs.renameSync(cacheTmpPath, cachePath);
+  try {
+    fs.renameSync(cacheTmpPath, cachePath);
+  } catch (err) {
+    // On Windows, another process may have already written this cache entry.
+    // If the target exists, the rename race is benign — clean up the temp file.
+    try { fs.unlinkSync(cacheTmpPath); } catch (_) { /* ignore */ }
+  }
 }
 
 function addSourceURL(jsCode, filePath) {
