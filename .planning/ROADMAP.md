@@ -46,10 +46,11 @@ Plans:
   4. Both password and XOAUTH2 (SASL) authentication methods succeed against a live server
   5. The returned capabilities object correctly reports idle, condstore, qresync, compress, namespace, xoauth2, and gmail flags
   6. Any connection or auth attempt that takes longer than 15 seconds resolves with a timeout error rather than hanging
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md — Implement testIMAPConnection in Rust: all TLS paths, auth methods, capability detection, timeout, error classification
+- [ ] 02-02-PLAN.md — Mock IMAP server test suite and wrapper switchover from C++ to Rust
 
 ### Phase 3: SMTP Testing and Account Validation
 **Goal**: testSMTPConnection and validateAccount complete the 5-function API surface with full parity to the C++ addon
@@ -90,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Scaffolding and Provider Detection | 2/2 | Complete   | 2026-03-03 |
-| 2. IMAP Connection Testing | 0/? | Not started | - |
+| 2. IMAP Connection Testing | 0/2 | Not started | - |
 | 3. SMTP Testing and Account Validation | 0/? | Not started | - |
 | 4. Cross-Platform Packaging and Cleanup | 0/? | Not started | - |
 
@@ -100,9 +101,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 ## Overview
 
-Replace the `app/mailsync/` C++ sync engine (~16,200 LOC, 50 source files) with a standalone Rust binary that maintains exact wire-format compatibility with the existing TypeScript `MailsyncBridge` in Electron. The Rust binary is a drop-in replacement — same stdin/stdout newline-delimited JSON protocol, same SQLite schema, same process modes. Work proceeds in strict dependency order: protocol and database infrastructure first (Phases 5–6), then IMAP background sync (Phase 7), then IDLE and task execution (Phase 8), then CalDAV/CardDAV and metadata (Phase 9), and finally cross-platform packaging and C++ deletion (Phase 10).
+Replace the `app/mailsync/` C++ sync engine (~16,200 LOC, 50 source files) with a standalone Rust binary that maintains exact wire-format compatibility with the existing TypeScript `MailsyncBridge` in Electron. The Rust binary is a drop-in replacement — same stdin/stdout newline-delimited JSON protocol, same SQLite schema, same process modes. Work proceeds in strict dependency order: protocol and database infrastructure first (Phases 5-6), then IMAP background sync (Phase 7), then IDLE and task execution (Phase 8), then CalDAV/CardDAV and metadata (Phase 9), and finally cross-platform packaging and C++ deletion (Phase 10).
 
-**Depends on:** v1.0 completion (Phases 1–4)
+**Depends on:** v1.0 completion (Phases 1-4)
 
 ## Phases
 
@@ -215,7 +216,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (can overlap with 7–8) → 10
+Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (can overlap with 7-8) → 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
