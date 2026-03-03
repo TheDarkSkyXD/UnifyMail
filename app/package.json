@@ -80,7 +80,7 @@
     "source-map-support": "^0.5.21",
     "temp": "^0.8",
     "tld": "^0.0.2",
-    "underscore": "^1.13.7",
+    "underscore": "^1.13.8",
     "underscore.string": "^3.3.5",
     "utf7": "^1.0.1",
     "uuid": "^13.0.0",
