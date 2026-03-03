@@ -1,7 +1,7 @@
 # Phase 6: SQLite Layer and Model Infrastructure - Research
 
-**Researched:** 2026-03-02 (updated 2026-03-02 with deep dive rounds 1 and 2)
-**Domain:** Rust async SQLite (tokio-rusqlite), data model serialization, FTS5 schema migration, delta coalescing
+**Researched:** 2026-03-02 (updated 2026-03-03 with deep dive rounds 1, 2, and 3)
+**Domain:** Rust async SQLite (tokio-rusqlite), data model serialization, FTS5 schema migration, delta coalescing, Electron delta parsing, MailStore read API, error handling, need-bodies flow
 **Confidence:** HIGH (standard stack verified via official docs/crates.io; schema verified against C++ source; all open questions resolved from source code)
 
 ---
@@ -2109,3 +2109,679 @@ tokio-rusqlite and rusqlite_migration do NOT share an async integration. rusqlit
 `M::up(sql: &'u str)` accepts any `&str`. The implementation calls `db.execute_batch(sql)`. Calling `execute_batch("")` on rusqlite with an empty SQL string is a valid no-op — SQLite's C API `sqlite3_exec("")` succeeds immediately. The existing V5 no-op `M::up("")` recommendation is confirmed correct.
 
 ---
+
+## Deep Dive: Electron Delta Parsing (Round 3)
+
+Complete investigation of how the TypeScript side receives, parses, and dispatches stdout JSON deltas from the C++ (and future Rust) mailsync process.
+
+### Sources Read
+
+- `app/frontend/mailsync-process.ts` — MailsyncProcess class, `sync()` method, stdout buffering
+- `app/frontend/flux/mailsync-bridge.ts` — MailsyncBridge class, `_onIncomingMessages`, `_onFetchBodies`
+- `app/frontend/flux/stores/database-change-record.ts` — DatabaseChangeRecord class
+- `app/frontend/flux/stores/database-store.ts` — DatabaseStore, `trigger()` method, read-only SQLite
+
+### stdout Stream Parsing — Exact Protocol
+
+Source: `mailsync-process.ts` `sync()` method (lines 316-393)
+
+The stdout parser uses a string-split approach — NOT a readline stream:
+
+```typescript
+let outBuffer = '';
+
+this._proc.stdout.on('data', data => {
+    const added = data.toString();
+    outBuffer += added;
+
+    if (added.indexOf('\n') !== -1) {
+        const msgs = outBuffer.split('\n');
+        outBuffer = msgs.pop(); // retain partial line for next event
+        this.emit('deltas', msgs);
+    }
+});
+```
+
+**Exact parsing contract:**
+1. **Delimiter:** Single newline `\n`. Each JSON object is terminated by exactly one `\n`.
+2. **Buffering:** Accumulates across Node.js `data` events. Splits only when current chunk contains at least one `\n`.
+3. **Partial lines:** Last array element after split (partial line without `\n`) retained in `outBuffer`.
+4. **stdin highWaterMark:** Set to 1MB (`1024 * 1024`) to handle large payloads (HTML draft bodies).
+5. **Exit handling:** On process close, remaining `outBuffer` parsed as JSON. Lines starting with `dbg::` skipped. If the final JSON has `error`, it becomes an Error; otherwise emitted as final delta.
+
+### _onIncomingMessages — Delta Dispatch Logic
+
+Source: `mailsync-bridge.ts` `_onIncomingMessages` (lines 416-472)
+
+The handler receives an array of complete JSON strings (one per completed line):
+
+**Routing table (evaluated in order):**
+
+| Condition | Action |
+|-----------|--------|
+| `msg.length === 0` | Skip silently |
+| `msg[0] !== '{'` | Log warning, skip |
+| JSON.parse fails | Log warning, skip |
+| `type.endsWith('-result')` OR `type === 'folder-status'` | Route to `_responseEmitter` (request/response protocol) |
+| Any of `type`, `modelJSONs`, `modelClass` is missing | Log warning, skip |
+| `modelClass === 'ProcessState'` | Route to `OnlineStatusStore` (not a DB delta) |
+| `modelClass === 'ProcessAccountSecretsUpdated'` | Route to `KeyManager` (not a DB delta) |
+| All above pass | Normal model delta: IPC broadcast + DatabaseChangeRecord |
+
+**CRITICAL:** ALL THREE fields (`type`, `modelJSONs`, `modelClass`) must be present or the message is silently discarded.
+
+### Required JSON Wire Format Fields
+
+From line 434: `const { type, modelJSONs, modelClass } = json;`
+
+| Field | Type | Required | Valid Values |
+|-------|------|----------|-------------|
+| `type` | string | YES | `"persist"`, `"unpersist"`, `"metadata-expiration"` |
+| `modelClass` | string | YES | C++ tableName: `"Message"`, `"Thread"`, `"Folder"`, etc. |
+| `modelJSONs` | array | YES | Array of model JSON objects |
+
+**Third delta type found (Round 3):** `"metadata-expiration"` is defined as `DELTA_TYPE_METADATA_EXPIRATION` in `DeltaStream.hpp`. Used by `MetadataExpirationWorker`. The TypeScript bridge has no special handling — it passes through as a standard model delta.
+
+**Non-delta message formats (also accepted over stdout):**
+
+| `type` value | JSON shape | Handler |
+|--------------|-----------|---------|
+| ends with `-result` | `{type, requestId?, ...}` | `_responseEmitter` |
+| `"folder-status"` | `{type, requestId?, ...}` | `_responseEmitter` |
+| (modelClass=ProcessState) | `{type, modelClass, modelJSONs:[{accountId,id,connectionError}]}` | `OnlineStatusStore` |
+| (modelClass=ProcessAccountSecretsUpdated) | `{type, modelClass, modelJSONs:[accountJSON]}` | `KeyManager` |
+
+### DatabaseChangeRecord — Exact Shape
+
+Source: `database-change-record.ts` (complete 29-line file)
+
+```typescript
+class DatabaseChangeRecord<T extends Model> {
+    objects: T[];                           // deserialized TypeScript Model instances
+    objectsRawJSON: Record<string, any>[];  // raw JSON array from delta
+    type: string;                           // 'persist' or 'unpersist'
+    objectClass: any;                       // modelClass string from delta
+
+    constructor({ type, objectClass, objects, objectsRawJSON }) { /* assigns fields */ }
+}
+```
+
+**Field mapping (delta JSON -> DatabaseChangeRecord):**
+
+| Delta field | DatabaseChangeRecord field |
+|------------|--------------------------|
+| `type` | `type` |
+| `modelClass` | `objectClass` |
+| `modelJSONs` (after `Utils.convertToModel`) | `objects` |
+| `modelJSONs` (raw) | `objectsRawJSON` |
+
+### DatabaseStore — Read-Only SQLite
+
+Source: `database-store.ts` lines 51-73
+
+```typescript
+// Electron opens the database read-only
+const db = new Sqlite3(dbPath, { readonly: true, timeout: 10000 });
+db.pragma('journal_mode = WAL');
+db.pragma('main.page_size = 8192');   // different from C++ 4096 — page_size set at creation, C++ value wins
+db.pragma('main.cache_size = 20000'); // reader-side cache only
+db.pragma('main.synchronous = NORMAL');
+```
+
+All writes come exclusively from the C++/Rust mailsync process. The Electron side is purely a consumer.
+
+### Multi-Window Rebroadcast
+
+After dispatching locally, the main window sends the raw JSON string to other windows:
+```typescript
+ipcRenderer.send('mailsync-bridge-rebroadcast-to-all', msg); // raw JSON string
+```
+Other windows parse it and call `DatabaseStore.trigger()` on their own instance. The Rust wire format must be parseable by any window.
+
+### stdin Wire Format (Electron -> C++/Rust)
+
+Source: `mailsync-process.ts` `sendMessage(json)`:
+```typescript
+const msg = `${JSON.stringify(json)}\n`;
+this._proc.stdin.write(msg, 'utf-8');
+```
+
+Both directions (stdin and stdout) use newline-delimited JSON (`\n` terminator). The C++ reads stdin via `getline(cin, buffer)` in `DeltaStream::waitForJSON()`.
+
+---
+
+## Deep Dive: MailStore Query/Read Patterns (Round 3)
+
+Complete investigation of the C++ MailStore read API from `MailStore.hpp` and `MailStore.cpp`.
+
+### Core Invariant: All Model Reads Use the `data` Column
+
+**All model deserialization uses `SELECT data FROM {Table} WHERE ...`.** Indexed columns (unread, starred, threadId, etc.) appear only in WHERE/ORDER BY — they are never deserialized back to model objects. Model construction always comes from the `data` TEXT/BLOB column.
+
+**Exception — scan-only queries (no model construction):**
+- `fetchMessagesAttributesInRange` — reads `id, unread, starred, remoteUID, remoteXGMLabels` directly
+- `fetchMessageUIDAtDepth` — reads `remoteUID` only
+- `syncMessageBodies` — reads `id, remoteUID` only
+
+### find<T>(query) — Single Result
+
+```cpp
+// SQL: SELECT data FROM {T::TABLE_NAME} {query.getSQL()} LIMIT 1
+// Returns: shared_ptr<T> or nullptr
+```
+
+**Rust equivalent:**
+```rust
+let result = db.query_row(
+    "SELECT data FROM Message WHERE id = ?1 LIMIT 1",
+    [&id],
+    |row| row.get::<_, String>(0)
+).optional()?;
+let model: Option<Message> = result
+    .map(|s| serde_json::from_str(&s))
+    .transpose()?;
+```
+
+### findAll<T>(query) — Multiple Results
+
+```cpp
+// SQL: SELECT data FROM {T::TABLE_NAME} {query.getSQL()} [LIMIT N]
+// Returns: vector<shared_ptr<T>>
+```
+
+**Rust equivalent:**
+```rust
+let mut stmt = db.prepare_cached(
+    "SELECT data FROM Thread WHERE accountId = ?1 ORDER BY lastMessageReceivedTimestamp DESC LIMIT ?2"
+)?;
+let results: Vec<Thread> = stmt
+    .query_map([account_id, limit], |row| row.get::<_, String>(0))?
+    .filter_map(|r| r.ok())
+    .filter_map(|s| serde_json::from_str(&s).ok())
+    .collect();
+```
+
+### findAllMap<T>(query, keyField) — Map by String Key Column
+
+```cpp
+// SQL: SELECT {keyField}, data FROM {T::TABLE_NAME} {query.getSQL()}
+// Returns: map<string, shared_ptr<T>>
+```
+
+Used when the caller needs O(1) lookup by a key column after fetching.
+
+### findAllUINTMap<T>(query, keyField) — Map by u32 Key Column
+
+```cpp
+// SQL: SELECT {keyField}, data FROM {T::TABLE_NAME} {query.getSQL()}
+// Returns: map<uint32_t, shared_ptr<T>>
+```
+
+Used for IMAP UID-keyed maps during incremental sync.
+
+### findLargeSet<T>(colname, set) — Chunked IN Query
+
+```cpp
+// Splits set into chunks of 900 (SQLite SQLITE_MAX_VARIABLE_NUMBER = 999 default)
+// Calls findAll<T>(Query().equal(colname, chunk)) for each chunk
+```
+
+**CRITICAL:** SQLite rejects IN queries with more than 999 bound parameters by default. The C++ uses chunks of 900 as a safety margin. **Rust implementations doing large IN queries must also chunk at 900 or fewer.**
+
+### findGeneric / findAllGeneric — Runtime Type Dispatch
+
+Non-template methods dispatching to `find<Message>`, `find<Thread>`, or `find<Contact>` based on a lowercase string. Only 3 types are supported. Used by TaskProcessor where model type is known only at runtime.
+
+### WAL Mode and Concurrent Read/Write
+
+WAL mode allows multiple simultaneous Electron readers + one Rust writer concurrently.
+
+**Connection strategy:**
+- **Rust sync engine:** Single `tokio_rusqlite::Connection` for all reads AND writes (single background thread).
+- **Electron:** Separate `better-sqlite3` connection, read-only, in each renderer process.
+- SQLite WAL provides the isolation between the two processes automatically.
+
+No separate reader connections in the C++ or Rust code. The C++ uses one `SQLite::Database` for everything on the owning thread.
+
+### Statement Caching for Reads
+
+The C++ does NOT cache read query statements. Only INSERT/UPDATE/DELETE use statement caches.
+
+**Rust equivalent:** For hot-path reads (e.g., find-by-id called thousands of times during sync), use `db.prepare_cached(sql)` inside `call()` closures. For one-off reads, inline statement creation is acceptable.
+
+### Key Read-Only Queries (Special Cases — Phase 7 Concern)
+
+```sql
+-- fetchMessagesAttributesInRange (IMAP incremental sync — performance critical)
+SELECT id, unread, starred, remoteUID, remoteXGMLabels
+FROM Message
+WHERE accountId = ? AND remoteFolderId = ? AND remoteUID >= ? AND remoteUID <= ?
+
+-- fetchMessageUIDAtDepth (finding sync boundary UID)
+SELECT remoteUID FROM Message
+WHERE accountId = ? AND remoteFolderId = ? AND remoteUID < ?
+ORDER BY remoteUID DESC LIMIT 1 OFFSET ?
+
+-- countBodiesDownloaded (folder sync progress)
+SELECT COUNT(Message.id) FROM Message
+INNER JOIN MessageBody ON MessageBody.id = Message.id
+WHERE MessageBody.value IS NOT NULL AND Message.remoteFolderId = ?
+
+-- syncMessageBodies — find messages needing bodies (auto-fetch)
+SELECT Message.id, Message.remoteUID FROM Message
+LEFT JOIN MessageBody ON MessageBody.id = Message.id
+WHERE Message.accountId = ? AND Message.remoteFolderId = ?
+  AND (Message.date > ? OR Message.draft = 1)
+  AND Message.remoteUID > 0 AND MessageBody.id IS NULL
+ORDER BY Message.date DESC LIMIT 30
+```
+
+These are Phase 7 (IMAP sync) concerns. In Phase 6, ensure the required indexes exist in the schema to support them.
+
+---
+
+## Deep Dive: Error Handling and Recovery (Round 3)
+
+### Save Failure Behavior
+
+Source: `MailStore.cpp` lines 372-430
+
+The C++ `save()` throws `SQLite::Exception` on any SQL failure. There is **no return-code error handling** — exceptions are the only error propagation mechanism.
+
+```cpp
+query->exec();           // throws SQLite::Exception on SQLITE_CONSTRAINT, SQLITE_BUSY, etc.
+model->afterSave(this);  // throws if any side-effect SQL fails
+```
+
+Exception handling happens at the transaction boundary:
+```cpp
+{
+    MailStoreTransaction transaction(store, "operationName");
+    store->save(model1);  // throws -> propagates out of block
+    store->save(model2);
+    transaction.commit();
+}
+// RAII destructor calls rollbackTransaction() if commit() was not reached
+```
+
+**File save exceptions in body fetch are swallowed locally:**
+```cpp
+// MailProcessor.cpp lines 377-383:
+try {
+    store->save(&file);
+} catch (SQLite::Exception &) {
+    logger->warn("Unable to insert file ID {} - it must already exist.", file.id());
+}
+```
+
+**Rust equivalent:** `save()` returns `Result<(), MailStoreError>`. The `?` operator propagates. RAII `MailStoreTransaction` struct's `Drop` implementation calls `rollback_transaction()` if `committed` flag not set.
+
+### Transaction Rollback Behavior
+
+Source: `MailStore.cpp` lines 323-340
+
+`rollbackTransaction()` does three things:
+1. **Clears ALL cached prepared statement maps:** `_saveUpdateQueries`, `_saveInsertQueries`, `_removeQueries` all reset to empty. Prevents reuse of statements in inconsistent post-rollback state.
+2. **Executes ROLLBACK SQL.**
+3. **Sets `_transactionOpen = false`.**
+
+**Accumulated deltas on rollback:** `_transactionDeltas` is NOT explicitly cleared in `rollbackTransaction()`. They are abandoned — never emitted because `commitTransaction()` is never called.
+
+**Rust equivalent:** Clear `transaction_deltas` Vec explicitly in rollback (for safety):
+```rust
+fn rollback_transaction(&mut self) -> Result<()> {
+    self.transaction_deltas.clear(); // explicit: don't emit abandoned deltas
+    self.transaction_open = false;
+    // execute ROLLBACK
+    Ok(())
+}
+```
+
+### MailStoreTransaction RAII — Rust Equivalent
+
+Source: `MailStoreTransaction.hpp/.cpp`
+
+```rust
+pub struct MailStoreTransaction<'a> {
+    store: &'a mut MailStore,
+    committed: bool,
+    started: std::time::Instant,
+    name_hint: &'static str,
+}
+
+impl<'a> MailStoreTransaction<'a> {
+    pub fn new(store: &'a mut MailStore, name_hint: &'static str) -> Result<Self> {
+        store.begin_transaction()?;
+        Ok(Self { store, committed: false, started: std::time::Instant::now(), name_hint })
+    }
+    pub fn commit(mut self) -> Result<()> {
+        self.store.commit_transaction()?;
+        self.committed = true;
+        if self.started.elapsed().as_millis() > 80 {
+            tracing::warn!("[SLOW] Transaction={} > 80ms", self.name_hint);
+        }
+        Ok(())
+    }
+}
+
+impl<'a> Drop for MailStoreTransaction<'a> {
+    fn drop(&mut self) {
+        if !self.committed {
+            let _ = self.store.rollback_transaction(); // noexcept equivalent
+        }
+    }
+}
+```
+
+### Error Propagation to Electron (ProcessState Deltas)
+
+Source: `DeltaStream.cpp` lines 205-225
+
+There is NO error delta type. Errors reach Electron via `ProcessState` deltas emitted at 0ms (immediate):
+
+```json
+{"type":"persist","modelClass":"ProcessState","modelJSONs":[{"accountId":"x","id":"x","connectionError":true}]}
+```
+
+Cleared on recovery:
+```json
+{"type":"persist","modelClass":"ProcessState","modelJSONs":[{"accountId":"x","id":"x","connectionError":false}]}
+```
+
+These bypass the 500ms coalescing channel — emitted directly with 0ms delay.
+
+**TypeScript handling (mailsync-bridge.ts line 450):**
+```typescript
+if (modelClass === 'ProcessState' && modelJSONs.length) {
+    OnlineStatusStore.onSyncProcessStateReceived(modelJSONs[0]);
+    continue; // does NOT create a DatabaseChangeRecord
+}
+```
+
+**Fatal errors:** C++ calls `abort()`. Process exits non-zero. `CrashTracker` records crash. After 5 crashes in 5 minutes, account is marked `SYNC_STATE_ERROR` — worker not relaunched.
+
+### Crash Recovery
+
+**WAL crash recovery:** SQLite WAL is fully self-recovering on next open:
+- Committed WAL transactions are checkpointed into the main database file.
+- Uncommitted WAL transactions are discarded.
+- No explicit checkpoint code needed in the Rust binary.
+
+**Task crash recovery:** `runListenOnMainThread()` calls `processor.cleanupTasksAfterLaunch()` at startup. Handles Tasks in `status = 'remote'` (local phase done, remote phase interrupted). Behavior is task-type-specific — Phase 8 concern.
+
+**Sync state recovery:** Folder sync state (`uidvalidity`, `highestmodseq`) stored in `Folder._data["localStatus"]` — committed JSON blob. IMAP sync resumes from last committed state.
+
+### Error Handling Summary for Rust
+
+| Scenario | C++ Behavior | Rust Implementation |
+|----------|-------------|---------------------|
+| SQL constraint violation | Throws `SQLite::Exception` | `Err(MailStoreError::SqlError(e))` |
+| Exception in transaction | RAII destructor calls rollback | `Drop` calls `rollback_transaction()` |
+| Deltas on rollback | Abandoned (not emitted) | Clear `transaction_deltas` Vec |
+| IMAP connection failure | `beginConnectionError()` + retry | Emit ProcessState delta at 0ms + retry |
+| Non-retryable error | `abort()` | `std::process::exit(1)` |
+| WAL crash recovery | Automatic | Automatic — no code needed |
+| Tasks in 'remote' state | `cleanupTasksAfterLaunch()` | Phase 8 implementation |
+
+---
+
+## Deep Dive: End-to-End need-bodies Flow (Round 3)
+
+### Step 1: Electron Sends need-bodies (TypeScript)
+
+Source: `mailsync-bridge.ts` `_onFetchBodies()` lines 508-517
+
+Triggered by `Actions.fetchBodies(messages)`:
+
+```typescript
+_onFetchBodies(messages) {
+    const byAccountId = {};
+    for (const msg of messages) {
+        byAccountId[msg.accountId] = byAccountId[msg.accountId] || [];
+        byAccountId[msg.accountId].push(msg.id);
+    }
+    for (const accountId of Object.keys(byAccountId)) {
+        this.sendMessageToAccount(accountId, { type: 'need-bodies', ids: byAccountId[accountId] });
+    }
+}
+```
+
+**stdin wire format:**
+```json
+{"type":"need-bodies","ids":["msg-id-1","msg-id-2","msg-id-3"]}
+```
+
+Written as `JSON.stringify(json) + '\n'` to process stdin.
+
+### Step 2: C++ Binary Dispatches need-bodies
+
+Source: `main.cpp` lines 703-711
+
+```cpp
+if (type == "need-bodies") {
+    vector<string> ids{};
+    for (auto id : packet["ids"]) {
+        ids.push_back(id.get<string>());
+    }
+    if (fgWorker) fgWorker->idleQueueBodiesToSync(ids); // mutex-protected handoff
+    if (fgWorker) fgWorker->idleInterrupt(); // wake from IMAP IDLE immediately
+}
+```
+
+Runs on the main thread (stdin loop). `idleQueueBodiesToSync` safely passes IDs to the foreground thread via mutex.
+
+### Step 3: Foreground Worker Fetches from IMAP
+
+Source: `SyncWorker.cpp` lines 83-127
+
+```cpp
+void SyncWorker::idleQueueBodiesToSync(vector<string> & ids) {
+    std::unique_lock<std::mutex> lck(idleMtx);
+    for (string & id : ids) { idleFetchBodyIDs.push_back(id); }
+}
+
+// idleCycleIteration() pops from idleFetchBodyIDs:
+auto msg = store->find<Message>(Query().equal("id", id));
+// SELECT data FROM Message WHERE id = ?  LIMIT 1
+syncMessageBody(msg.get());
+// IMAP FETCH {uid} (BODY[]) via mailcore2 -> MessageParser
+processor->retrievedMessageBody(message, messageParser);
+```
+
+### Step 4: retrievedMessageBody() Stores the Body
+
+Source: `MailProcessor.cpp` lines 283-424
+
+Inside a `MailStoreTransaction`:
+
+```sql
+-- 1. Store body in MessageBody table
+REPLACE INTO MessageBody (id, value, fetchedAt) VALUES (?, ?, datetime('now'))
+
+-- 2. File attachments (ignore duplicate key exceptions)
+-- INSERT INTO File ... (via store->save(&file), SQLite::Exception caught locally)
+
+-- 3. Update ThreadSearch FTS5 body text
+UPDATE ThreadSearch SET body = ? WHERE rowid = ?
+
+-- 4. Update Message (snippet, plaintext flag, files, extra headers)
+-- UPDATE Message SET data=..., snippet=..., etc. (via store->save(message))
+```
+
+Before calling `store->save(message)`:
+```cpp
+message->setSnippet(text->substringToIndex(400));  // stored in data column
+message->setPlaintext(bodyIsPlaintext);             // stored in data column
+message->setBodyForDispatch(bodyRepresentation);    // IN MEMORY ONLY — NOT in data column
+message->setFiles(files);                           // updates data["files"] array
+```
+
+### Step 5: Message Delta Contains the Body
+
+Source: `Message.cpp` lines 499-505 — `toJSONDispatch()`
+
+```cpp
+json Message::toJSONDispatch() {
+    json j = toJSON();  // standard data JSON — body NOT included
+    if (_bodyForDispatch.length() > 0) {
+        j["body"] = _bodyForDispatch;    // added only when body is fetched
+        j["fullSyncComplete"] = true;    // signals body completeness to Electron
+    }
+    return j;
+}
+```
+
+**Delta wire format when body is included:**
+```json
+{
+    "type": "persist",
+    "modelClass": "Message",
+    "modelJSONs": [{
+        "id": "msg-abc",
+        "v": 3,
+        "snippet": "First 400 chars of body...",
+        "body": "<html>...</html>",
+        "fullSyncComplete": true,
+        "__cls": "Message"
+    }]
+}
+```
+
+**CRITICAL DISTINCTION:**
+- `data` TEXT column in Message table: Contains `toJSON()` output — **no `body` field**.
+- Delta JSON to Electron: Contains `toJSONDispatch()` output — **has `body` when `_bodyForDispatch` is set**.
+- `MessageBody` table: Body stored separately for direct Electron DB reads.
+
+### Step 6: Electron Receives Delta and Renders Body
+
+The delta flows through: `_onIncomingMessages` -> `DatabaseChangeRecord` -> `DatabaseStore.trigger()` -> all subscribers notified -> message thread view re-renders with body content.
+
+### Age Policy: fetchedAt and 3-Month Body Retention
+
+Source: `SyncWorker.cpp` lines 986-988, 971-976
+
+**maxAgeForBodySync:**
+```cpp
+time_t SyncWorker::maxAgeForBodySync(Folder & folder) {
+    return 24 * 60 * 60 * 30 * 3; // 3 months = 7,776,000 seconds
+}
+```
+
+**Body eviction SQL (folder cleanup):**
+```sql
+DELETE FROM MessageBody
+WHERE MessageBody.fetchedAt < datetime('now', '-14 days')
+  AND MessageBody.id IN (
+      SELECT Message.id FROM Message
+      WHERE Message.remoteFolderId = ?
+        AND Message.draft = 0
+        AND Message.date < ?  -- bind: unix_time - 7,776,000
+  )
+```
+
+**Both conditions required for eviction:**
+1. Body fetched more than 14 days ago (prevents evicting recently-viewed bodies).
+2. Message itself older than 3 months.
+
+**`fetchedAt` purpose:** Set to `datetime('now')` on INSERT. Used only for eviction. Never NULL in current databases (V3 migration backfilled all nulls).
+
+### Placeholder Pattern — Preventing Duplicate Fetch
+
+Source: `SyncWorker.cpp` lines 1039-1065
+
+Before IMAP fetch, a NULL placeholder is inserted:
+
+```sql
+INSERT OR IGNORE INTO MessageBody (id, value) VALUES (?, ?)
+-- bind: message.id(), NULL
+```
+
+**Purpose:** The auto-fetch query uses `WHERE MessageBody.id IS NULL` — a placeholder row (with non-NULL id) prevents re-scheduling the same fetch. Only an explicit `need-bodies` command bypasses this.
+
+**On crash mid-fetch:** Placeholder exists but value is NULL. Auto-fetch skips this message. Only explicit `need-bodies` re-queues it.
+
+### Complete Flow Diagram
+
+```
+Electron: Actions.fetchBodies([msg])
+  -> MailsyncBridge._onFetchBodies()
+  -> stdin: {"type":"need-bodies","ids":["msg-id"]}\n
+
+C++ main thread (stdin loop via DeltaStream::waitForJSON()):
+  -> type == 'need-bodies'
+  -> fgWorker->idleQueueBodiesToSync(ids)  [mutex handoff to foreground thread]
+  -> fgWorker->idleInterrupt()  [interrupts IMAP IDLE]
+
+C++ foreground thread (wakes from IMAP IDLE):
+  -> idleCycleIteration(): drains idleFetchBodyIDs queue
+  -> store->find<Message>(id)  [SELECT data FROM Message WHERE id=? LIMIT 1]
+  -> syncMessageBody(msg)
+  -> IMAP FETCH {uid} (BODY[])  [network call]
+  -> MessageParser::messageParserWithData(rawData)
+  -> processor->retrievedMessageBody(message, parser)
+
+MailProcessor::retrievedMessageBody():
+  -> render HTML via tidy + mailcore2
+  -> BEGIN IMMEDIATE TRANSACTION
+  -> REPLACE INTO MessageBody (id, value, fetchedAt) VALUES (?, ?, datetime('now'))
+  -> INSERT File rows [SQLite::Exception caught locally for duplicates]
+  -> UPDATE ThreadSearch body text [FTS5]
+  -> message->setBodyForDispatch(html)  [in-memory only — NOT saved to data col]
+  -> store->save(message)
+     -> UPDATE Message SET data=... [toJSON() — no body field in data col]
+     -> afterSave() -> Thread update
+     -> toJSONDispatch() -> includes body:"<html>..." [body added to dispatch JSON]
+     -> DeltaStreamItem{persist, Message, json-with-body}
+     -> _transactionDeltas.push_back(delta)
+  -> COMMIT -> SharedDeltaStream()->emit(deltas, 500ms)
+
+DeltaStream flush thread (500ms later):
+  -> cout << delta.dump() + "\n" << flush
+
+Electron stdout reader (mailsync-process.ts):
+  -> 'data' event -> split('\n') -> emit('deltas', complete_msgs)
+
+MailsyncBridge._onIncomingMessages:
+  -> JSON.parse -> {type:'persist', modelClass:'Message', modelJSONs:[{...body...}]}
+  -> Utils.convertToModel -> Message instance with .body = '<html>...'
+  -> DatabaseChangeRecord{type:'persist', objectClass:'Message', objects:[msg]}
+  -> DatabaseStore.trigger(record)
+  -> UI subscribers notified -> message thread view renders body
+```
+
+### Rust Implementation Requirements for need-bodies
+
+| Concern | Phase | Notes |
+|---------|-------|-------|
+| `need-bodies` stdin dispatch | Phase 5 (stdin loop) | Parse `packet["ids"]` array |
+| IMAP FETCH BODY[] | Phase 7 (IMAP sync) | Via IMAP library |
+| `REPLACE INTO MessageBody (id, value, fetchedAt)` | Phase 7 body fetch | Direct SQL — NOT a MailModel |
+| `body_for_dispatch: Option<String>` | Phase 6 Message struct | Transient field, not serialized to data col |
+| `to_json_dispatch()` includes body | Phase 6 Message impl | Conditional: include body when `is_some()` |
+| `store.save(message)` emits delta with body | Phase 6 MailStore | Standard save path; dispatch JSON includes body |
+| Age eviction SQL | Phase 7 sync cleanup | Exact SQL from SyncWorker.cpp lines 972-975 |
+| Placeholder pattern | Phase 7 syncMessageBodies | `INSERT OR IGNORE INTO MessageBody (id, value) VALUES (?1, NULL)` |
+
+---
+
+## Metadata (Updated Round 3)
+
+**Confidence breakdown (updated):**
+- Standard stack (tokio-rusqlite, rusqlite_migration, serde): HIGH — versions verified via docs.rs
+- Architecture (fat row pattern, delta coalescing): HIGH — derived from C++ source
+- Schema (V1-V9 SQL): HIGH — verbatim from constants.h
+- Model field mapping: HIGH — all .cpp files read directly
+- Delta delay values: HIGH — grep of all setStreamDelay() callers confirmed
+- V5 gap: HIGH — confirmed from MailStore::migrate() line-by-line
+- TypeScript cross-check: HIGH — all .ts model files read
+- afterSave/afterRemove side effects: HIGH — exact SQL from all model files
+- Auxiliary tables: HIGH — verified from MailStore.cpp + constants.h
+- MailStore codepath: HIGH — traced line-by-line
+- Library version conflict: HIGH — verified via docs.rs and changelog
+- **Electron delta parsing (Round 3): HIGH** — mailsync-process.ts and mailsync-bridge.ts read directly; exact routing logic documented
+- **MailStore read API (Round 3): HIGH** — MailStore.hpp read directly; all template methods documented; chunk-at-900 pattern confirmed
+- **Error handling and recovery (Round 3): HIGH** — MailStore.cpp, MailStoreTransaction.cpp, DeltaStream.cpp, main.cpp all read directly
+- **need-bodies flow (Round 3): HIGH** — complete end-to-end trace from all 6 relevant source files
+
+**Research date:** 2026-03-03 (updated with Round 3 deep dives)
+**Valid until:** 2026-06-01 (stable APIs; protocol and schema from committed C++ source)
