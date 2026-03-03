@@ -6,99 +6,49 @@
 <domain>
 ## Phase Boundary
 
-Prove Electron integration is sound by scaffolding a Rust napi-rs addon at `app/mailcore-rs/` and implementing the two provider functions (`registerProviders`, `providerForEmail`) with domain-regex matching and cross-validation against the C++ addon. MX-regex matching is deferred (requires async DNS resolution). The Rust addon becomes integrated via a wrapper module that routes provider functions to Rust and network functions to the C++ addon, ensuring the app remains fully functional at every commit.
+Prove Electron integration is sound by scaffolding a Rust napi-rs addon at `app/mailcore-rs/` and implementing the two provider functions (`registerProviders`, `providerForEmail`) with full regex cross-validation against the C++ addon. The Rust addon becomes the primary addon at end of this phase, with C++ retained as a fallback for the 3 unimplemented network functions (testIMAPConnection, testSMTPConnection, validateAccount) until Phases 2-3 implement them in Rust.
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
-### Switchover & fallback
-- Wrapper module routes each function to the correct addon (Rust for providers, C++ for network) — consumer code (`onboarding-helpers.ts`, `mailsync-process.ts`) stays unchanged
-- **Every commit must leave the app fully functional** — no broken-state commits allowed
-- All 37 providers are equally important — no priority ordering for validation
-- Claude's discretion: switchover timing (when Rust becomes primary), C++ cleanup timing, fallback behavior (leaning fail-loudly since the goal is C++ elimination), wrapper module location, whether unimplemented network functions route to C++ or throw
+### Switchover timing
+- Switch the Electron app to the Rust addon at end of Phase 1, once cross-validation passes
+- Update `app/package.json` dependency from `"mailcore-napi": "file:mailcore"` to `"file:mailcore-rs"` after validation
+- C++ addon stays in the repo and remains loadable as a fallback for the 3 network functions not yet implemented in Rust
+- The fallback routing mechanism (how the app calls Rust for provider functions but C++ for IMAP/SMTP/validate) is Claude's discretion
 
-### Build integration
-- Rust addon build integrates into `npm start` — auto-build so developers don't need a separate command
-- Use npm as the package manager (match existing project)
-- Watch mode for Rust development — auto-rebuild `.node` when `.rs` files change (cargo-watch or similar)
-- **Windows target: `x86_64-pc-windows-gnu` (GNU/MinGW)** — not MSVC. MinGW needs to be installed
-- Rust toolchain is not yet installed — setup documentation needed
-- No CI pipeline exists yet — Claude decides whether basic CI goes in Phase 1 or defers to Phase 4
-- Claude's discretion: debug vs release builds for dev, rebuild strategy (always vs conditional), exact script location, Grunt integration approach, MSRV pinning, watch mode restart behavior (rebuild-only vs rebuild+restart)
+### Build workflow
+- Integrate Rust addon build into `npm start` so developers don't need to manually run `napi build`
+- Use debug builds for development (`npm start`), release builds only for production (`npm run build`)
+- Always rebuild on `npm start` — Cargo incremental compilation handles no-op builds efficiently (~1-2s)
+- Keep the npm package name as `mailcore-napi` — consumers continue to `require('mailcore-napi')` with zero code changes
 
-### API contract & types
-- Stricter TypeScript types than C++ — narrow string unions (e.g., `connectionType: 'tls' | 'starttls' | 'clear'` instead of `string`)
-- **Throw on invalid input** — empty string, no '@', malformed emails throw a JS Error instead of returning null. This is an intentional behavioral improvement over C++ (which returns null for everything). Consumers already wrap in try-catch
-- Return null only for valid emails that don't match any provider
-- `registerProviders(jsonPath)` fully implemented with **merge semantics** — file providers override embedded providers on identifier conflict, rather than replacing the entire set
-- Include POP server configs in the return value (full compatibility with C++ output shape)
-- Claude's discretion: whether `domainMatch[]` and `mxMatch[]` arrays appear in the return value, TypeScript .d.ts approach (auto-generated only vs hand-written wrapper)
+### API contract
+- Runtime values must match C++ exactly — same field names (`hostname`, `port`, `connectionType`), same values (`'tls'`, `'starttls'`, `'clear'`)
+- TypeScript types may be stricter than C++ (e.g., `connectionType: 'tls' | 'starttls' | 'clear'` instead of `string`) — same runtime, better types
+- `providerForEmail` returns `null` for all non-match cases: unknown domains, malformed emails, missing '@', empty strings — matches C++ behavior
+- `registerProviders(jsonPath)` usage check and implementation depth is Claude's discretion
 
 ### Testing & validation
-- Electron integration test required — must verify the addon loads in a real Electron process without BoringSSL/OpenSSL conflicts
-- Claude's discretion: cross-validation scope (50 representative vs full 500+), comparison depth (full object vs identifier), test location (standalone script vs npm test), output format, test data generation approach, Jasmine integration vs standalone script
+- Deliver two levels of testing: cross-validation script + Rust unit tests via `cargo test`
+- Cross-validation is a standalone script (`npm run cross-validate` or similar), not part of `npm test` — requires both addons built
+- Cross-validation performs full object comparison (identifier AND server configs: hostname, port, connectionType), not just identifier matching
+- Rust unit tests use standard `#[cfg(test)]` with `#[test]` functions — edge cases like malformed emails, empty providers, regex anchoring
 
-### Error handling
-- Claude's discretion: error surfacing pattern (napi throw vs result object), panic policy (catch_unwind vs crash), error detail level, bad-provider-regex handling (fail vs skip), error crate choice (thiserror/anyhow/napi::Error), embedded JSON parse failure behavior
-
-### Project structure
-- Module-per-function layout in `app/mailcore-rs/src/` — separate files for provider logic, types, etc., ready for imap.rs and smtp.rs in Phases 2-3
-- Rust tests in a separate `tests/` directory (integration-style), not inline `#[cfg(test)]`
-- Copy `providers.json` to `app/mailcore-rs/resources/` — self-contained, ready for C++ deletion
-- **Use a different package name during development** (e.g., `mailcore-napi-rs`) — rename to `mailcore-napi` at switchover to avoid confusion while both addons exist
-- Single Cargo crate (no workspace)
-- Claude's discretion: cross-validation script location, .gitignore for build artifacts
-
-### MX matching scope
-- **Domain-match only in Phase 1** — `domain-match` and `domain-exclude` regex patterns implemented
-- MX-match deferred — requires async DNS resolution, will be addressed in Phase 3 (validateAccount)
-- Claude's discretion: whether MX-only providers are skipped or included-but-not-matched, where MX matching eventually lives (providerForEmail vs validateAccount)
-
-### Logging & debug
-- Debug-only logging enabled via environment variable (e.g., `MAILCORE_DEBUG=1` or `RUST_LOG=debug`)
-- **Always log provider count on initialization** (e.g., "Loaded 37 providers from embedded JSON") — sanity check that runs even without debug mode
-- In debug mode, log which provider matched for each `providerForEmail` call
-- Claude's discretion: log output destination (stderr vs Electron console), logging crate choice (log+env_logger vs eprintln!)
-
-### Dependency choices
-- Use the `regex` crate (standard Rust regex) — not `fancy-regex`
-- Pre-compile all regex patterns at provider load time — cached for fast lookups
-- **Pin exact dependency versions** in Cargo.toml (e.g., `regex = "=1.10.3"`)
-- Claude's discretion: JSON parsing approach (typed structs vs dynamic Value)
-
-### Documentation
-- Full README.md in `app/mailcore-rs/` with prerequisites (Rust, MinGW), build steps, testing instructions, and architecture overview
-- Update main project CLAUDE.md with Rust addon build/test commands and location
-- Claude's discretion: doc comments depth, architecture diagrams
-
-### Code style
-- Clippy with default warnings enforced
-- `#![forbid(unsafe_code)]` — no unsafe Rust in the addon
-- Integrate Rust linting into `npm run lint` — `cargo fmt --check` and `cargo clippy` alongside TypeScript/JS linting
-- Claude's discretion: rustfmt config (default vs custom), naming conventions (standard Rust vs mirror C++), Cargo.lock commit policy
-
-### Claude's Discretion (aggregate)
-- Switchover timing, fallback behavior, wrapper location
-- Debug vs release builds, rebuild strategy, script locations, Grunt integration
-- domainMatch/mxMatch in return value, .d.ts generation approach
-- Cross-validation scope and infrastructure
-- All error handling patterns
-- MX-only provider handling, future MX matching location
-- Log destination and crate
-- JSON parsing approach, doc comments depth, architecture diagrams
-- rustfmt config, naming conventions, Cargo.lock
+### Claude's Discretion
+- Testing approach during Phase 1 development (before final switchover)
+- Fallback routing mechanism for C++ network functions (wrapper module, re-export, or other approach)
+- `registerProviders` implementation depth based on actual usage in the codebase
+- Exact integration point for the Rust build step in the npm scripts
 
 </decisions>
 
 <specifics>
 ## Specific Ideas
 
-- The goal is to eliminate C++ — all decisions lean toward making C++ removal easier, not making the transition longer
-- Every commit must be functional — wrapper module must be designed for incremental function migration
-- Watch mode for Rust development — developer wants fast iteration when changing Rust code
-- GNU/MinGW toolchain on Windows — developer prefers this over MSVC despite potential napi-rs ABI compatibility challenges (research needed)
+No specific requirements — open to standard approaches. The research document (01-RESEARCH.md) has thorough coverage of the C++ algorithm, providers.json schema, and napi-rs patterns.
 
 </specifics>
 
@@ -106,21 +56,19 @@ Prove Electron integration is sound by scaffolding a Rust napi-rs addon at `app/
 ## Existing Code Insights
 
 ### Reusable Assets
-- `app/mailcore/resources/providers.json`: 37-provider database with domain-match, mx-match, domain-exclude patterns and IMAP/SMTP/POP server configs — copy to `app/mailcore-rs/resources/`
-- `app/mailcore/types/index.d.ts`: TypeScript interface contract (NetServiceInfo, MailProviderInfo, function signatures) — Rust addon's napi-generated types must be compatible
-- `app/mailcore/src/core/provider/MCMailProvider.cpp`: C++ matching algorithm — domain extraction, `^...$` regex anchoring, case-insensitive matching, domain-exclude before domain-match ordering
-- `app/mailcore/src/napi/napi_provider.cpp`: NAPI wrapper showing exact return object shape and null semantics
+- `app/mailcore/resources/providers.json`: The 37-provider database to copy into `app/mailcore-rs/resources/` — source of truth for domain matching
+- `app/mailcore/types/index.d.ts`: TypeScript interface the Rust addon's generated types must match
+- `app/mailcore/src/napi/napi_provider.cpp`: C++ implementation to replicate — contains exact function signatures and return shapes
 
 ### Established Patterns
-- Native addons loaded via `require('mailcore-napi')` — wrapper module must preserve this import path
-- `app/package.json` uses `"file:mailcore"` for local native addon resolution — will point to wrapper module location
-- Module initialization auto-loads providers via singleton pattern — C++ uses `MailProvidersManager::sharedManager()`, Rust equivalent is `OnceLock<ProviderDatabase>` or `RwLock` (for merge-capable registerProviders)
-- Build tooling uses Grunt (`build/Gruntfile.js`) — Rust build may bypass or integrate
+- Native addons loaded via `require('mailcore-napi')` in consumer code — the Rust addon uses the same package name
+- `app/package.json` uses `"file:mailcore"` for local native addon resolution — will change to `"file:mailcore-rs"`
+- Build tooling uses Grunt (`build/Gruntfile.js`) — the Rust build step needs to integrate or run alongside
 
 ### Integration Points
-- `app/internal_packages/onboarding/lib/onboarding-helpers.ts` (lines 101-133): Primary consumer of `providerForEmail` with try-catch fallback to static JSON lookup
-- `app/frontend/mailsync-process.ts`: Consumer of `registerProviders` (to be verified during research)
-- `app/package.json` (dependency line): Switchover point from `"file:mailcore"` to wrapper/Rust location
+- `app/internal_packages/onboarding/lib/onboarding-helpers.ts`: Primary consumer of `providerForEmail` and the 3 network functions
+- `app/frontend/mailsync-process.ts`: Consumer of `registerProviders` (to be verified)
+- `app/package.json`: Dependency resolution for `mailcore-napi` — the switchover point
 
 </code_context>
 
