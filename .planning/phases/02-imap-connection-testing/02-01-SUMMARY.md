@@ -149,6 +149,20 @@ Each task was committed atomically:
 - Plan 02-02 should route `testIMAPConnection` from C++ to Rust in `app/mailcore-wrapper/index.js`
 - The Rust addon's `index.js` and `index.d.ts` may need updating to export `testIMAPConnection` and `IMAPConnectionResult` types
 
+## Self-Check: PASSED
+
+All artifacts verified post-execution:
+- FOUND: app/mailcore-rs/src/imap.rs
+- FOUND: app/mailcore-rs/Cargo.toml (with async-imap runtime-tokio)
+- FOUND: app/mailcore-rs/src/lib.rs (with pub mod imap)
+- FOUND: 02-01-SUMMARY.md
+- FOUND: commit 13fb8a4 (Task 1)
+- FOUND: commit 853714d (Task 2)
+- PASS: cargo check
+- PASS: cargo clippy -- -D warnings
+- PASS: cargo fmt --check
+- PASS: No OpenSSL in dependency tree
+
 ---
 *Phase: 02-imap-connection-testing*
 *Completed: 2026-03-03*
