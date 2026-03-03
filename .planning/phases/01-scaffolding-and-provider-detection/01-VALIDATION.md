@@ -1,8 +1,8 @@
 ---
 phase: 1
 slug: scaffolding-and-provider-detection
-status: draft
-nyquist_compliant: false
+status: finalized
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-03-03
 ---
@@ -38,23 +38,20 @@ created: 2026-03-03
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 01-01-01 | 01 | 0 | SCAF-01 | manual | `ls app/mailcore-rs/{Cargo.toml,build.rs,package.json}` | ❌ W0 | ⬜ pending |
-| 01-01-02 | 01 | 1 | SCAF-02 | integration | `electron test/electron-integration-test.js` | ❌ W0 | ⬜ pending |
-| 01-02-01 | 02 | 1 | PROV-01 | integration | `cargo test --test provider_tests -- test_register_providers` | ❌ W0 | ⬜ pending |
-| 01-02-02 | 02 | 1 | PROV-02 | integration | `cargo test --test provider_tests -- test_auto_init` | ❌ W0 | ⬜ pending |
-| 01-02-03 | 02 | 1 | PROV-03 | unit | `cargo test --test provider_tests -- test_provider_for_email` | ❌ W0 | ⬜ pending |
-| 01-03-01 | 03 | 2 | PROV-04 | integration | `node app/mailcore-rs/tests/cross-validate-providers.js` | ❌ W0 | ⬜ pending |
+| 01-01-01 | 01 | 1 | SCAF-01 | manual | `ls app/mailcore-rs/{Cargo.toml,build.rs,package.json}` | MISSING — Wave 0 must create scaffolding first | pending |
+| 01-01-02 | 01 | 1 | PROV-01, PROV-02, PROV-03 | integration | `cargo test --test provider_tests` | MISSING — Wave 0 must create `tests/provider_tests.rs` first | pending |
+| 01-02-01 | 02 | 2 | SCAF-02, PROV-04 | integration | `npx electron test/electron-integration-test.js && node app/mailcore-rs/tests/cross-validate-providers.js` | MISSING — Wave 0 must create `test/electron-integration-test.js` and `app/mailcore-rs/tests/cross-validate-providers.js` first | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: pending / green / red / flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `app/mailcore-rs/tests/provider_tests.rs` — stubs for PROV-01, PROV-02, PROV-03
-- [ ] `app/mailcore-rs/tests/cross-validate-providers.js` — covers PROV-04 (requires both addons built)
-- [ ] `test/electron-integration-test.js` — covers SCAF-02 (requires Electron)
-- [ ] `app/mailcore-rs/resources/providers.json` — required for SCAF-01 build
+- [ ] `app/mailcore-rs/tests/provider_tests.rs` — covers PROV-01, PROV-02, PROV-03 (created in Plan 01 Task 2)
+- [ ] `app/mailcore-rs/tests/cross-validate-providers.js` — covers PROV-04 (created in Plan 02 Task 1)
+- [ ] `test/electron-integration-test.js` — covers SCAF-02 (created in Plan 02 Task 1)
+- [ ] `app/mailcore-rs/resources/providers.json` — required for SCAF-01 build (created in Plan 01 Task 1)
 
 *Existing infrastructure covers `cargo test` — no additional test framework install needed.*
 
@@ -65,17 +62,17 @@ created: 2026-03-03
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Addon loads in Electron without crashes | SCAF-02 | Requires running Electron process | Run `npm start`, open DevTools console, verify no crash and `$m.MailcoreRs` accessible |
-| No BoringSSL/OpenSSL symbol conflicts | SCAF-01 | Runtime symbol check | Run `cargo tree \| grep openssl` — must return nothing |
+| No BoringSSL/OpenSSL symbol conflicts | SCAF-01 | Runtime symbol check | Run `cargo tree | grep openssl` — must return nothing |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** finalized (revised 2026-03-03 — fixed Plan 03 phantom reference, corrected task-to-plan mapping, set nyquist_compliant)
