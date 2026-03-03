@@ -1,6 +1,7 @@
 // Wrapper module: routes each function to the correct addon
 // Provider functions (Phase 1+): Rust addon (app/mailcore-rs/)
-// Network functions (Phase 2-3): C++ addon (app/mailcore/) until replaced
+// testIMAPConnection (Phase 2): Rust addon (app/mailcore-rs/)
+// testSMTPConnection, validateAccount (Phase 3): C++ addon (app/mailcore/) until replaced
 'use strict';
 
 let rustAddon = null;
@@ -28,12 +29,17 @@ exports.registerProviders = function registerProviders(jsonPath) {
   return getRust().registerProviders(jsonPath);
 };
 
-// Phases 2-3: Network functions still routed to C++ until replaced
+// Phase 2: testIMAPConnection now routed to Rust
+exports.testIMAPConnection = function testIMAPConnection(opts) {
+  if (process.env.MAILCORE_DEBUG === '1') {
+    console.log('testIMAPConnection -> Rust');
+  }
+  return getRust().testIMAPConnection(opts);
+};
+
+// Phases 3+: SMTP and account validation still routed to C++ until replaced
 exports.validateAccount = function validateAccount(opts) {
   return getCpp().validateAccount(opts);
-};
-exports.testIMAPConnection = function testIMAPConnection(opts) {
-  return getCpp().testIMAPConnection(opts);
 };
 exports.testSMTPConnection = function testSMTPConnection(opts) {
   return getCpp().testSMTPConnection(opts);
