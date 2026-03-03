@@ -1,4 +1,4 @@
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const electronPath = require('electron');
 
@@ -16,6 +16,48 @@ function log(color, message) {
 }
 
 log(COLORS.cyan, 'Initializing development environment...');
+
+// 0. Build Rust addon (mailcore-rs) — skip if .node already exists and sources unchanged
+//    Always rebuild in case Rust sources changed since last start.
+log(COLORS.yellow, 'Building Rust addon (app/mailcore-rs)...');
+
+// On Windows, dlltool.exe must be in PATH (from MSYS2 MinGW).
+// LIBNODE_PATH must point to the directory containing libnode.dll.
+// See app/mailcore-rs/README.md for setup instructions.
+const napiPath = path.join(__dirname, '..', 'app', 'mailcore-rs', 'node_modules', '.bin',
+    process.platform === 'win32' ? 'napi.cmd' : 'napi');
+const mailcoreRsDir = path.join(__dirname, '..', 'app', 'mailcore-rs');
+
+const buildEnv = {
+    ...process.env,
+    // MSYS2 MinGW dlltool required for Windows GNU target build
+    PATH: process.platform === 'win32'
+        ? `C:\\msys64\\mingw64\\bin;${process.env.PATH}`
+        : process.env.PATH,
+    // libnode.dll import library — generated from node.exe via gendef+dlltool
+    LIBNODE_PATH: process.env.LIBNODE_PATH || (process.platform === 'win32' ? '/tmp' : undefined),
+};
+
+const buildArgs = ['build', '--platform', '--release'];
+if (process.platform === 'win32') {
+    buildArgs.push('--target', 'x86_64-pc-windows-gnu');
+}
+
+const rustBuild = spawnSync(napiPath, buildArgs, {
+    shell: true,
+    stdio: 'inherit',
+    cwd: mailcoreRsDir,
+    env: buildEnv,
+});
+
+if (rustBuild.status !== 0) {
+    log(COLORS.red, `Rust addon build failed (exit code ${rustBuild.status}).`);
+    log(COLORS.red, 'Ensure MSYS2 MinGW is installed and libnode.dll is at LIBNODE_PATH.');
+    log(COLORS.red, 'See app/mailcore-rs/README.md for setup instructions.');
+    process.exit(1);
+}
+
+log(COLORS.green, 'Rust addon built successfully.');
 
 // 1. Start Tailwind CSS Watcher
 log(COLORS.yellow, 'Starting Tailwind CSS watcher...');
