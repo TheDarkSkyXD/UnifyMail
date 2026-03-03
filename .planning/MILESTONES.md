@@ -17,6 +17,7 @@
 **v2.0 — Rewrite mailsync Engine in Rust**
 - Planned: 2026-03-02
 - Goal: Replace C++ mailsync engine (~16,200 LOC) with Rust implementation
+- Phases: 5–10 (6 phases)
 - Depends on: v1.0 completion
 - Status: Defining requirements
 
