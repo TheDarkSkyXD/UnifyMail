@@ -1,6 +1,6 @@
 import path from 'path';
 import { Tray, Menu, nativeImage, nativeTheme } from 'electron';
-import { localized } from '../../frontend/intl';
+import { localized } from '../frontend/intl';
 import Application from './application';
 
 function _getMenuTemplate(platform, application) {

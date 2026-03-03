@@ -1,5 +1,5 @@
 import { app, dialog } from 'electron';
-import { localized } from '../../frontend/intl';
+import { localized } from '../frontend/intl';
 
 export default function moveToApplications() {
   if (app.isInApplicationsFolder()) {

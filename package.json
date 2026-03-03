@@ -78,6 +78,7 @@
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
     "start": "node scripts/start-dev.js",
+    "build:rust": "cd app/mailcore-rs && node_modules/.bin/napi build --platform --release --target x86_64-pc-windows-gnu",
     "lint": "grunt lint --gruntfile=build/Gruntfile.js --base=./",
     "test": "electron ./app --enable-logging --test",
     "test-window": "electron ./app --enable-logging --test=window",

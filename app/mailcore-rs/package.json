@@ -1,0 +1,26 @@
+{
+  "name": "mailcore-napi-rs",
+  "version": "0.1.0",
+  "description": "Rust napi-rs addon for UnifyMail — provider detection and email account validation",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "private": true,
+  "napi": {
+    "binaryName": "mailcore-napi-rs",
+    "targets": [
+      "x86_64-pc-windows-gnu",
+      "aarch64-apple-darwin",
+      "x86_64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu"
+    ]
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "lint": "cargo fmt --check && cargo clippy -- -D warnings"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.0.0"
+  }
+}

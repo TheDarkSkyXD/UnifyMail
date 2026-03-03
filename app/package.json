@@ -92,7 +92,7 @@
     "electron": "39.2.7"
   },
   "optionalDependencies": {
-    "mailcore-napi": "file:mailcore",
+    "mailcore-napi": "file:mailcore-wrapper",
     "macos-notification-state": "github:bengotow/macos-notification-state#77e9e825"
   },
   "devDependencies": {

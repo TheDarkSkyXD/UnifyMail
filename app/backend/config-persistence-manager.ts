@@ -1,11 +1,11 @@
 import path from 'path';
 import fs from 'fs-plus';
 import { BrowserWindow, dialog, app } from 'electron';
-import { atomicWriteFileSync } from '../../frontend/fs-utils';
-import { localized } from '../../frontend/intl';
+import { atomicWriteFileSync } from '../frontend/fs-utils';
+import { localized } from '../frontend/intl';
 
 let _ = require('underscore');
-_ = Object.assign(_, require('../../frontend/config-utils'));
+_ = Object.assign(_, require('../frontend/config-utils'));
 
 const RETRY_SAVES = 3;
 

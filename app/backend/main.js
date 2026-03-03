@@ -52,12 +52,12 @@ const setupConfigDir = args => {
 };
 
 const setupCompileCache = configDirPath => {
-  const compileCache = require('../../frontend/compile-cache');
+  const compileCache = require('../frontend/compile-cache');
   return compileCache.setHomeDirectory(configDirPath);
 };
 
 const setupErrorLogger = (args = {}) => {
-  const ErrorLogger = require('../../frontend/error-logger');
+  const ErrorLogger = require('../frontend/error-logger');
   const errorLogger = new ErrorLogger({
     inSpecMode: args.specMode,
     inDevMode: args.devMode,
@@ -129,7 +129,7 @@ const declareOptions = argv => {
 };
 
 const parseCommandLine = argv => {
-  const pkg = require('../../package.json');
+  const pkg = require('../package.json');
   const version = `${pkg.version}-${pkg.commitHash}`;
 
   const options = declareOptions(argv.slice(1));
@@ -153,7 +153,7 @@ const parseCommandLine = argv => {
   const specDirectory = args['spec-directory'];
   const specFilePattern = args['spec-file-pattern'];
   const showSpecsInWindow = specMode === 'window';
-  const resourcePath = path.normalize(path.resolve(path.dirname(path.dirname(__dirname))));
+  const resourcePath = path.normalize(path.resolve(path.dirname(__dirname)));
   let urlsToOpen = [];
   let pathsToOpen = [];
   let mailtoLink;

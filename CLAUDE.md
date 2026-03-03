@@ -30,6 +30,39 @@ npm run tsc-watch
 npm run build
 ```
 
+## Rust Addon (app/mailcore-rs/)
+
+The Rust napi-rs addon provides provider detection (`providerForEmail`, `registerProviders`).
+It is routed through `app/mailcore-wrapper/` which consumer code (`onboarding-helpers.ts`,
+`mailsync-process.ts`) accesses as `require('mailcore-napi')`.
+
+**The addon is built automatically by `npm start`** — no manual build step is needed.
+
+```bash
+# Build Rust addon manually (release)
+npm run build:rust
+
+# Rust integration tests (16 tests)
+cd app/mailcore-rs && cargo test
+
+# JavaScript cross-validation (49 tests)
+cd app/mailcore-rs && node tests/cross-validate-providers.js
+
+# Electron main process integration test (7 checks)
+npx electron test/electron-integration-test.js
+
+# Rust linting (fmt + clippy)
+cd app/mailcore-rs && npm run lint
+# or: cargo fmt --check && cargo clippy -- -D warnings
+```
+
+**Windows setup (one-time):** The addon requires MSYS2 MinGW-w64 (`dlltool.exe`) and
+a `libnode.dll` import library at `LIBNODE_PATH`. See `app/mailcore-rs/README.md` for
+full setup instructions.
+
+**Note on linting:** `npm run lint` currently runs TypeScript/JavaScript linting only.
+Rust linting must be run separately via `cd app/mailcore-rs && npm run lint`.
+
 ## Architecture Overview
 
 UnifyMail is an Electron-based email client written in TypeScript with React. It uses a plugin architecture where features are implemented as internal packages.

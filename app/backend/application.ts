@@ -8,7 +8,7 @@ import path from 'path';
 import proc from 'child_process';
 import { EventEmitter } from 'events';
 
-import { localized, initializeLocalization } from '../../frontend/intl';
+import { localized, initializeLocalization } from '../frontend/intl';
 import WindowManager from './window-manager';
 import FileListCache from './file-list-cache';
 import ConfigMigrator from './config-migrator';
@@ -16,12 +16,12 @@ import ApplicationMenu from './application-menu';
 import ApplicationTouchBar from './application-touch-bar';
 import AutoUpdateManager from './autoupdate-manager';
 import SystemTrayManager from './system-tray-manager';
-import { DefaultClientHelper } from '../../frontend/default-client-helper';
+import { DefaultClientHelper } from '../frontend/default-client-helper';
 import UnifyMailProtocolHandler from './unifymail-protocol-handler';
 import ConfigPersistenceManager from './config-persistence-manager';
 import moveToApplications from './move-to-applications';
-import { MailsyncProcess } from '../../frontend/mailsync-process';
-import Config from '../../frontend/config';
+import { MailsyncProcess } from '../frontend/mailsync-process';
+import Config from '../frontend/config';
 import { registerQuickpreviewIPCHandlers } from './quickpreview-ipc';
 import {
   handleWindowsToastXMLProtocolAction,
@@ -110,7 +110,7 @@ export default class Application extends EventEmitter {
       return;
     }
 
-    const Config = require('../../frontend/config').default;
+    const Config = require('../frontend/config').default;
     const config = new Config();
     this.config = config;
     this.configPersistenceManager = new ConfigPersistenceManager({ configDirPath, resourcePath });

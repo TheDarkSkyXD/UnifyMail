@@ -1,0 +1,26 @@
+[package]
+name = "mailcore-napi-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Rust napi-rs addon for UnifyMail — provider detection and email account validation"
+authors = ["UnifyMail Contributors"]
+
+[lib]
+# cdylib: produces the .node native addon for Node.js
+# rlib: enables integration tests in tests/ directory to link against the crate
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+napi = { version = "=3.8.3", features = ["napi4", "async", "tokio_rt"] }
+napi-derive = "=3.5.2"
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.149"
+regex = "=1.12.3"
+tokio = { version = "=1.50.0", features = ["rt-multi-thread", "net", "time", "io-util", "macros"] }
+
+[build-dependencies]
+napi-build = "=2.3.1"
+
+[profile.release]
+lto = true
+strip = "symbols"
