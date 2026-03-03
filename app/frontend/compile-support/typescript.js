@@ -6,7 +6,7 @@ var path = require('path');
 var TypeScript = null;
 var typescriptVersionDir = null;
 
-var compilerOptions = require('../../../tsconfig.json').compilerOptions;
+var compilerOptions = require('../../tsconfig.json').compilerOptions;
 
 exports.shouldCompile = function() {
   return true;

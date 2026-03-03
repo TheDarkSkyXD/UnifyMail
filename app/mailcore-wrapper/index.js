@@ -8,7 +8,7 @@ let cppAddon = null;
 
 function getRust() {
   if (!rustAddon) {
-    rustAddon = require('../mailcore-rs/index.js');
+    rustAddon = require('../mailcore-rs/loader.js');
   }
   return rustAddon;
 }

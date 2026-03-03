@@ -1,7 +1,7 @@
 import _ from 'underscore';
 import { app, BrowserWindow, screen } from 'electron';
 import WindowLauncher from './window-launcher';
-import { localized } from '../../frontend/intl';
+import { localized } from '../frontend/intl';
 import UnifyMailWindow from './unifymail-window';
 import { isWaylandSession } from './is-wayland';
 
@@ -255,7 +255,7 @@ export default class WindowManager {
       title: localized('Message Viewer'),
       toolbar: true,
       neverClose: true,
-      bootstrapScript: require.resolve('../../frontend/window-bootstrap'),
+      bootstrapScript: require.resolve('../frontend/window-bootstrap'),
       mainWindow: true,
       width: 900, // Gets changed based on previous settings
       height: 600, // Gets changed based on previous settings

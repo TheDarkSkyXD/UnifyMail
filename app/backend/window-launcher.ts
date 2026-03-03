@@ -21,7 +21,7 @@ export default class WindowLauncher {
   public hotWindow?: UnifyMailWindow;
 
   private _defaultWindowOpts: UnifyMailWindowSettings;
-  private config: import('../../frontend/config').default;
+  private config: import('../frontend/config').default;
   private onCreatedHotWindow: (win: UnifyMailWindow) => void;
 
   constructor({
@@ -41,7 +41,7 @@ export default class WindowLauncher {
       safeMode,
       resizable: true,
       windowType: WindowLauncher.EMPTY_WINDOW,
-      bootstrapScript: require.resolve('../../frontend/secondary-window-bootstrap'),
+      bootstrapScript: require.resolve('../frontend/secondary-window-bootstrap'),
       resourcePath,
       configDirPath,
     };

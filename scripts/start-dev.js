@@ -35,7 +35,7 @@ const buildEnv = {
         ? `C:\\msys64\\mingw64\\bin;${process.env.PATH}`
         : process.env.PATH,
     // libnode.dll import library — generated from node.exe via gendef+dlltool
-    LIBNODE_PATH: process.env.LIBNODE_PATH || (process.platform === 'win32' ? '/tmp' : undefined),
+    LIBNODE_PATH: process.env.LIBNODE_PATH || (process.platform === 'win32' ? require('os').tmpdir() : undefined),
 };
 
 const buildArgs = ['build', '--platform', '--release'];
@@ -43,7 +43,7 @@ if (process.platform === 'win32') {
     buildArgs.push('--target', 'x86_64-pc-windows-gnu');
 }
 
-const rustBuild = spawnSync(napiPath, buildArgs, {
+const rustBuild = spawnSync(`"${napiPath}"`, buildArgs, {
     shell: true,
     stdio: 'inherit',
     cwd: mailcoreRsDir,

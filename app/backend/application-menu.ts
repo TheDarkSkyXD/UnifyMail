@@ -5,8 +5,8 @@
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
 import { BrowserWindow, Menu, app } from 'electron';
-const Utils = require('../../frontend/flux/models/utils');
-const { localized } = require('../../frontend/intl');
+const Utils = require('../frontend/flux/models/utils');
+const { localized } = require('../frontend/intl');
 
 // Used to manage the global application menu.
 //
