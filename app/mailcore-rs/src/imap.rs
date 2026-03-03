@@ -209,6 +209,10 @@ fn classify_error(err: &dyn std::error::Error) -> String {
 // ---------------------------------------------------------------------------
 
 /// Connect via direct TLS (port 993 style): TCP → TLS handshake → async-imap Client.
+///
+/// Reads and discards the IMAP greeting after wrapping the TLS stream in a Client.
+/// The async-imap docs require the caller to read the greeting before calling
+/// `login` or `authenticate`.
 async fn connect_tls(
     host: &str,
     port: u16,
@@ -220,7 +224,12 @@ async fn connect_tls(
     let server_name = make_server_name(host)?;
     let tls_stream = connector.connect(server_name, tcp_stream).await?;
 
-    let client = Client::new(tls_stream);
+    let mut client = Client::new(tls_stream);
+    // Consume the greeting: "* OK IMAP4rev1 Server ready\r\n"
+    client
+        .read_response()
+        .await
+        .map_err(|e| -> BoxError { format!("Failed to read IMAP greeting: {e}").into() })?;
     Ok(client)
 }
 
@@ -265,9 +274,19 @@ async fn connect_starttls(
 }
 
 /// Connect via clear/unencrypted TCP (no TLS).
+///
+/// Reads and discards the IMAP greeting after wrapping the stream in a Client.
+/// The async-imap docs require the caller to read the greeting before calling
+/// `login` or `authenticate`. Failure to do so causes `do_auth_handshake` (XOAUTH2)
+/// to process the greeting instead of the challenge, hanging the connection.
 async fn connect_clear(host: &str, port: u16) -> InternalResult<Client<TcpStream>> {
     let tcp_stream = TcpStream::connect((host, port)).await?;
-    let client = Client::new(tcp_stream);
+    let mut client = Client::new(tcp_stream);
+    // Consume the greeting: "* OK IMAP4rev1 Server ready\r\n"
+    client
+        .read_response()
+        .await
+        .map_err(|e| -> BoxError { format!("Failed to read IMAP greeting: {e}").into() })?;
     Ok(client)
 }
 
@@ -337,7 +356,8 @@ where
 /// Internal implementation of the IMAP connection test (no timeout wrapper).
 ///
 /// Called by `test_imap_connection` which wraps this in a 15-second timeout.
-async fn do_test_imap(opts: &IMAPConnectionOptions) -> InternalResult<IMAPConnectionResult> {
+/// Exposed as `pub` for integration tests in tests/imap_tests.rs.
+pub async fn do_test_imap(opts: &IMAPConnectionOptions) -> InternalResult<IMAPConnectionResult> {
     let host = opts.hostname.as_str();
     // Port is stored as u32 for napi compatibility; safe to cast to u16 for connect.
     let port = opts.port as u16;
