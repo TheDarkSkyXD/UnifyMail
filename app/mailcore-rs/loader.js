@@ -41,3 +41,5 @@ try {
 module.exports = nativeBinding;
 module.exports.providerForEmail = nativeBinding.providerForEmail;
 module.exports.registerProviders = nativeBinding.registerProviders;
+// Phase 2: IMAP connection testing
+module.exports.testIMAPConnection = nativeBinding.testIMAPConnection;

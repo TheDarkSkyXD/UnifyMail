@@ -7,6 +7,7 @@
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+pub mod imap;
 pub mod provider;
 
 /// The embedded provider database — included at compile time from resources/providers.json.

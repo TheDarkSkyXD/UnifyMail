@@ -23,12 +23,12 @@ Requirements for milestone v1.0 — Rewrite mailcore N-API in Rust. Each maps to
 
 ### IMAP Testing
 
-- [ ] **IMAP-01**: User can test IMAP connection with TLS (port 993)
-- [ ] **IMAP-02**: User can test IMAP connection with STARTTLS upgrade
-- [ ] **IMAP-03**: User can test IMAP connection with clear/unencrypted
-- [ ] **IMAP-04**: User can authenticate with password or OAuth2 (XOAUTH2 SASL)
-- [ ] **IMAP-05**: Capabilities detected: idle, condstore, qresync, compress, namespace, xoauth2, gmail
-- [ ] **IMAP-06**: Connection timeout of 15 seconds prevents indefinite hang
+- [x] **IMAP-01**: User can test IMAP connection with TLS (port 993)
+- [x] **IMAP-02**: User can test IMAP connection with STARTTLS upgrade
+- [x] **IMAP-03**: User can test IMAP connection with clear/unencrypted
+- [x] **IMAP-04**: User can authenticate with password or OAuth2 (XOAUTH2 SASL)
+- [x] **IMAP-05**: Capabilities detected: idle, condstore, qresync, compress, namespace, xoauth2, gmail
+- [x] **IMAP-06**: Connection timeout of 15 seconds prevents indefinite hang
 
 ### SMTP Testing
 
@@ -210,12 +210,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-02 | Phase 1 | Complete |
 | PROV-03 | Phase 1 | Complete |
 | PROV-04 | Phase 1 | Complete |
-| IMAP-01 | Phase 2 | Pending |
-| IMAP-02 | Phase 2 | Pending |
-| IMAP-03 | Phase 2 | Pending |
-| IMAP-04 | Phase 2 | Pending |
-| IMAP-05 | Phase 2 | Pending |
-| IMAP-06 | Phase 2 | Pending |
+| IMAP-01 | Phase 2 | Complete |
+| IMAP-02 | Phase 2 | Complete |
+| IMAP-03 | Phase 2 | Complete |
+| IMAP-04 | Phase 2 | Complete |
+| IMAP-05 | Phase 2 | Complete |
+| IMAP-06 | Phase 2 | Complete |
 | SMTP-01 | Phase 3 | Pending |
 | SMTP-02 | Phase 3 | Pending |
 | SMTP-03 | Phase 3 | Pending |
