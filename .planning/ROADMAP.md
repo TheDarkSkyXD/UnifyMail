@@ -12,7 +12,7 @@ Replace the `app/mailcore/` C++ N-API addon (backed by the full mailcore2 librar
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Scaffolding and Provider Detection** - Prove Electron integration is sound; implement sync provider lookup with full regex cross-validation
+- [x] **Phase 1: Scaffolding and Provider Detection** - Prove Electron integration is sound; implement sync provider lookup with full regex cross-validation (completed 2026-03-03)
 - [ ] **Phase 2: IMAP Connection Testing** - Implement testIMAPConnection with all three TLS paths, XOAUTH2 auth, and 7 capability detections
 - [ ] **Phase 3: SMTP Testing and Account Validation** - Implement testSMTPConnection and validateAccount composing all proven components
 - [ ] **Phase 4: Cross-Platform Packaging and Cleanup** - GitHub Actions CI for all 5 targets, binary size validation, remove all C++ code
@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Provider database auto-initializes on module load via embedded `providers.json` (no explicit registerProviders call needed)
   4. Calling `providerForEmail(email)` returns a provider object with IMAP/SMTP configs for recognized domains
   5. Domain-regex matching produces identical results to the C++ addon for 50 representative email addresses (cross-validation test passes)
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — Scaffold Rust napi-rs crate and implement provider detection logic with tests
@@ -89,7 +89,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffolding and Provider Detection | 1/2 | In progress | - |
+| 1. Scaffolding and Provider Detection | 2/2 | Complete   | 2026-03-03 |
 | 2. IMAP Connection Testing | 0/? | Not started | - |
 | 3. SMTP Testing and Account Validation | 0/? | Not started | - |
 | 4. Cross-Platform Packaging and Cleanup | 0/? | Not started | - |
