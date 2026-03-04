@@ -16,6 +16,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: IMAP Connection Testing** - Implement testIMAPConnection with all three TLS paths, XOAUTH2 auth, and 7 capability detections (completed 2026-03-03)
 - [x] **Phase 3: SMTP Testing and Account Validation** - Implement testSMTPConnection and validateAccount composing all proven components (completed 2026-03-04)
 - [x] **Phase 4: Cross-Platform Packaging and Cleanup** - GitHub Actions CI for all 5 targets, binary size validation, remove all C++ code (completed 2026-03-04)
+- [ ] **Phase 4.1: CI Hardening and Smoke Test Expansion** - Expand CI smoke tests to cover all 5 exports, fix macOS cache key, delete stale index.js (Gap Closure)
+- [ ] **Phase 4.2: validateAccount Integration Verification** - Verify validateAccount call site field mapping and E2E credential passing (Gap Closure)
 
 ## Phase Details
 
@@ -85,10 +87,38 @@ Plans:
 - [ ] 04-01-PLAN.md — Cargo release profile optimization, wrapper removal, C++ deletion, package.json rewiring
 - [ ] 04-02-PLAN.md — Insert Rust build steps into all 4 CI workflows, remove C++ build infrastructure, add smoke tests
 
+### Phase 4.1: CI Hardening and Smoke Test Expansion
+**Goal**: All CI workflows smoke-test the complete 5-function API surface and build caches work correctly on all platforms
+**Depends on**: Phase 4
+**Requirements**: SCAF-03 (strengthened), IMAP-01, SMTP-01, VALD-01
+**Gap Closure**: Closes INTG-CI-SMOKE, INTG-MACOS-CACHE from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. All 4 CI workflows smoke-test all 5 exports: providerForEmail, registerProviders, testIMAPConnection, testSMTPConnection, validateAccount
+  2. macOS CI cache key uses hashFiles('package-lock.json') instead of hashFiles('yarn.lock')
+  3. Stale auto-generated index.js deleted from app/mailcore-rs/ (loader.js is the canonical entry point)
+**Plans**: TBD
+
+Plans:
+- [ ] 04.1-01: TBD
+
+### Phase 4.2: validateAccount Integration Verification
+**Goal**: The validateAccount call site in mailsync-process.ts is verified to pass all required fields including username, and the E2E credential flow is proven correct
+**Depends on**: Phase 4
+**Requirements**: INTG-02 (strengthened), VALD-01, VALD-03
+**Gap Closure**: Closes INTG-VALIDATE-USERNAME, FLOW-VALIDATE-RUNTIME from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. The validateAccount call site in mailsync-process.ts passes username field correctly to Rust ValidateAccountOptions
+  2. An integration test verifies credential passing from TypeScript to Rust validateAccount matches expected field mapping
+  3. The account validation E2E flow (mailsync-process.ts -> Rust validateAccount -> concurrent IMAP+SMTP+MX) is verified end-to-end
+**Plans**: TBD
+
+Plans:
+- [ ] 04.2-01: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 4.1 → 4.2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -96,6 +126,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. IMAP Connection Testing | 2/2 | Complete   | 2026-03-03 |
 | 3. SMTP Testing and Account Validation | 2/2 | Complete   | 2026-03-04 |
 | 4. Cross-Platform Packaging and Cleanup | 2/2 | Complete   | 2026-03-04 |
+| 4.1 CI Hardening and Smoke Test Expansion | 0/? | Not started | - |
+| 4.2 validateAccount Integration Verification | 0/? | Not started | - |
 
 ---
 
