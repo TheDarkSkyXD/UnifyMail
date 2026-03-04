@@ -12,7 +12,7 @@ Requirements for milestone v1.0 — Rewrite mailcore N-API in Rust. Each maps to
 - [x] **SCAF-01**: napi-rs v3 project initialized at `app/mailcore-rs/` with Cargo.toml, build.rs, and package.json
 - [x] **SCAF-02**: Addon loads successfully in Electron main process without crashes (tokio runtime, rustls TLS, no OpenSSL symbols)
 - [ ] **SCAF-03**: GitHub Actions CI builds for all 5 targets (win-x64, mac-arm64, mac-x64, linux-x64, linux-arm64)
-- [ ] **SCAF-04**: Release binary < 8MB on Linux x64 with LTO + strip
+- [x] **SCAF-04**: Release binary < 8MB on Linux x64 with LTO + strip
 
 ### Provider Detection
 
@@ -47,10 +47,10 @@ Requirements for milestone v1.0 — Rewrite mailcore N-API in Rust. Each maps to
 
 ### Integration and Cleanup
 
-- [ ] **INTG-01**: `onboarding-helpers.ts` works with Rust addon via existing `require('mailcore-napi')`
-- [ ] **INTG-02**: `mailsync-process.ts` works with Rust addon via existing require path
-- [ ] **INTG-03**: All C++ source files, node-gyp configs, and vendored mailcore2 removed
-- [ ] **INTG-04**: `node-addon-api` and `node-gyp` dependencies removed from package.json
+- [x] **INTG-01**: `onboarding-helpers.ts` works with Rust addon via existing `require('mailcore-napi')`
+- [x] **INTG-02**: `mailsync-process.ts` works with Rust addon via existing require path
+- [x] **INTG-03**: All C++ source files, node-gyp configs, and vendored mailcore2 removed
+- [x] **INTG-04**: `node-addon-api` and `node-gyp` dependencies removed from package.json
 
 ## v1 Future Requirements
 
@@ -205,7 +205,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCAF-01 | Phase 1 | Complete |
 | SCAF-02 | Phase 1 | Complete |
 | SCAF-03 | Phase 4 | Pending |
-| SCAF-04 | Phase 4 | Pending |
+| SCAF-04 | Phase 4 | Complete |
 | PROV-01 | Phase 1 | Complete |
 | PROV-02 | Phase 1 | Complete |
 | PROV-03 | Phase 1 | Complete |
@@ -225,10 +225,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VALD-02 | Phase 3 | Complete |
 | VALD-03 | Phase 3 | Complete |
 | VALD-04 | Phase 3 | Complete |
-| INTG-01 | Phase 4 | Pending |
-| INTG-02 | Phase 4 | Pending |
-| INTG-03 | Phase 4 | Pending |
-| INTG-04 | Phase 4 | Pending |
+| INTG-01 | Phase 4 | Complete |
+| INTG-02 | Phase 4 | Complete |
+| INTG-03 | Phase 4 | Complete |
+| INTG-04 | Phase 4 | Complete |
 | IPC-01 | Phase 5 | Pending |
 | IPC-02 | Phase 5 | Pending |
 | IPC-03 | Phase 5 | Pending |
