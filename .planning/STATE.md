@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 07-01-PLAN.md — Phase 7 deps, imap/oauth2 scaffold, SyncError classification methods
-last_updated: "2026-03-04T18:32:26.302Z"
+stopped_at: Completed 07-03-PLAN.md — ImapSession connect/auth/list_folders, two-pass role detection, Gmail 6-folder whitelist
+last_updated: "2026-03-04T19:10:16.808Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 11
-  completed_plans: 6
+  completed_plans: 7
   percent: 55
 ---
 
@@ -115,6 +115,8 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 06-03]: Event search fields use #[serde(skip)] transient pattern — not stored in data blob, gated on search_title non-empty, populated by ICS parsing in Phase 9
 - [Phase 07-01]: async-imap Error::Tls variant doesn't exist in 0.11; TLS errors surface via Io(IoError), mapped to SyncError::Connection
 - [Phase 07-01]: reqwest uses rustls-native-certs (platform cert store) not rustls-tls — consistent with rustls-platform-verifier
+- [Phase 07-03]: ImapPreAuth has only client field — capabilities deferred to authenticate(); async-imap Client (pre-auth) does not expose capabilities(), only Session (post-auth) does
+- [Phase 07-03]: Concrete ImapTlsStream = TlsStream<TcpStream> for both SSL/TLS and STARTTLS — avoids Box<dyn AsyncReadWrite + Send> trait object complexity
 
 ### Pending Todos
 
@@ -128,8 +130,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T18:32:26.300Z
-Stopped at: Completed 07-01-PLAN.md — Phase 7 deps, imap/oauth2 scaffold, SyncError classification methods
+Last session: 2026-03-04T19:10:16.805Z
+Stopped at: Completed 07-03-PLAN.md — ImapSession connect/auth/list_folders, two-pass role detection, Gmail 6-folder whitelist
 Resume file: None
 
 ---
