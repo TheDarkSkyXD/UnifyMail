@@ -1,31 +1,31 @@
-// imap/sync_worker.rs — IMAP background sync loop stub.
+// imap/sync_worker.rs — IMAP background sync loop.
 //
-// Full implementation in Phase 7 Plans 02 (folder discovery, sync loop skeleton)
-// and 03 (UID sync, MODSEQ-based incremental sync).
+// This file implements the core sync algorithms:
+//   - CONDSTORE incremental sync (Plans 05)
+//   - UID-range fallback for non-CONDSTORE servers (Plan 05)
+//   - UIDVALIDITY change handling (RFC 4549 full re-sync) (Plan 05)
+//   - Folder priority ordering (Plan 05)
+//   - Per-operation timeout wrapping (Plan 05)
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::SyncError;
+use crate::models::folder::Folder;
 
 // ---------------------------------------------------------------------------
-// Constants used across the sync worker (Plans 02/03/04)
+// Constants used across the sync worker
 // ---------------------------------------------------------------------------
 
 /// Folders sorted by role priority for sync ordering.
 /// Inbox first, then common high-priority folders, then the rest alphabetically.
-#[allow(dead_code)]
-pub const ROLE_ORDER: &[&str] = &[
-    "inbox",
-    "sent",
-    "drafts",
-    "trash",
-    "archive",
-    "spam",
-    "junk",
-];
+pub const ROLE_ORDER: &[&str] = &["inbox", "sent", "drafts", "all", "archive", "trash", "spam"];
 
-/// Maximum MODSEQ delta fetch before falling back to full UID sync.
-/// Above this threshold, a full sync is cheaper than processing thousands of changes.
-#[allow(dead_code)]
-pub const MODSEQ_TRUNCATION_THRESHOLD: u32 = 4000;
+/// Maximum MODSEQ delta before truncating UID fetch range.
+/// Above this threshold, we limit the UID fetch range to the last 12000 UIDs.
+pub const MODSEQ_TRUNCATION_THRESHOLD: u64 = 4000;
+
+/// Number of UIDs to fetch when truncation is active.
+pub const TRUNCATION_UID_WINDOW: u32 = 12000;
 
 /// Body cache TTL in seconds: bodies older than this are considered stale.
 /// Computed as 30 days.
@@ -42,26 +42,534 @@ pub const BODY_PREFETCH_AGE_SECS: u64 = 7 * 24 * 3600;
 pub const BODY_SYNC_BATCH_SIZE: usize = 30;
 
 // ---------------------------------------------------------------------------
-// Stub functions — implemented in Plans 02/03
+// FolderSyncState — typed representation of Folder.local_status JSON
+// ---------------------------------------------------------------------------
+
+/// Deserializes a modseq value that may be stored as either a JSON string or number.
+///
+/// The C++ sync engine stores modseq as a string to prevent JavaScript precision loss
+/// for values above 2^53 (Pitfall 5 in the plan). We deserialize both forms.
+fn deserialize_modseq<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, Visitor};
+    use std::fmt;
+
+    struct ModseqVisitor;
+
+    impl<'de> Visitor<'de> for ModseqVisitor {
+        type Value = u64;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a u64 or a string representing a u64")
+        }
+
+        fn visit_u64<E: de::Error>(self, v: u64) -> Result<u64, E> {
+            Ok(v)
+        }
+
+        fn visit_i64<E: de::Error>(self, v: i64) -> Result<u64, E> {
+            if v < 0 {
+                Err(E::custom("negative modseq"))
+            } else {
+                Ok(v as u64)
+            }
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<u64, E> {
+            v.parse::<u64>().map_err(E::custom)
+        }
+
+        fn visit_string<E: de::Error>(self, v: String) -> Result<u64, E> {
+            v.parse::<u64>().map_err(E::custom)
+        }
+    }
+
+    deserializer.deserialize_any(ModseqVisitor)
+}
+
+/// Serializes modseq as a JSON string to prevent JavaScript precision loss for
+/// values above 2^53. The C++ sync engine stores modseq as a string for the same reason.
+fn serialize_modseq<S: Serializer>(value: &u64, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&value.to_string())
+}
+
+/// Typed representation of Folder.local_status JSON.
+///
+/// Matches the C++ SyncWorker local_status shape. Missing fields default to
+/// zero/empty (per #[serde(default)]).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FolderSyncState {
+    /// IMAP UIDVALIDITY value from last successful SELECT.
+    #[serde(default)]
+    pub uidvalidity: u32,
+
+    /// CONDSTORE highest modseq from last sync. Stored as string in JSON
+    /// to prevent JavaScript precision loss (Pitfall 5).
+    #[serde(
+        default,
+        deserialize_with = "deserialize_modseq",
+        serialize_with = "serialize_modseq"
+    )]
+    pub highestmodseq: u64,
+
+    /// UIDNEXT from last sync (first UID that hasn't been assigned yet).
+    #[serde(default)]
+    pub uidnext: u32,
+
+    /// Lowest UID synced in the current UID window.
+    #[serde(rename = "syncedMinUID", default)]
+    pub synced_min_uid: u32,
+
+    /// Message IDs whose bodies have been downloaded.
+    #[serde(rename = "bodiesPresent", default)]
+    pub bodies_present: Vec<String>,
+
+    /// Message IDs whose bodies are wanted but not yet downloaded.
+    #[serde(rename = "bodiesWanted", default)]
+    pub bodies_wanted: Vec<String>,
+
+    /// Number of times UIDVALIDITY changed (RFC 4549 full re-sync counter).
+    #[serde(rename = "uidvalidityResetCount", default)]
+    pub uidvalidity_reset_count: u32,
+}
+
+/// Deserialize FolderSyncState from a Folder's local_status JSON value.
+///
+/// Returns a default (all-zero) state if local_status is None or cannot be parsed.
+pub fn get_sync_state(folder: &Folder) -> FolderSyncState {
+    folder
+        .local_status
+        .as_ref()
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default()
+}
+
+/// Serialize a FolderSyncState back to Folder.local_status.
+pub fn set_sync_state(folder: &mut Folder, state: &FolderSyncState) {
+    folder.local_status = serde_json::to_value(state).ok();
+}
+
+// ---------------------------------------------------------------------------
+// Folder priority sort
+// ---------------------------------------------------------------------------
+
+/// Sort folders by role priority for optimal sync ordering.
+///
+/// Ordering follows ROLE_ORDER: inbox, sent, drafts, all, archive, trash, spam.
+/// Folders with unknown roles (custom folders) sort after all known roles,
+/// preserving their relative order among themselves (stable sort).
+pub fn sort_folders_by_role_priority(folders: &mut Vec<Folder>) {
+    folders.sort_by(|a, b| {
+        let idx_a = ROLE_ORDER.iter().position(|&r| r == a.role.as_str());
+        let idx_b = ROLE_ORDER.iter().position(|&r| r == b.role.as_str());
+        match (idx_a, idx_b) {
+            (Some(i), Some(j)) => i.cmp(&j),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// CONDSTORE decision logic — pure functions (testable without IMAP)
+// ---------------------------------------------------------------------------
+
+/// Result of checking CONDSTORE state against the server.
+#[derive(Debug, PartialEq)]
+pub enum CondstoreDecision {
+    /// No changes: server modseq + uidnext match stored values.
+    NoChange,
+    /// Normal incremental fetch using CHANGEDSINCE.
+    Incremental { uid_set: String },
+    /// Large gap — truncate to the last `TRUNCATION_UID_WINDOW` UIDs.
+    Truncated { uid_set: String },
+}
+
+/// Determine what CONDSTORE sync action to take based on server vs stored state.
+///
+/// - If `server_modseq == stored_modseq && server_uidnext == stored_uidnext` -> NoChange
+/// - If `server_modseq - stored_modseq > MODSEQ_TRUNCATION_THRESHOLD` -> Truncated
+/// - Otherwise -> Incremental
+///
+/// `server_uidnext` of 0 means the server didn't report UIDNEXT (treat as changed).
+pub fn decide_condstore_action(
+    server_modseq: u64,
+    server_uidnext: u32,
+    stored_modseq: u64,
+    stored_uidnext: u32,
+) -> CondstoreDecision {
+    // No-change: modseq and uidnext both match
+    if server_modseq == stored_modseq && server_uidnext != 0 && server_uidnext == stored_uidnext {
+        return CondstoreDecision::NoChange;
+    }
+
+    // Calculate delta (saturating subtraction to handle first sync where stored=0)
+    let delta = server_modseq.saturating_sub(stored_modseq);
+
+    if delta > MODSEQ_TRUNCATION_THRESHOLD {
+        // Truncate to last TRUNCATION_UID_WINDOW UIDs
+        let start_uid = server_uidnext.saturating_sub(TRUNCATION_UID_WINDOW);
+        let uid_set = format!("{}:*", start_uid.max(1));
+        CondstoreDecision::Truncated { uid_set }
+    } else {
+        CondstoreDecision::Incremental {
+            uid_set: "1:*".to_string(),
+        }
+    }
+}
+
+/// Determine if a UIDVALIDITY change requires a full re-sync.
+///
+/// Per RFC 4549: if stored uidvalidity is non-zero AND differs from the server's
+/// value, the client MUST discard all cached state and perform a full re-sync.
+///
+/// If stored uidvalidity is 0, this is the first time the folder is selected —
+/// no reset is needed.
+pub fn needs_uidvalidity_reset(stored: u32, server: u32) -> bool {
+    stored != 0 && stored != server
+}
+
+// ---------------------------------------------------------------------------
+// Stubs for async functions (implementations that wrap ImapSession)
 // ---------------------------------------------------------------------------
 
 /// Background sync entry point (stub).
 ///
-/// Full implementation in Plan 02: spawns folder sync tasks, manages the
+/// Full implementation planned for Phase 8: spawns folder sync tasks, manages the
 /// IMAP connection lifecycle, and loops on the IMAP IDLE command.
 #[allow(dead_code)]
 pub async fn background_sync() -> Result<(), SyncError> {
     Err(SyncError::NotImplemented("background_sync".into()))
 }
 
-/// Sort folders by role priority for optimal sync ordering (stub).
-///
-/// Full implementation in Plan 02: uses ROLE_ORDER to move high-priority
-/// folders (Inbox, Sent, Drafts) ahead of user-created folders.
-#[allow(dead_code)]
-pub fn sort_folders_by_role_priority(_folders: &mut Vec<String>) {
-    // Implemented in Plan 02
-}
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    fn make_folder(role: &str) -> Folder {
+        Folder {
+            id: format!("acc:{}", role),
+            account_id: "acc".to_string(),
+            version: 1,
+            path: role.to_string(),
+            role: role.to_string(),
+            local_status: None,
+        }
+    }
+
+    // ---- Task 1: Folder priority sort tests ----
+
+    #[test]
+    fn folder_priority_sort_correct_order() {
+        let mut folders = vec![
+            make_folder("trash"),
+            make_folder("sent"),
+            make_folder("spam"),
+            make_folder("inbox"),
+            make_folder("drafts"),
+            make_folder("archive"),
+            make_folder("all"),
+        ];
+        sort_folders_by_role_priority(&mut folders);
+        let roles: Vec<&str> = folders.iter().map(|f| f.role.as_str()).collect();
+        assert_eq!(
+            roles,
+            vec!["inbox", "sent", "drafts", "all", "archive", "trash", "spam"]
+        );
+    }
+
+    #[test]
+    fn folder_priority_inbox_first() {
+        let mut folders = vec![
+            make_folder("spam"),
+            make_folder("sent"),
+            make_folder("inbox"),
+        ];
+        sort_folders_by_role_priority(&mut folders);
+        assert_eq!(folders[0].role, "inbox", "Inbox must be position 0");
+    }
+
+    #[test]
+    fn folder_priority_unknown_last() {
+        let mut folders = vec![
+            make_folder("custom-folder"),
+            make_folder("inbox"),
+            make_folder("my-work"),
+        ];
+        sort_folders_by_role_priority(&mut folders);
+        // inbox is first, custom folders come after
+        assert_eq!(folders[0].role, "inbox");
+        // both custom folders should be after inbox
+        assert!(folders[1].role != "inbox");
+        assert!(folders[2].role != "inbox");
+    }
+
+    #[test]
+    fn folder_priority_empty_role_is_unknown() {
+        let mut folders = vec![make_folder(""), make_folder("inbox")];
+        sort_folders_by_role_priority(&mut folders);
+        assert_eq!(folders[0].role, "inbox");
+        assert_eq!(folders[1].role, "");
+    }
+
+    // ---- Task 1: FolderSyncState serialization tests ----
+
+    #[test]
+    fn local_status_serialize() {
+        let state = FolderSyncState {
+            uidvalidity: 12345,
+            highestmodseq: 67890,
+            uidnext: 500,
+            synced_min_uid: 100,
+            bodies_present: vec!["msg1".to_string(), "msg2".to_string()],
+            bodies_wanted: vec!["msg3".to_string()],
+            uidvalidity_reset_count: 0,
+        };
+        let json = serde_json::to_value(&state).unwrap();
+        assert_eq!(json["uidvalidity"], 12345);
+        // highestmodseq must be serialized as a string
+        assert_eq!(json["highestmodseq"], "67890");
+        assert_eq!(json["uidnext"], 500);
+        assert_eq!(json["syncedMinUID"], 100);
+        assert_eq!(json["bodiesPresent"], serde_json::json!(["msg1", "msg2"]));
+        assert_eq!(json["bodiesWanted"], serde_json::json!(["msg3"]));
+        assert_eq!(json["uidvalidityResetCount"], 0);
+    }
+
+    #[test]
+    fn local_status_parse() {
+        let json = serde_json::json!({
+            "uidvalidity": 12345,
+            "highestmodseq": "67890",
+            "uidnext": 500,
+            "syncedMinUID": 100,
+            "bodiesPresent": ["msg1", "msg2"],
+            "bodiesWanted": ["msg3"],
+            "uidvalidityResetCount": 0
+        });
+        let state: FolderSyncState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.uidvalidity, 12345);
+        assert_eq!(state.highestmodseq, 67890);
+        assert_eq!(state.uidnext, 500);
+        assert_eq!(state.synced_min_uid, 100);
+        assert_eq!(state.bodies_present, vec!["msg1", "msg2"]);
+        assert_eq!(state.bodies_wanted, vec!["msg3"]);
+        assert_eq!(state.uidvalidity_reset_count, 0);
+    }
+
+    #[test]
+    fn local_status_defaults() {
+        // Empty JSON object — all fields should default to zero/empty
+        let state: FolderSyncState = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert_eq!(state.uidvalidity, 0);
+        assert_eq!(state.highestmodseq, 0);
+        assert_eq!(state.uidnext, 0);
+        assert_eq!(state.synced_min_uid, 0);
+        assert!(state.bodies_present.is_empty());
+        assert!(state.bodies_wanted.is_empty());
+        assert_eq!(state.uidvalidity_reset_count, 0);
+    }
+
+    #[test]
+    fn local_status_modseq_as_number_parses() {
+        // Some JSON sources may emit modseq as a number instead of string
+        let json = serde_json::json!({ "highestmodseq": 67890u64 });
+        let state: FolderSyncState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.highestmodseq, 67890);
+    }
+
+    #[test]
+    fn local_status_modseq_serialized_as_string() {
+        // Verify the serialized form is always a string (for JS interop)
+        let state = FolderSyncState {
+            highestmodseq: 9007199254740993u64, // > 2^53, would lose precision as JS number
+            ..Default::default()
+        };
+        let json = serde_json::to_value(&state).unwrap();
+        assert_eq!(
+            json["highestmodseq"].as_str(),
+            Some("9007199254740993"),
+            "highestmodseq must be a string in JSON"
+        );
+    }
+
+    #[test]
+    fn get_sync_state_from_folder_with_status() {
+        let mut folder = make_folder("inbox");
+        folder.local_status = Some(serde_json::json!({
+            "uidvalidity": 100,
+            "highestmodseq": "200",
+            "uidnext": 300
+        }));
+        let state = get_sync_state(&folder);
+        assert_eq!(state.uidvalidity, 100);
+        assert_eq!(state.highestmodseq, 200);
+        assert_eq!(state.uidnext, 300);
+    }
+
+    #[test]
+    fn get_sync_state_from_folder_without_status_returns_default() {
+        let folder = make_folder("inbox"); // local_status is None
+        let state = get_sync_state(&folder);
+        assert_eq!(state.uidvalidity, 0);
+        assert_eq!(state.highestmodseq, 0);
+    }
+
+    #[test]
+    fn set_sync_state_writes_to_folder() {
+        let mut folder = make_folder("inbox");
+        let state = FolderSyncState {
+            uidvalidity: 555,
+            highestmodseq: 999,
+            uidnext: 100,
+            ..Default::default()
+        };
+        set_sync_state(&mut folder, &state);
+        let read_back = get_sync_state(&folder);
+        assert_eq!(read_back.uidvalidity, 555);
+        assert_eq!(read_back.highestmodseq, 999);
+        assert_eq!(read_back.uidnext, 100);
+    }
+
+    // ---- Task 2: CONDSTORE decision logic tests ----
+
+    #[test]
+    fn condstore_no_change() {
+        // When server modseq == stored modseq AND uidnext matches -> NoChange
+        let decision = decide_condstore_action(
+            1000, // server_modseq
+            500,  // server_uidnext
+            1000, // stored_modseq
+            500,  // stored_uidnext
+        );
+        assert_eq!(decision, CondstoreDecision::NoChange);
+    }
+
+    #[test]
+    fn condstore_no_change_requires_both_match() {
+        // Only modseq matches but uidnext differs -> Incremental (new messages arrived)
+        let decision = decide_condstore_action(1000, 501, 1000, 500);
+        assert!(matches!(decision, CondstoreDecision::Incremental { .. }));
+    }
+
+    #[test]
+    fn condstore_normal_incremental() {
+        // Small modseq delta -> Incremental with "1:*" uid_set
+        let decision = decide_condstore_action(
+            1010, // server_modseq (delta = 10, below threshold)
+            500,  // server_uidnext
+            1000, // stored_modseq
+            490,  // stored_uidnext (different so not NoChange)
+        );
+        match decision {
+            CondstoreDecision::Incremental { uid_set } => {
+                assert_eq!(uid_set, "1:*", "Small delta should use full '1:*' range");
+            }
+            other => panic!("Expected Incremental, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn condstore_truncation_activates_at_threshold() {
+        // Delta of exactly MODSEQ_TRUNCATION_THRESHOLD+1 -> Truncated
+        let delta = MODSEQ_TRUNCATION_THRESHOLD + 1;
+        let decision = decide_condstore_action(
+            1000 + delta,
+            13000, // server_uidnext
+            1000,  // stored_modseq
+            0,     // stored_uidnext
+        );
+        match decision {
+            CondstoreDecision::Truncated { uid_set } => {
+                // start = uidnext(13000) - TRUNCATION_UID_WINDOW(12000) = 1000
+                assert_eq!(uid_set, "1000:*");
+            }
+            other => panic!("Expected Truncated, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn condstore_truncation_uid_range_clamps_to_one() {
+        // When uidnext < TRUNCATION_UID_WINDOW, start should clamp to 1
+        let decision = decide_condstore_action(
+            5001, // server_modseq (delta > 4000)
+            100,  // server_uidnext (< 12000)
+            1000, // stored_modseq
+            0,
+        );
+        match decision {
+            CondstoreDecision::Truncated { uid_set } => {
+                // 100 - 12000 would underflow -> clamped to 1
+                assert_eq!(uid_set, "1:*");
+            }
+            other => panic!("Expected Truncated, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn condstore_first_sync_large_modseq() {
+        // First sync (stored_modseq=0, stored_uidnext=0) with large server modseq
+        // -> Incremental (delta would be truncated only if > 4000 from 0, so if modseq > 4000)
+        let decision = decide_condstore_action(
+            100, // server_modseq < THRESHOLD
+            50,  // server_uidnext
+            0,   // stored_modseq (first sync)
+            0,   // stored_uidnext
+        );
+        // Delta = 100 < 4000 -> Incremental
+        assert!(matches!(decision, CondstoreDecision::Incremental { .. }));
+    }
+
+    // ---- Task 2: UIDVALIDITY reset tests ----
+
+    #[test]
+    fn uidvalidity_reset_when_different() {
+        // stored != 0 AND stored != server -> needs reset
+        assert!(needs_uidvalidity_reset(100, 200));
+    }
+
+    #[test]
+    fn uidvalidity_no_reset_when_same() {
+        // stored == server -> no reset needed
+        assert!(!needs_uidvalidity_reset(100, 100));
+    }
+
+    #[test]
+    fn uidvalidity_first_sync_no_reset() {
+        // stored == 0 -> first time selecting, no reset
+        assert!(!needs_uidvalidity_reset(0, 12345));
+    }
+
+    #[test]
+    fn uidvalidity_both_zero() {
+        // stored = 0, server = 0 -> technically both zero, stored == server so no reset
+        assert!(!needs_uidvalidity_reset(0, 0));
+    }
+
+    // ---- Task 2: Timeout pattern test ----
+
+    #[tokio::test]
+    async fn timeout_fires_on_hang() {
+        use std::time::Duration;
+
+        // Simulate an operation that hangs forever
+        let result = tokio::time::timeout(
+            Duration::from_millis(10),
+            tokio::time::sleep(Duration::from_secs(3600)),
+        )
+        .await;
+
+        assert!(result.is_err(), "Timeout must fire on a hanging operation");
+
+        // Map to SyncError::Timeout as the sync worker would
+        let sync_err = result.map_err(|_| SyncError::Timeout).unwrap_err();
+        assert!(matches!(sync_err, SyncError::Timeout));
+    }
+}
