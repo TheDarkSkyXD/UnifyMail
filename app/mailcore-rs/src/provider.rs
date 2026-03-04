@@ -86,15 +86,15 @@ pub struct MailProviderInfo {
 // Internal provider representation with pre-compiled regexes
 // ---------------------------------------------------------------------------
 
-struct Provider {
-    identifier: String,
+pub(crate) struct Provider {
+    pub(crate) identifier: String,
     servers: RawServers,
     /// (original_pattern, compiled_regex) pairs for domain matching
     domain_match_compiled: Vec<(String, Regex)>,
     /// (original_pattern, compiled_regex) pairs for domain exclusion
     domain_exclude_compiled: Vec<(String, Regex)>,
-    /// Raw MX patterns (not used for matching in Phase 1, deferred to Phase 3)
-    mx_match_patterns: Vec<String>,
+    /// Raw MX patterns used in Phase 3 for provider identifier resolution via DNS MX lookup
+    pub(crate) mx_match_patterns: Vec<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,8 @@ struct Provider {
 // so that register_providers can merge into the existing set.
 // ---------------------------------------------------------------------------
 
-static PROVIDERS: LazyLock<RwLock<Option<Vec<Provider>>>> = LazyLock::new(|| RwLock::new(None));
+pub(crate) static PROVIDERS: LazyLock<RwLock<Option<Vec<Provider>>>> =
+    LazyLock::new(|| RwLock::new(None));
 
 // ---------------------------------------------------------------------------
 // Pattern compilation helpers
