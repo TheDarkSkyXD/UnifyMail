@@ -28,6 +28,7 @@ mod cli;
 mod delta;
 mod error;
 mod modes;
+mod models;
 mod stdin_loop;
 mod store;
 
