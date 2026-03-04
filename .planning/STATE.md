@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 07-04-PLAN.md — stable ID, Gmail extensions, Fetch-to-Message, BodyQueue, 24 tests passing
-last_updated: "2026-03-04T19:38:30.754Z"
+stopped_at: Completed 07-05-PLAN.md — CONDSTORE sync algorithms, FolderSyncState, folder priority sort, 25 tests passing
+last_updated: "2026-03-04T19:52:12.411Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 55
 ---
 
@@ -120,6 +120,8 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 07]: reqwest form feature needed explicitly for .form() method; emit_secrets_updated() uses DeltaStreamItem factory; Windows MSYS2 PATH must include C:\msys64\mingw64\bin for cargo test
 - [Phase 07-04]: gmail_thread_id() takes &[AttributeValue] not &Fetch: async-imap 0.11 Fetch.response is private; X-GM-THRID extracted via free function from parsed attribute slice
 - [Phase 07-04]: id_for_message RFC 2047 decode for subject/message-id only: C++ MailUtils::idForMessage() decodes subject via mailcore2 but treats addresses as raw bytes — our implementation matches this exactly
+- [Phase 07]: CONDSTORE decision logic extracted as pure functions for unit testability — async IMAP wrappers deferred to Phase 8 integration
+- [Phase 07]: highestmodseq serialized as JSON string via custom serialize_modseq/deserialize_modseq — prevents JavaScript Number precision loss above 2^53
 
 ### Pending Todos
 
@@ -133,8 +135,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T19:38:30.751Z
-Stopped at: Completed 07-04-PLAN.md — stable ID, Gmail extensions, Fetch-to-Message, BodyQueue, 24 tests passing
+Last session: 2026-03-04T19:52:12.409Z
+Stopped at: Completed 07-05-PLAN.md — CONDSTORE sync algorithms, FolderSyncState, folder priority sort, 25 tests passing
 Resume file: None
 
 ---
