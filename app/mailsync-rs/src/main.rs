@@ -16,18 +16,26 @@
 // 2. migrate: needs CONFIG_DIR_PATH, no stdin
 // 3. reset: needs CONFIG_DIR_PATH + account JSON from --account flag or stdin
 // 4. test, sync: needs CONFIG_DIR_PATH + account JSON + identity JSON (handshake)
+//
+// CRITICAL: stdin must be read through a SINGLE BufReader for the entire process.
+// Multiple BufReader instances on the same stdin cause data loss: the first BufReader
+// buffers more than one line from the OS pipe, and that buffered data is lost when
+// the BufReader is dropped. The single shared reader is passed to stdin_loop so it
+// can continue reading commands after the handshake is complete.
 
 mod account;
 mod cli;
 mod delta;
 mod error;
 mod modes;
+mod stdin_loop;
 mod store;
 
 use clap::Parser;
 use cli::{Args, Mode};
 use error::SyncError;
 use std::io::Write;
+use tokio::io::{AsyncBufReadExt, BufReader, Lines};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -76,9 +84,23 @@ async fn run_mode(args: Args) -> Result<(), SyncError> {
     }
 
     // ================================================================
-    // Read account JSON (from --account flag or stdin)
+    // Create a single shared stdin reader for the entire process lifecycle.
+    //
+    // CRITICAL: We must create ONE BufReader and share it across all reads.
+    // Multiple BufReader instances on the same stdin cause data loss: the OS
+    // delivers data in chunks, and the first BufReader buffers more than one
+    // line. When that BufReader is dropped, the buffered data is lost.
+    //
+    // Solution: Create one BufReader<tokio::io::Stdin>, read handshake lines
+    // from it, then pass the Lines iterator to stdin_loop for continued reading.
     // ================================================================
-    let account = read_account_json(&args).await?;
+    let stdin_reader = BufReader::new(tokio::io::stdin());
+    let mut lines = stdin_reader.lines();
+
+    // ================================================================
+    // Read account JSON (from --account flag or shared stdin reader)
+    // ================================================================
+    let account = read_account_json(&args, &mut lines).await?;
 
     // ================================================================
     // Modes that need account JSON but NOT identity JSON
@@ -91,30 +113,26 @@ async fn run_mode(args: Args) -> Result<(), SyncError> {
     // Modes that need both account JSON and identity JSON
     // (sync and test modes use the two-line stdin handshake)
     // ================================================================
-    let identity = read_identity_json(&args).await?;
+    let identity = read_identity_json(&args, &mut lines).await?;
 
     match args.mode {
-        Mode::Test => {
-            modes::test_auth::run(&account, &identity).await
-        }
-        Mode::Sync => {
-            // Phase 5 stub — sync mode implementation is in Plan 02+
-            // For now, panic so we don't silently do nothing
-            // TODO(plan-02): Implement full sync mode
-            todo!("Plan 02 implements sync mode — stdin handshake, delta emission, IMAP workers")
-        }
+        Mode::Test => modes::test_auth::run(&account, &identity).await,
+        Mode::Sync => modes::sync::run(&config_dir, account, identity, &args, lines).await,
         _ => unreachable!("All modes handled above"),
     }
 }
 
-/// Reads account JSON from either the --account flag or stdin.
+/// Reads account JSON from either the --account flag or the shared stdin reader.
 ///
 /// For sync/test/reset modes, the TypeScript bridge sends account JSON on stdin
 /// after the binary writes any data to stdout (the two-line handshake protocol).
 ///
 /// Per 05-RESEARCH.md Pattern 1: the binary must write to stdout FIRST to trigger
 /// the TypeScript side to pipe account JSON. Without this, both sides wait — deadlock.
-async fn read_account_json(args: &Args) -> Result<account::Account, SyncError> {
+async fn read_account_json(
+    args: &Args,
+    lines: &mut Lines<BufReader<tokio::io::Stdin>>,
+) -> Result<account::Account, SyncError> {
     if let Some(json) = &args.account {
         // Account provided via --account flag (used in some test scenarios)
         return serde_json::from_str(json).map_err(SyncError::from);
@@ -126,17 +144,13 @@ async fn read_account_json(args: &Args) -> Result<account::Account, SyncError> {
     print!("\nWaiting for Account JSON:\n");
     std::io::stdout().flush().map_err(SyncError::from)?;
 
-    // Read account JSON from stdin (first line of two-line handshake)
-    // Using tokio::io::stdin() with BufReader for async line reading
-    use tokio::io::{AsyncBufReadExt, BufReader};
-    let stdin = tokio::io::stdin();
-    let mut reader = BufReader::new(stdin);
-    let mut account_line = String::new();
-    reader
-        .read_line(&mut account_line)
+    // Read account JSON from shared stdin reader (first line of two-line handshake)
+    let account_line = lines
+        .next_line()
         .await
-        .map_err(SyncError::from)?;
-    let account_line = account_line.trim_end_matches('\n').trim_end_matches('\r');
+        .map_err(SyncError::from)?
+        .unwrap_or_default();
+    let account_line = account_line.trim_end_matches('\r');
 
     if account_line.is_empty() {
         return Err(SyncError::Protocol("stdin closed before account JSON".to_string()));
@@ -145,11 +159,11 @@ async fn read_account_json(args: &Args) -> Result<account::Account, SyncError> {
     serde_json::from_str(account_line).map_err(SyncError::from)
 }
 
-/// Reads identity JSON from either the --identity flag or stdin.
-/// Called after read_account_json() — the TypeScript bridge sends both lines
-/// in the same stdin pipe batch, so this reads the second line.
+/// Reads identity JSON from either the --identity flag or the shared stdin reader.
+/// Called after read_account_json() — uses the same shared reader to read line 2.
 async fn read_identity_json(
     args: &Args,
+    lines: &mut Lines<BufReader<tokio::io::Stdin>>,
 ) -> Result<Option<account::Identity>, SyncError> {
     if let Some(json) = &args.identity {
         if json == "null" {
@@ -163,15 +177,13 @@ async fn read_identity_json(
     print!("\nWaiting for Identity JSON:\n");
     std::io::stdout().flush().map_err(SyncError::from)?;
 
-    use tokio::io::{AsyncBufReadExt, BufReader};
-    let stdin = tokio::io::stdin();
-    let mut reader = BufReader::new(stdin);
-    let mut identity_line = String::new();
-    reader
-        .read_line(&mut identity_line)
+    // Read identity JSON from shared stdin reader (second line of two-line handshake)
+    let identity_line = lines
+        .next_line()
         .await
-        .map_err(SyncError::from)?;
-    let identity_line = identity_line.trim_end_matches('\n').trim_end_matches('\r');
+        .map_err(SyncError::from)?
+        .unwrap_or_default();
+    let identity_line = identity_line.trim_end_matches('\r');
 
     if identity_line.is_empty() || identity_line == "null" {
         Ok(None)

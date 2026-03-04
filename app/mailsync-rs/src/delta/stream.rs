@@ -14,12 +14,10 @@ use tokio::sync::mpsc::UnboundedSender;
 ///
 /// Wrap in Arc to share across tokio tasks:
 /// `let delta = Arc::new(DeltaStream::new(tx));`
-#[allow(dead_code)]
 pub struct DeltaStream {
     tx: UnboundedSender<DeltaStreamItem>,
 }
 
-#[allow(dead_code)]
 impl DeltaStream {
     /// Creates a new DeltaStream backed by the given mpsc sender.
     pub fn new(tx: UnboundedSender<DeltaStreamItem>) -> Self {

@@ -25,7 +25,6 @@ use tokio::time::{interval, Duration, MissedTickBehavior};
 /// channel close).
 ///
 /// The flush task runs until the sender side is dropped (sync mode exits).
-#[allow(dead_code)]
 pub async fn delta_flush_task(mut rx: mpsc::UnboundedReceiver<DeltaStreamItem>) {
     // IndexMap preserves insertion order for deterministic output
     let mut buffer: IndexMap<String, Vec<DeltaStreamItem>> = IndexMap::new();
@@ -68,7 +67,6 @@ pub async fn delta_flush_task(mut rx: mpsc::UnboundedReceiver<DeltaStreamItem>) 
 /// - Find existing entry for this item's model_class
 /// - Try to concatenate (same delta_type required)
 /// - If concatenation fails (different delta_type): push as new entry
-#[allow(dead_code)]
 fn coalesce_into(buffer: &mut IndexMap<String, Vec<DeltaStreamItem>>, item: DeltaStreamItem) {
     let key = item.model_class.clone();
     let entries = buffer.entry(key).or_default();
@@ -93,7 +91,6 @@ fn coalesce_into(buffer: &mut IndexMap<String, Vec<DeltaStreamItem>>, item: Delt
 ///
 /// The json! macro with literal string keys is a second layer of defense beyond
 /// the serde renames — it guarantees exact field names regardless of struct renames.
-#[allow(dead_code)]
 fn flush_buffer(buffer: &IndexMap<String, Vec<DeltaStreamItem>>) {
     let stdout = std::io::stdout();
     let mut out = stdout.lock();

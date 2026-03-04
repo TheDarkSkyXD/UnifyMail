@@ -22,7 +22,6 @@ use serde_json::Value;
 /// NOTE: Do NOT use `#[serde(rename_all = "camelCase")]` — it would rename
 /// `delta_type` to `deltaType` instead of the required `"type"`.
 /// Use per-field explicit renames only.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize)]
 pub struct DeltaStreamItem {
     /// The delta operation: "persist" or "unpersist"
@@ -43,7 +42,6 @@ pub struct DeltaStreamItem {
     pub id_indexes: IndexMap<String, usize>,
 }
 
-#[allow(dead_code)]
 impl DeltaStreamItem {
     /// Creates a new DeltaStreamItem and builds the id_indexes map.
     pub fn new(delta_type: &str, model_class: &str, model_jsons: Vec<Value>) -> Self {
@@ -131,6 +129,7 @@ impl DeltaStreamItem {
     }
 
     /// Serializes this item to a JSON string using serde (with field renames applied).
+    #[allow(dead_code)]
     pub fn to_json_string(&self) -> String {
         serde_json::to_string(self).unwrap_or_else(|e| {
             tracing::error!("Failed to serialize DeltaStreamItem: {e}");

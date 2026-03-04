@@ -6,4 +6,5 @@
 pub mod install_check;
 pub mod migrate;
 pub mod reset;
+pub mod sync;
 pub mod test_auth;

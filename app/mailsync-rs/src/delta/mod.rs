@@ -11,17 +11,11 @@
 //    coalesces into buffer, flushes every 500ms.
 //
 // References: 05-RESEARCH.md Patterns 2, 3, 4
-//
-// NOTE: Items are declared pub here so they can be used by modes/sync.rs (Plan 02).
-// The #[allow(unused_imports)] suppresses dead_code warnings until sync mode is wired up.
 
 pub mod flush;
 pub mod item;
 pub mod stream;
 
-#[allow(unused_imports)]
 pub use flush::delta_flush_task;
-#[allow(unused_imports)]
 pub use item::DeltaStreamItem;
-#[allow(unused_imports)]
 pub use stream::DeltaStream;
