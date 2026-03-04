@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": ".",
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "declaration": false,
+    "inlineSourceMap": true,
+    "types": ["node"],
+    "typeRoots": ["../../app/node_modules/@types"]
+  },
+  "include": ["loader.ts", "test/smoke.ts", "tests/cross-validate-providers.ts"],
+  "exclude": ["node_modules", "target"]
+}

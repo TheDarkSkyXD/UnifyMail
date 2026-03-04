@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "declaration": false,
+    "inlineSourceMap": true,
+    "types": ["node"],
+    "typeRoots": ["../app/node_modules/@types"]
+  },
+  "include": ["electron-integration-test.ts"]
+}
