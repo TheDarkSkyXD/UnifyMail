@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: planning
-stopped_at: Phase 5 context updated
-last_updated: "2026-03-04T05:38:11.159Z"
+stopped_at: Completed 05-01-PLAN.md — binary crate scaffold, SQLite migrations, offline modes
+last_updated: "2026-03-04T14:04:28.722Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 ---
@@ -56,6 +56,7 @@ Last activity: 2026-03-04 — Completed v1.0 milestone
 
 Decisions are logged in PROJECT.md Key Decisions table.
 v1.0 decisions archived with outcomes — see PROJECT.md.
+- [Phase 05-01]: rusqlite pinned to 0.37 for tokio-rusqlite 0.7 compatibility; io-std added to workspace tokio features; ThreadListSortIndex moved to V8 migration (column doesn't exist in V1)
 
 ### Pending Todos
 
@@ -69,9 +70,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T05:38:11.157Z
-Stopped at: Phase 5 context updated
-Resume file: .planning/phases/05-core-infrastructure-and-ipc-protocol/05-CONTEXT.md
+Last session: 2026-03-04T14:04:28.720Z
+Stopped at: Completed 05-01-PLAN.md — binary crate scaffold, SQLite migrations, offline modes
+Resume file: None
 
 ---
 *Last updated: 2026-03-04 after v1.0 milestone completion*
