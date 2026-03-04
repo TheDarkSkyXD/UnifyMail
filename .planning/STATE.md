@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-04T00:28:22.888Z"
+last_activity: "2026-03-03 — Completed Plan 02-02: 12 mock IMAP server tests, greeting consumption bug fix, testIMAPConnection live in Rust wrapper"
+progress:
+  total_phases: 10
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
+  percent: 83
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
 stopped_at: Completed 02-02-PLAN.md
 last_updated: "2026-03-03T23:24:07.871Z"
 last_activity: "2026-03-03 — Completed Plan 02-02: 12 mock IMAP server tests, greeting consumption bug fix, testIMAPConnection live in Rust wrapper"
 progress:
-  total_phases: 10
+  [████████░░] 83%
   completed_phases: 2
   total_plans: 4
   completed_plans: 4
@@ -65,6 +81,8 @@ Progress: [██████████] 100%
 - Trend: stable
 
 *Updated after each plan completion*
+| Phase 03-smtp-testing-and-account-validation P01 | 10 | 2 tasks | 5 files |
+| Phase 03-smtp-testing-and-account-validation P02 | 5 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -94,6 +112,10 @@ Recent decisions affecting current work:
 - [v2.0 Pre-Phase 5]: Use tokio-rusqlite for all database access — synchronous rusqlite on async threads causes tokio thread starvation; single-writer pattern via tokio-rusqlite is mandatory
 - [v2.0 Pre-Phase 5]: Use libdav 0.10.2 for CalDAV/CardDAV — replaces ~1,000 lines of manual WebDAV discovery and PROPFIND parsing
 - [v2.0 Pre-Phase 5]: Dedicated stdout flush task with exclusive stdout ownership — all tokio tasks route deltas through mpsc channel; prevents block-buffering silent drop of deltas when not connected to a TTY
+- [Phase 03-smtp-testing-and-account-validation]: lettre 0.11.19 requires both rustls-platform-verifier AND aws-lc-rs features — aws-lc-rs is the rustls 0.23 crypto backend; both needed together
+- [Phase 03-01]: do_test_smtp always returns Ok(SMTPConnectionResult) — SMTP errors classified in-band, unlike do_test_imap which propagates BoxError; napi wrapper needs no error conversion
+- [Phase 03-smtp-testing-and-account-validation]: pub(crate) on Provider fields and PROVIDERS static — minimum visibility for validate.rs MX matching
+- [Phase 03-smtp-testing-and-account-validation]: IMAPSubResult/SMTPSubResult as separate napi(object) types — reusing IMAPConnectionResult would cause napi-rs duplicate registration errors
 
 ### Pending Todos
 
@@ -109,9 +131,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-03T23:19:52Z
-Stopped at: Completed 02-02-PLAN.md
-Resume file: None (Phase 2 complete — next is Phase 3 SMTP)
+Last session: 2026-03-04T00:23:45.868Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: None
 
 ---
 *Last updated: 2026-03-03*

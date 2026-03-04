@@ -43,3 +43,6 @@ module.exports.providerForEmail = nativeBinding.providerForEmail;
 module.exports.registerProviders = nativeBinding.registerProviders;
 // Phase 2: IMAP connection testing
 module.exports.testIMAPConnection = nativeBinding.testIMAPConnection;
+// Phase 3: SMTP connection testing and account validation
+module.exports.testSMTPConnection = nativeBinding.testSMTPConnection;
+module.exports.validateAccount = nativeBinding.validateAccount;

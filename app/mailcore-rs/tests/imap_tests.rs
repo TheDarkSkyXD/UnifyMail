@@ -83,9 +83,7 @@ async fn handle_mock_connection(
             return;
         }
         MockAuthMode::DropAfterGreeting => {
-            let _ = writer
-                .write_all(b"* OK IMAP4rev1 Server ready\r\n")
-                .await;
+            let _ = writer.write_all(b"* OK IMAP4rev1 Server ready\r\n").await;
             // Flush and drop — simulates mid-connection failure.
             return;
         }
@@ -93,9 +91,7 @@ async fn handle_mock_connection(
     }
 
     // Send IMAP greeting.
-    let _ = writer
-        .write_all(b"* OK IMAP4rev1 Server ready\r\n")
-        .await;
+    let _ = writer.write_all(b"* OK IMAP4rev1 Server ready\r\n").await;
 
     // Read and respond to commands in a loop.
     let mut line = String::new();
@@ -132,10 +128,7 @@ async fn handle_mock_connection(
                     let _ = writer.write_all(ok.as_bytes()).await;
                 }
                 MockAuthMode::RejectPassword => {
-                    let no = format!(
-                        "{} NO [AUTHENTICATIONFAILED] Invalid credentials\r\n",
-                        tag
-                    );
+                    let no = format!("{} NO [AUTHENTICATIONFAILED] Invalid credentials\r\n", tag);
                     let _ = writer.write_all(no.as_bytes()).await;
                 }
                 _ => {
@@ -180,10 +173,8 @@ async fn handle_mock_connection(
                             }
                         }
                         _ => {
-                            let no = format!(
-                                "{} NO [AUTHENTICATIONFAILED] XOAUTH2 rejected\r\n",
-                                tag
-                            );
+                            let no =
+                                format!("{} NO [AUTHENTICATIONFAILED] XOAUTH2 rejected\r\n", tag);
                             let _ = writer.write_all(no.as_bytes()).await;
                         }
                     }
@@ -193,8 +184,10 @@ async fn handle_mock_connection(
                 }
             }
             "LOGOUT" => {
-                let bye =
-                    format!("* BYE Server logging out\r\n{} OK LOGOUT completed\r\n", tag);
+                let bye = format!(
+                    "* BYE Server logging out\r\n{} OK LOGOUT completed\r\n",
+                    tag
+                );
                 let _ = writer.write_all(bye.as_bytes()).await;
                 break;
             }
@@ -237,7 +230,10 @@ fn tls_opts(port: u16) -> IMAPConnectionOptions {
 /// Classify an error string using the same rules as `imap.rs::classify_error`.
 fn classify_error_str(msg: &str) -> &'static str {
     let lower = msg.to_lowercase();
-    if lower.contains("connection refused") || lower.contains("os error 111") || lower.contains("actively refused") {
+    if lower.contains("connection refused")
+        || lower.contains("os error 111")
+        || lower.contains("actively refused")
+    {
         "connection_refused"
     } else if lower.contains("tls")
         || lower.contains("rustls")
@@ -300,8 +296,7 @@ async fn test_clear_connection_with_password() {
 #[tokio::test]
 async fn test_capability_detection_all_seven() {
     let all_caps = "IDLE CONDSTORE QRESYNC COMPRESS=DEFLATE NAMESPACE AUTH=XOAUTH2 X-GM-EXT-1";
-    let (port, _handle) =
-        start_mock_imap_server(all_caps, MockAuthMode::AcceptPassword).await;
+    let (port, _handle) = start_mock_imap_server(all_caps, MockAuthMode::AcceptPassword).await;
     let opts = clear_opts(port);
     let result = timeout(Duration::from_secs(10), do_test_imap(&opts))
         .await
@@ -337,10 +332,7 @@ async fn test_capability_detection_partial() {
         .expect("connection must succeed");
     assert!(result.success, "Expected success");
     let caps = result.capabilities.expect("capabilities must be present");
-    assert!(
-        caps.contains(&"idle".to_string()),
-        "idle must be detected"
-    );
+    assert!(caps.contains(&"idle".to_string()), "idle must be detected");
     assert!(
         caps.contains(&"namespace".to_string()),
         "namespace must be detected"
@@ -396,8 +388,7 @@ async fn test_xoauth2_authentication() {
 /// Server accepts only if the format is correct. Test success proves correct format.
 #[tokio::test]
 async fn test_xoauth2_sasl_format_validation() {
-    let (port, _handle) =
-        start_mock_imap_server("AUTH=XOAUTH2", MockAuthMode::AcceptXOAuth2).await;
+    let (port, _handle) = start_mock_imap_server("AUTH=XOAUTH2", MockAuthMode::AcceptXOAuth2).await;
     let opts = IMAPConnectionOptions {
         hostname: "127.0.0.1".to_string(),
         port: port as u32,
@@ -424,8 +415,7 @@ async fn test_xoauth2_sasl_format_validation() {
 /// Auth failure: mock server rejects LOGIN — do_test_imap returns Err with "auth_failed" classification.
 #[tokio::test]
 async fn test_auth_failure_returns_error() {
-    let (port, _handle) =
-        start_mock_imap_server("", MockAuthMode::RejectPassword).await;
+    let (port, _handle) = start_mock_imap_server("", MockAuthMode::RejectPassword).await;
     let opts = clear_opts(port);
     let result = timeout(Duration::from_secs(10), do_test_imap(&opts))
         .await
@@ -479,8 +469,7 @@ async fn test_connection_refused_returns_error() {
 /// This validates that the connection attempt correctly blocks until the timeout fires.
 #[tokio::test]
 async fn test_timeout_returns_error() {
-    let (port, _handle) =
-        start_mock_imap_server("", MockAuthMode::HangForever).await;
+    let (port, _handle) = start_mock_imap_server("", MockAuthMode::HangForever).await;
     let opts = clear_opts(port);
 
     // 3-second timeout simulates the 15-second napi timeout for test speed.
@@ -496,8 +485,7 @@ async fn test_timeout_returns_error() {
 /// Garbage greeting: server sends non-IMAP data — do_test_imap returns Err.
 #[tokio::test]
 async fn test_invalid_greeting_returns_error() {
-    let (port, _handle) =
-        start_mock_imap_server("", MockAuthMode::GarbageGreeting).await;
+    let (port, _handle) = start_mock_imap_server("", MockAuthMode::GarbageGreeting).await;
     let opts = clear_opts(port);
     let result = timeout(Duration::from_secs(10), do_test_imap(&opts))
         .await
@@ -511,8 +499,7 @@ async fn test_invalid_greeting_returns_error() {
 /// Mid-connection drop: server accepts then closes — do_test_imap returns Err.
 #[tokio::test]
 async fn test_mid_connection_drop() {
-    let (port, _handle) =
-        start_mock_imap_server("", MockAuthMode::DropAfterGreeting).await;
+    let (port, _handle) = start_mock_imap_server("", MockAuthMode::DropAfterGreeting).await;
     let opts = clear_opts(port);
     let result = timeout(Duration::from_secs(10), do_test_imap(&opts))
         .await
@@ -564,8 +551,7 @@ async fn test_error_includes_hostname_port() {
 /// This test verifies TLS error classification. Real certs are validated in Phase 3.
 #[tokio::test]
 async fn test_tls_connection_fails_with_tls_error_on_plain_server() {
-    let (port, _handle) =
-        start_mock_imap_server("IDLE", MockAuthMode::AcceptPassword).await;
+    let (port, _handle) = start_mock_imap_server("IDLE", MockAuthMode::AcceptPassword).await;
     let opts = tls_opts(port);
     let result = timeout(Duration::from_secs(10), do_test_imap(&opts))
         .await

@@ -9,6 +9,8 @@ use napi_derive::napi;
 
 pub mod imap;
 pub mod provider;
+pub mod smtp;
+pub mod validate;
 
 /// The embedded provider database — included at compile time from resources/providers.json.
 ///
