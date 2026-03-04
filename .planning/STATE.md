@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 07-06-PLAN.md — background sync loop, body age policy, stdin channel wiring, MailStore body query helpers, 249 tests passing
-last_updated: "2026-03-04T20:00:01.866Z"
+stopped_at: Completed 07-07-PLAN.md — run_sync_cycle_and_bodies() full implementation, save_body() MailStore helper, + Send uid_fetch bound, 255 tests passing
+last_updated: "2026-03-04T23:50:10.648Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 12
+  completed_plans: 12
   percent: 55
 ---
 
@@ -123,6 +123,11 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 07]: CONDSTORE decision logic extracted as pure functions for unit testability — async IMAP wrappers deferred to Phase 8 integration
 - [Phase 07]: highestmodseq serialized as JSON string via custom serialize_modseq/deserialize_modseq — prevents JavaScript Number precision loss above 2^53
 - [Phase 07-06]: background_sync stub replaced — stub replaced with full function; stdin channels: try_send for WakeWorkers/NeedBodies (non-blocking); Account has no Clone — Arc::new(account) consumes owned value
+- [Phase 07-imap-background-sync-worker]: async-imap::error::Error has no Tls variant — TLS errors surface as Io(IoError); mapped to SyncError::Connection rather than SslHandshakeFailed
+- [Phase 07-imap-background-sync-worker]: reqwest uses rustls-native-certs feature (not rustls-tls) — platform certificate store, consistent with rustls-platform-verifier approach
+- [Phase 07-07]: save_body() added to MailStore — MessageBody table has no MailModel impl; added as missing critical functionality for body persistence
+- [Phase 07-07]: + Send added to uid_fetch() return type — dyn Stream trait object must be Send for tokio::spawn background_sync future
+- [Phase 07-07]: Priority body_queue drain deferred to Phase 8 — message-ID-to-UID mapping requires find_all helper not yet available; background body prefetch via find_messages_needing_bodies() works fully
 
 ### Pending Todos
 
@@ -136,8 +141,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T20:00:01.863Z
-Stopped at: Completed 07-06-PLAN.md — background sync loop, body age policy, stdin channel wiring, MailStore body query helpers, 249 tests passing
+Last session: 2026-03-04T23:50:10.645Z
+Stopped at: Completed 07-07-PLAN.md — run_sync_cycle_and_bodies() full implementation, save_body() MailStore helper, + Send uid_fetch bound, 255 tests passing
 Resume file: None
 
 ---
