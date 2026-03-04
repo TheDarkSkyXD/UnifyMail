@@ -73,7 +73,7 @@ Plans:
 ### Phase 7: IMAP Background Sync Worker
 **Goal**: The background sync worker syncs a real email account end-to-end — folders enumerate, messages appear in the Electron UI via delta emission, OAuth2 tokens refresh automatically, and Gmail-specific behaviors produce correct results
 **Depends on**: Phase 6
-**Requirements**: ISYN-01, ISYN-02, ISYN-03, ISYN-04, ISYN-05, ISYN-06, ISYN-07, OAUT-01, OAUT-02, OAUT-03, GMAL-01, GMAL-02, GMAL-03, GMAL-04, IMPR-05, IMPR-06
+**Requirements**: ISYN-01, ISYN-02, ISYN-03, ISYN-04, ISYN-05, ISYN-06, ISYN-07, OAUT-01, OAUT-02, OAUT-03, GMAL-01, GMAL-02, GMAL-04, IMPR-05, IMPR-06
 **Success Criteria** (what must be TRUE):
   1. After connecting a new IMAP account, all folders enumerate with correct role assignments (Inbox, Sent, Drafts, Trash, Spam, Archive) and appear in the Electron sidebar
   2. New messages arriving in an already-synced folder are detected on the next background sync cycle (CONDSTORE modseq-based) without fetching already-known messages again; servers without CONDSTORE fall back to UID range sync
