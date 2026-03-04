@@ -110,10 +110,10 @@ Plans:
   1. The validateAccount call site in mailsync-process.ts passes username field correctly to Rust ValidateAccountOptions
   2. An integration test verifies credential passing from TypeScript to Rust validateAccount matches expected field mapping
   3. The account validation E2E flow (mailsync-process.ts -> Rust validateAccount -> concurrent IMAP+SMTP+MX) is verified end-to-end
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 04.2-01: TBD
+- [ ] 04.2-01-PLAN.md — Split ValidateAccountOptions to per-protocol credentials, fix TS call site, field echo integration test
 
 ## Progress
 
@@ -127,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 4.1 → 4.2
 | 3. SMTP Testing and Account Validation | 2/2 | Complete   | 2026-03-04 |
 | 4. Cross-Platform Packaging and Cleanup | 2/2 | Complete   | 2026-03-04 |
 | 4.1 CI Hardening and Smoke Test Expansion | 0/1 | Not started | - |
-| 4.2 validateAccount Integration Verification | 0/? | Not started | - |
+| 4.2 validateAccount Integration Verification | 0/1 | Not started | - |
 
 ---
 
