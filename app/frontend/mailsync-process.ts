@@ -438,14 +438,27 @@ export class MailsyncProcess extends EventEmitter {
     try {
       const napi = require('mailcore-napi');
       const settings = this.account?.settings || {};
+      const imapSecurity = settings.imap_security;
+      const smtpSecurity = settings.smtp_security;
       const result = await napi.validateAccount({
         email: this.account?.emailAddress,
-        password: settings.imap_password,
-        oauth2Token: settings.refresh_token,
         imapHostname: settings.imap_host,
         imapPort: settings.imap_port,
+        imapConnectionType: imapSecurity === 'SSL / TLS' ? 'tls'
+                          : imapSecurity === 'STARTTLS'   ? 'starttls'
+                          : imapSecurity === 'none'        ? 'clear'
+                          : undefined,
+        imapUsername: settings.imap_username || this.account?.emailAddress,
+        imapPassword: settings.imap_password,
         smtpHostname: settings.smtp_host,
         smtpPort: settings.smtp_port,
+        smtpConnectionType: smtpSecurity === 'SSL / TLS' ? 'tls'
+                          : smtpSecurity === 'STARTTLS'   ? 'starttls'
+                          : smtpSecurity === 'none'        ? 'clear'
+                          : undefined,
+        smtpUsername: settings.smtp_username || this.account?.emailAddress,
+        smtpPassword: settings.smtp_password,
+        oauth2Token: settings.refresh_token,
       });
       if (!result.success) {
         throw new Error(result.error || 'Account validation failed');
