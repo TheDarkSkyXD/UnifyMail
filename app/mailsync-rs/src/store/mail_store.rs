@@ -657,6 +657,55 @@ impl MailStore {
         drop(self.writer);
         drop(self.reader);
     }
+
+    // ========================================================================
+    // Test-only helpers — used by integration and schema validation tests
+    // ========================================================================
+
+    /// Returns all table names in sqlite_master. Used for schema validation tests.
+    #[cfg(test)]
+    pub async fn query_table_names(&self) -> Vec<String> {
+        self.writer
+            .call(|db| -> Result<Vec<String>, rusqlite::Error> {
+                let mut stmt = db.prepare(
+                    "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+                )?;
+                let names = stmt
+                    .query_map([], |row| row.get(0))?
+                    .collect::<Result<Vec<String>, _>>()?;
+                Ok(names)
+            })
+            .await
+            .expect("query_table_names failed")
+    }
+
+    /// Returns all index names in sqlite_master. Used for schema validation tests.
+    #[cfg(test)]
+    pub async fn query_index_names(&self) -> Vec<String> {
+        self.writer
+            .call(|db| -> Result<Vec<String>, rusqlite::Error> {
+                let mut stmt = db.prepare(
+                    "SELECT name FROM sqlite_master WHERE type='index' ORDER BY name"
+                )?;
+                let names = stmt
+                    .query_map([], |row| row.get(0))?
+                    .collect::<Result<Vec<String>, _>>()?;
+                Ok(names)
+            })
+            .await
+            .expect("query_index_names failed")
+    }
+
+    /// Returns the current PRAGMA user_version. Used for schema validation tests.
+    #[cfg(test)]
+    pub async fn query_user_version(&self) -> i32 {
+        self.writer
+            .call(|db| -> Result<i32, rusqlite::Error> {
+                db.query_row("PRAGMA user_version", [], |row| row.get(0))
+            })
+            .await
+            .expect("query_user_version failed")
+    }
 }
 
 // ============================================================================
@@ -673,6 +722,21 @@ mod tests {
     // -----------------------------------------------------------------------
     // Test helpers
     // -----------------------------------------------------------------------
+
+    /// Creates a MailStore without delta emission (for offline/schema tests).
+    async fn setup_test_store_no_delta() -> MailStore {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().to_str().unwrap().to_string();
+
+        let store = MailStore::open(&config_dir)
+            .await
+            .expect("open failed");
+
+        store.migrate().await.expect("migrate failed");
+
+        std::mem::forget(dir);
+        store
+    }
 
     /// Creates an in-memory MailStore with migrations applied, plus a delta receiver.
     async fn setup_test_store() -> (MailStore, mpsc::UnboundedReceiver<DeltaStreamItem>) {
@@ -1402,5 +1466,444 @@ mod tests {
             db.query_row(sql, rusqlite::params!["t:thr1"], |row| row.get(0))
         }).await.expect("ThreadCategory count failed");
         assert_eq!(count, 0, "Thread afterRemove should clear ThreadCategory rows");
+    }
+
+    // -----------------------------------------------------------------------
+    // End-to-end delta pipeline tests (Task 2)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_e2e_save_emits_persist_delta_with_wire_format() {
+        let (store, mut rx) = setup_test_store().await;
+        let mut msg = sample_message("msg1", "acc1", "t:thr1");
+        store.save(&mut msg).await.expect("save failed");
+
+        let delta = rx.try_recv().expect("Should receive delta immediately after save");
+
+        // Verify wire format field names (as TypeScript DatabaseChangeRecord expects)
+        assert_eq!(delta.delta_type, "persist", "type field must be 'persist'");
+        assert_eq!(delta.model_class, "Message", "modelClass must be 'Message'");
+        assert_eq!(delta.model_jsons.len(), 1, "modelJSONs must have 1 entry");
+
+        let model_json = &delta.model_jsons[0];
+        // Verify key wire-format fields are present with correct JSON key names
+        assert!(model_json.get("__cls").is_some(), "__cls must be present");
+        assert_eq!(model_json["__cls"], "Message", "__cls must be 'Message'");
+        assert!(model_json.get("id").is_some(), "id must be present");
+        assert!(model_json.get("aid").is_some(), "aid (not account_id) must be present");
+        assert!(model_json.get("v").is_some(), "v (not version) must be present");
+        assert!(model_json.get("hMsgId").is_some(), "hMsgId (not header_message_id) must be present");
+        // Verify no snake_case keys leaked into wire format
+        assert!(model_json.get("account_id").is_none(), "account_id must NOT be in wire format");
+        assert!(model_json.get("version").is_none(), "version must NOT be in wire format");
+        assert!(model_json.get("header_message_id").is_none(), "header_message_id must NOT be in wire format");
+    }
+
+    #[tokio::test]
+    async fn test_e2e_remove_emits_unpersist_delta_with_wire_format() {
+        let (store, mut rx) = setup_test_store().await;
+        let mut thread = sample_thread("t:thr1", "acc1");
+        store.save(&mut thread).await.expect("save failed");
+
+        // Drain the persist delta
+        let _ = rx.try_recv();
+
+        store.remove(&thread).await.expect("remove failed");
+
+        let delta = rx.try_recv().expect("Should receive unpersist delta");
+        assert_eq!(delta.delta_type, "unpersist");
+        assert_eq!(delta.model_class, "Thread");
+        assert_eq!(delta.model_jsons.len(), 1);
+        assert_eq!(delta.model_jsons[0]["id"], "t:thr1", "unpersist delta must contain id");
+    }
+
+    #[tokio::test]
+    async fn test_e2e_delta_serializes_to_typescript_wire_format() {
+        // Verify the serialized JSON matches what TypeScript DatabaseChangeRecord expects:
+        // { "type": "persist", "modelClass": "Message", "modelJSONs": [...] }
+        let (store, mut rx) = setup_test_store().await;
+        let mut msg = sample_message("msg1", "acc1", "t:thr1");
+        store.save(&mut msg).await.expect("save failed");
+
+        let delta = rx.try_recv().expect("Should receive delta");
+        let json_str = serde_json::to_string(&delta).expect("Delta must serialize");
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        // Verify the TypeScript-expected field names (camelCase with specific names)
+        assert!(parsed.get("type").is_some(), "Must have 'type' field (not 'delta_type')");
+        assert!(parsed.get("modelClass").is_some(), "Must have 'modelClass' field");
+        assert!(parsed.get("modelJSONs").is_some(), "Must have 'modelJSONs' field");
+        // Verify snake_case Rust names do NOT appear
+        assert!(parsed.get("delta_type").is_none(), "Must NOT have 'delta_type' field");
+        assert!(parsed.get("model_class").is_none(), "Must NOT have 'model_class' field");
+        assert!(parsed.get("model_jsons").is_none(), "Must NOT have 'model_jsons' field");
+        assert!(parsed.get("id_indexes").is_none(), "Must NOT have internal 'id_indexes' field");
+    }
+
+    // -----------------------------------------------------------------------
+    // Schema validation tests (Task 2)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_schema_has_all_expected_tables() {
+        let store = setup_test_store_no_delta().await;
+        let tables = store.query_table_names().await;
+
+        let expected = [
+            "_State", "File", "Event", "EventSearch", "Label", "Folder",
+            "Thread", "ThreadReference", "ThreadCategory", "ThreadCounts",
+            "ThreadSearch", "Account", "Message", "ModelPluginMetadata",
+            "DetatchedPluginMetadata", "MessageBody", "Contact", "ContactSearch",
+            "Calendar", "Task", "ContactGroup", "ContactContactGroup", "ContactBook",
+        ];
+
+        for table in &expected {
+            assert!(
+                tables.iter().any(|t| t == *table),
+                "Missing table: {} (found tables: {:?})", table, tables
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_schema_user_version_is_9() {
+        let store = setup_test_store_no_delta().await;
+        let version = store.query_user_version().await;
+        assert_eq!(version, 9, "user_version must be 9");
+    }
+
+    #[tokio::test]
+    async fn test_schema_has_expected_indexes() {
+        let store = setup_test_store_no_delta().await;
+        let indexes = store.query_index_names().await;
+
+        let expected = [
+            "MessageListSortIndex",
+            "MessageDraftIndex",
+            "MessageUIDScanIndex",
+            "ThreadCategoryListSortIndex",
+            "ThreadCategoryDraftSortIndex",
+            "ThreadListSortIndex",
+        ];
+
+        for idx in &expected {
+            assert!(
+                indexes.iter().any(|i| i == *idx),
+                "Missing index: {} (found indexes: {:?})", idx, indexes
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_schema_fts5_tables_present() {
+        let store = setup_test_store_no_delta().await;
+        let tables = store.query_table_names().await;
+
+        // FTS5 tables appear in sqlite_master as virtual tables
+        let fts5_tables = ["ThreadSearch", "EventSearch", "ContactSearch"];
+        for table in &fts5_tables {
+            assert!(
+                tables.iter().any(|t| t == *table),
+                "Missing FTS5 table: {}", table
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Full round-trip tests for all 11 DB-stored model types (Task 2)
+    // -----------------------------------------------------------------------
+
+    /// Helper: serialize both models to JSON and compare for equality.
+    /// Using JSON comparison handles nested objects and arrays cleanly.
+    fn assert_model_roundtrip_json<T: MailModel>(original: &T, loaded: &T) {
+        let orig_json = serde_json::to_value(original).expect("serialize original");
+        let load_json = serde_json::to_value(loaded).expect("serialize loaded");
+        // Remove __cls if injected by to_json() — compare only serializable fields
+        assert_eq!(orig_json, load_json, "Round-trip JSON mismatch for {}", T::table_name());
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_message() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Message {
+            id: "msg_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            synced_at: Some(1700000000),
+            sync_unsaved_changes: None,
+            remote_uid: 42,
+            date: 1700001000,
+            subject: "Round-trip Test".to_string(),
+            header_message_id: "<rt@test.com>".to_string(),
+            g_msg_id: Some("gmsg123".to_string()),
+            g_thr_id: None,
+            reply_to_header_message_id: None,
+            forwarded_header_message_id: None,
+            unread: true,
+            starred: false,
+            draft: false,
+            labels: vec!["\\Inbox".to_string()],
+            extra_headers: None,
+            from: vec![serde_json::json!({"email": "sender@test.com"})],
+            to: vec![serde_json::json!({"email": "recv@test.com"})],
+            cc: vec![],
+            bcc: vec![],
+            reply_to: vec![],
+            folder: None,
+            remote_folder: Some(serde_json::json!({"id": "rfolder1"})),
+            thread_id: "t:thr_rt1".to_string(),
+            snippet: Some("Preview...".to_string()),
+            plaintext: None,
+            files: vec![],
+            metadata: None,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Message = store
+            .find("id = ?1", vec![SqlParam::Text("msg_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved message");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_thread() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Thread {
+            id: "t:rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            subject: "Round-trip Thread".to_string(),
+            last_message_timestamp: 1700002000,
+            first_message_timestamp: 1700001000,
+            last_message_sent_timestamp: 1700002000,
+            last_message_received_timestamp: 1700001500,
+            g_thr_id: Some("gth123".to_string()),
+            unread: 2,
+            starred: 1,
+            in_all_mail: true,
+            attachment_count: 3,
+            search_row_id: None,
+            folders: vec![serde_json::json!({"id": "f1", "_refs": 2, "_u": 1, "_im": 1})],
+            labels: vec![],
+            participants: vec![serde_json::json!({"email": "user@test.com"})],
+            metadata: None,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Thread = store
+            .find("id = ?1", vec![SqlParam::Text("t:rt1".to_string())])
+            .await.expect("find failed").expect("should find saved thread");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_folder() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Folder {
+            id: "folder_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            path: "INBOX".to_string(),
+            role: "inbox".to_string(),
+            local_status: Some(serde_json::json!({"busy": false})),
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Folder = store
+            .find("id = ?1", vec![SqlParam::Text("folder_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved folder");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_label() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Label {
+            id: "label_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            path: "\\Important".to_string(),
+            role: "important".to_string(),
+            local_status: None,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Label = store
+            .find("id = ?1", vec![SqlParam::Text("label_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved label");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_contact() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Contact {
+            id: "contact_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            email: "alice@test.com".to_string(),
+            source: "carddav".to_string(),
+            refs: 5,
+            contact_groups: vec!["grp1".to_string()],
+            info: Some(serde_json::json!({"fn": "Alice"})),
+            name: Some("Alice Test".to_string()),
+            google_resource_name: None,
+            etag: Some("etag_c1".to_string()),
+            book_id: Some("book1".to_string()),
+            hidden: false,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Contact = store
+            .find("id = ?1", vec![SqlParam::Text("contact_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved contact");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_contact_book() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = ContactBook {
+            id: "book_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            url: Some("https://carddav.test.com/user/".to_string()),
+            source: Some("carddav".to_string()),
+            ctag: Some("ctag123".to_string()),
+            sync_token: None,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: ContactBook = store
+            .find("id = ?1", vec![SqlParam::Text("book_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved contact_book");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_contact_group() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = ContactGroup {
+            id: "group_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            name: "Work".to_string(),
+            book_id: "book1".to_string(),
+            google_resource_name: Some("contactGroups/g123".to_string()),
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: ContactGroup = store
+            .find("id = ?1", vec![SqlParam::Text("group_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved contact_group");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_calendar() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Calendar {
+            id: "cal_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            path: Some("/caldav/user/cal/".to_string()),
+            name: Some("Personal".to_string()),
+            ctag: Some("ctag_cal".to_string()),
+            sync_token: None,
+            color: Some("#FF5733".to_string()),
+            description: None,
+            read_only: false,
+            order: 0,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Calendar = store
+            .find("id = ?1", vec![SqlParam::Text("cal_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved calendar");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_event() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Event {
+            id: "event_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            calendar_id: "cal1".to_string(),
+            icsuid: "uid_rt1@test.com".to_string(),
+            ics: Some("BEGIN:VCALENDAR\r\nEND:VCALENDAR".to_string()),
+            href: Some("/caldav/event_rt1.ics".to_string()),
+            etag: Some("etag_rt1".to_string()),
+            recurrence_id: "".to_string(),
+            status: Some("CONFIRMED".to_string()),
+            recurrence_start: 1704067200,
+            recurrence_end: 1704070800,
+            // Transient fields — not persisted in data blob
+            search_title: String::new(),
+            search_description: String::new(),
+            search_location: String::new(),
+            search_participants: String::new(),
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Event = store
+            .find("id = ?1", vec![SqlParam::Text("event_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved event");
+
+        // Note: transient search fields are not persisted, so compare only serializable fields
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_task() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = Task {
+            id: "task_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            class_name: "SendDraftTask".to_string(),
+            status: "local".to_string(),
+            should_cancel: None,
+            error: None,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: Task = store
+            .find("id = ?1", vec![SqlParam::Text("task_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved task");
+
+        assert_model_roundtrip_json(&original, &loaded);
+    }
+
+    #[tokio::test]
+    async fn test_roundtrip_file() {
+        let (store, _rx) = setup_test_store().await;
+        let mut original = File {
+            id: "file_rt1".to_string(),
+            account_id: "acc1".to_string(),
+            version: 0,
+            message_id: "msg1".to_string(),
+            part_id: Some("2".to_string()),
+            content_id: None,
+            content_type: "application/pdf".to_string(),
+            filename: "test.pdf".to_string(),
+            size: 1024,
+        };
+        store.save(&mut original).await.expect("save failed");
+
+        let loaded: File = store
+            .find("id = ?1", vec![SqlParam::Text("file_rt1".to_string())])
+            .await.expect("find failed").expect("should find saved file");
+
+        assert_model_roundtrip_json(&original, &loaded);
     }
 }
