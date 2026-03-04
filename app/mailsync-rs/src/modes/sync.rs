@@ -51,11 +51,13 @@ pub async fn run(
     // Create the delta mpsc channel — connects DeltaStream sender to flush task receiver
     let (delta_tx, delta_rx) = mpsc::unbounded_channel::<DeltaStreamItem>();
 
-    // Open the MailStore (SQLite database) for this account
-    let _store = Arc::new(MailStore::open(config_dir).await?);
-
-    // Create the shared DeltaStream (Arc so it can be shared across tokio tasks)
+    // Create the shared DeltaStream (Arc so it can be shared across tokio tasks and MailStore)
     let delta = Arc::new(DeltaStream::new(delta_tx));
+
+    // Open the MailStore with reader connection and delta stream (sync mode).
+    // open_with_delta() creates writer + reader connections for WAL concurrency (DATA-01).
+    // The store holds an Arc<DeltaStream> clone so save/remove can emit deltas.
+    let _store = Arc::new(MailStore::open_with_delta(config_dir, Arc::clone(&delta)).await?);
 
     // Emit startup ProcessState delta.
     // This tells Electron: "account is online, connectionError=false"
