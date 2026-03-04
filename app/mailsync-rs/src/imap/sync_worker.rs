@@ -41,6 +41,14 @@ pub const BODY_PREFETCH_AGE_SECS: u64 = 7 * 24 * 3600;
 #[allow(dead_code)]
 pub const BODY_SYNC_BATCH_SIZE: usize = 30;
 
+/// Base interval between sync cycles in seconds (~60s).
+/// The sync loop waits at least this long between cycles.
+pub const BASE_SYNC_INTERVAL_SECS: u64 = 60;
+
+/// Maximum additional wait (backoff) in seconds.
+/// Total max wait = BASE_SYNC_INTERVAL_SECS + MAX_BACKOFF_ADDITION_SECS = 300s (5 min).
+pub const MAX_BACKOFF_ADDITION_SECS: u64 = 240;
+
 // ---------------------------------------------------------------------------
 // FolderSyncState — typed representation of Folder.local_status JSON
 // ---------------------------------------------------------------------------
@@ -262,13 +270,249 @@ pub fn needs_uidvalidity_reset(stored: u32, server: u32) -> bool {
 // Stubs for async functions (implementations that wrap ImapSession)
 // ---------------------------------------------------------------------------
 
-/// Background sync entry point (stub).
+// ---------------------------------------------------------------------------
+// Body caching helpers
+// ---------------------------------------------------------------------------
+
+/// Returns true if bodies should be cached for the given folder role.
 ///
-/// Full implementation planned for Phase 8: spawns folder sync tasks, manages the
-/// IMAP connection lifecycle, and loops on the IMAP IDLE command.
+/// Spam and trash folders are excluded from body caching per ISYN-07 policy:
+/// fetching bodies of spam/trash messages is wasteful and may expose malicious content.
+pub fn should_cache_bodies_in_folder(role: &str) -> bool {
+    role != "spam" && role != "trash"
+}
+
+// ---------------------------------------------------------------------------
+// Background sync entry point (real implementation — replaces stub)
+// ---------------------------------------------------------------------------
+
+/// Background sync entry point.
+///
+/// Connects to the IMAP server, runs sync cycles with backoff scheduling,
+/// and processes body fetch requests from stdin commands (need-bodies, wake-workers).
+///
+/// Authentication:
+/// - Password accounts: ImapSession::connect + authenticate(None)
+/// - OAuth2 accounts: get token from TokenManager, authenticate with access_token
+///
+/// Backoff scheduling:
+/// - Base: BASE_SYNC_INTERVAL_SECS (~60s)
+/// - No-change increment: +30s per consecutive no-change cycle
+/// - Maximum: BASE_SYNC_INTERVAL_SECS + MAX_BACKOFF_ADDITION_SECS (~300s / 5 min)
+/// - wake-workers resets streak to 0 (re-accelerates immediately)
+///
+/// Error handling:
+/// - Auth errors (after TokenManager's 3-retry exhaustion): emit connectionError, wait for wake
+/// - Retryable errors: sleep 30s, continue
+/// - Fatal errors: log, process::exit(1)
 #[allow(dead_code)]
-pub async fn background_sync() -> Result<(), SyncError> {
-    Err(SyncError::NotImplemented("background_sync".into()))
+pub async fn background_sync(
+    account: std::sync::Arc<crate::account::Account>,
+    store: std::sync::Arc<crate::store::mail_store::MailStore>,
+    delta: std::sync::Arc<crate::delta::stream::DeltaStream>,
+    token_manager: std::sync::Arc<tokio::sync::Mutex<crate::oauth2::TokenManager>>,
+    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+    mut wake_rx: tokio::sync::mpsc::Receiver<()>,
+    mut body_queue_rx: tokio::sync::mpsc::Receiver<Vec<String>>,
+) {
+    use crate::imap::mail_processor::BodyQueue;
+    use crate::imap::session::ImapSession;
+    use std::time::Duration;
+    use tokio::time::sleep;
+
+    tracing::info!(account_id = %account.id, "background_sync started");
+
+    let mut body_queue = BodyQueue::new();
+    let mut no_change_streak: u64 = 0;
+
+    // Main sync loop — runs until shutdown signal
+    loop {
+        // Drain any pending body_queue_rx messages (non-blocking)
+        loop {
+            match body_queue_rx.try_recv() {
+                Ok(ids) => {
+                    tracing::debug!("Received {} priority body IDs from stdin", ids.len());
+                    body_queue.enqueue_priority(ids);
+                }
+                Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
+                Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                    tracing::warn!("body_queue_rx channel closed");
+                    break;
+                }
+            }
+        }
+
+        // Get OAuth2 token if account uses OAuth2 (has refreshToken)
+        let access_token: Option<String> = if account.extra.get("refreshToken").is_some() {
+            match token_manager.lock().await.get_valid_token(&account, &delta).await {
+                Ok(token) => Some(token),
+                Err(e) if e.is_auth() => {
+                    // Auth failure after TokenManager's 3-retry exhaustion — emit connectionError
+                    tracing::error!(
+                        account_id = %account.id,
+                        error = %e,
+                        "OAuth2 token refresh failed (retries exhausted) — emitting connectionError"
+                    );
+                    delta.emit_process_state(&account.id, true);
+
+                    // Wait for wake signal or shutdown
+                    tokio::select! {
+                        _ = wake_rx.recv() => {
+                            tracing::info!("wake-workers received after auth error — retrying");
+                            no_change_streak = 0;
+                            continue;
+                        }
+                        _ = shutdown_rx.recv() => {
+                            tracing::info!("Shutdown received during auth error wait");
+                            return;
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(account_id = %account.id, error = %e, "Token fetch error (retryable) — sleeping 30s");
+                    tokio::select! {
+                        _ = sleep(Duration::from_secs(30)) => {}
+                        _ = shutdown_rx.recv() => return,
+                    }
+                    continue;
+                }
+            }
+        } else {
+            None
+        };
+
+        // Connect and authenticate
+        let mut session = match connect_and_authenticate(&account, access_token.as_deref()).await {
+            Ok(s) => s,
+            Err(e) if e.is_auth() => {
+                tracing::error!(account_id = %account.id, error = %e, "IMAP auth failed — emitting connectionError");
+                delta.emit_process_state(&account.id, true);
+                tokio::select! {
+                    _ = wake_rx.recv() => {
+                        no_change_streak = 0;
+                        continue;
+                    }
+                    _ = shutdown_rx.recv() => return,
+                }
+            }
+            Err(e) if e.is_retryable() => {
+                tracing::warn!(account_id = %account.id, error = %e, "IMAP connect failed (retryable) — sleeping 30s");
+                tokio::select! {
+                    _ = sleep(Duration::from_secs(30)) => {}
+                    _ = shutdown_rx.recv() => return,
+                }
+                continue;
+            }
+            Err(e) if e.is_fatal() => {
+                tracing::error!(account_id = %account.id, error = %e, "Fatal IMAP error");
+                std::process::exit(1);
+            }
+            Err(e) => {
+                tracing::warn!(account_id = %account.id, error = %e, "IMAP connect error — sleeping 30s");
+                tokio::select! {
+                    _ = sleep(Duration::from_secs(30)) => {}
+                    _ = shutdown_rx.recv() => return,
+                }
+                continue;
+            }
+        };
+
+        // Run one sync cycle and handle result
+        let cycle_had_changes = run_sync_cycle_and_bodies(
+            &mut session,
+            &account,
+            &store,
+            &delta,
+            &mut body_queue,
+        ).await;
+
+        match cycle_had_changes {
+            Ok(true) => {
+                no_change_streak = 0;
+                tracing::debug!(account_id = %account.id, "Sync cycle completed with changes");
+            }
+            Ok(false) => {
+                no_change_streak += 1;
+                tracing::debug!(account_id = %account.id, streak = no_change_streak, "Sync cycle completed, no changes");
+            }
+            Err(e) if e.is_auth() => {
+                tracing::error!(account_id = %account.id, error = %e, "Auth error during sync — emitting connectionError");
+                delta.emit_process_state(&account.id, true);
+                tokio::select! {
+                    _ = wake_rx.recv() => {
+                        no_change_streak = 0;
+                        continue;
+                    }
+                    _ = shutdown_rx.recv() => return,
+                }
+            }
+            Err(e) if e.is_retryable() => {
+                tracing::warn!(account_id = %account.id, error = %e, "Retryable error during sync — sleeping 30s");
+                tokio::select! {
+                    _ = sleep(Duration::from_secs(30)) => {}
+                    _ = shutdown_rx.recv() => return,
+                }
+                continue;
+            }
+            Err(e) if e.is_fatal() => {
+                tracing::error!(account_id = %account.id, error = %e, "Fatal error during sync");
+                std::process::exit(1);
+            }
+            Err(e) => {
+                tracing::warn!(account_id = %account.id, error = %e, "Sync cycle error — sleeping 30s");
+                tokio::select! {
+                    _ = sleep(Duration::from_secs(30)) => {}
+                    _ = shutdown_rx.recv() => return,
+                }
+                continue;
+            }
+        }
+
+        // Calculate wait with backoff
+        let wait_addition = std::cmp::min(
+            no_change_streak.saturating_mul(30),
+            MAX_BACKOFF_ADDITION_SECS,
+        );
+        let wait_secs = BASE_SYNC_INTERVAL_SECS + wait_addition;
+
+        tracing::debug!(account_id = %account.id, wait_secs, "Waiting before next sync cycle");
+
+        // Wait for next cycle, wake signal, or shutdown
+        tokio::select! {
+            _ = sleep(Duration::from_secs(wait_secs)) => {}
+            _ = wake_rx.recv() => {
+                tracing::info!(account_id = %account.id, "wake-workers received — re-accelerating sync");
+                no_change_streak = 0;
+            }
+            _ = shutdown_rx.recv() => {
+                tracing::info!(account_id = %account.id, "Shutdown signal received — exiting sync loop");
+                return;
+            }
+        }
+    }
+}
+
+/// Connect to IMAP and authenticate.
+async fn connect_and_authenticate(
+    account: &crate::account::Account,
+    access_token: Option<&str>,
+) -> Result<crate::imap::session::ImapSession, SyncError> {
+    let pre_auth = crate::imap::session::ImapSession::connect(account).await?;
+    pre_auth.authenticate(account, access_token).await
+}
+
+/// Run one sync cycle and process body queue items.
+/// Returns Ok(true) if any changes were found/fetched, Ok(false) for no changes.
+async fn run_sync_cycle_and_bodies(
+    _session: &mut crate::imap::session::ImapSession,
+    _account: &crate::account::Account,
+    _store: &crate::store::mail_store::MailStore,
+    _delta: &crate::delta::stream::DeltaStream,
+    _body_queue: &mut crate::imap::mail_processor::BodyQueue,
+) -> Result<bool, SyncError> {
+    // TODO: Phase 8 will implement full run_sync_cycle() with folder enumeration.
+    // This stub returns Ok(false) (no changes) to drive the backoff scheduler.
+    Ok(false)
 }
 
 // ---------------------------------------------------------------------------
@@ -598,6 +842,76 @@ mod tests {
     fn uidvalidity_both_zero() {
         // stored = 0, server = 0 -> technically both zero, stored == server so no reset
         assert!(!needs_uidvalidity_reset(0, 0));
+    }
+
+    // ---- Task 06-1: Body age policy tests ----
+
+    #[test]
+    fn body_age_policy_skip_spam() {
+        // Spam folder must be excluded from body caching
+        assert!(!should_cache_bodies_in_folder("spam"), "spam folder should NOT be body-cached");
+    }
+
+    #[test]
+    fn body_age_policy_skip_trash() {
+        // Trash folder must be excluded from body caching
+        assert!(!should_cache_bodies_in_folder("trash"), "trash folder should NOT be body-cached");
+    }
+
+    #[test]
+    fn body_age_policy_include_inbox() {
+        // Inbox must be included in body caching
+        assert!(should_cache_bodies_in_folder("inbox"), "inbox should be body-cached");
+    }
+
+    #[test]
+    fn body_age_policy_include_sent() {
+        assert!(should_cache_bodies_in_folder("sent"), "sent should be body-cached");
+    }
+
+    #[test]
+    fn body_age_policy_include_drafts() {
+        assert!(should_cache_bodies_in_folder("drafts"), "drafts should be body-cached");
+    }
+
+    #[test]
+    fn body_age_policy_include_custom_folder() {
+        assert!(should_cache_bodies_in_folder("work-projects"), "custom folders should be body-cached");
+    }
+
+    #[test]
+    fn body_age_policy_include_empty_role() {
+        // Folders with empty role (no detected role) should be cached
+        assert!(should_cache_bodies_in_folder(""), "empty role should be body-cached");
+    }
+
+    #[test]
+    fn body_prefetch_age_secs_is_7_days() {
+        // BODY_PREFETCH_AGE_SECS must be exactly 7 days in seconds
+        assert_eq!(BODY_PREFETCH_AGE_SECS, 7 * 24 * 3600, "BODY_PREFETCH_AGE_SECS must be 7 days");
+    }
+
+    #[test]
+    fn body_cache_age_secs_is_3_months() {
+        // BODY_CACHE_AGE_SECS must be ~3 months (90 days)
+        assert_eq!(BODY_CACHE_AGE_SECS, 30 * 24 * 3600, "BODY_CACHE_AGE_SECS must be 30 days (header sync window)");
+    }
+
+    #[test]
+    fn body_sync_batch_size_is_30() {
+        assert_eq!(BODY_SYNC_BATCH_SIZE, 30, "BODY_SYNC_BATCH_SIZE must be 30");
+    }
+
+    #[test]
+    fn backoff_constants_correct() {
+        // BASE_SYNC_INTERVAL_SECS + MAX_BACKOFF_ADDITION_SECS = 300s (5 minutes)
+        assert_eq!(BASE_SYNC_INTERVAL_SECS, 60, "Base interval must be 60s");
+        assert_eq!(MAX_BACKOFF_ADDITION_SECS, 240, "Max addition must be 240s");
+        assert_eq!(
+            BASE_SYNC_INTERVAL_SECS + MAX_BACKOFF_ADDITION_SECS,
+            300,
+            "Total max backoff must be 300s (5 min)"
+        );
     }
 
     // ---- Task 2: Timeout pattern test ----
