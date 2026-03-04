@@ -497,7 +497,8 @@ impl ImapSession {
             Box<
                 dyn tokio_stream::Stream<
                     Item = Result<async_imap::types::Fetch, async_imap::error::Error>,
-                > + '_,
+                > + Send
+                + '_,
             >,
         >,
         SyncError,

@@ -667,6 +667,34 @@ impl MailStore {
             .map_err(|e| SyncError::Database(e.to_string()))
     }
 
+    /// Persist a message body (BODY.PEEK[] bytes) into the MessageBody table.
+    ///
+    /// Inserts or replaces the body and snippet for the given message ID.
+    /// The `value` is the raw UTF-8 body string; `snippet` is a short plain-text preview.
+    /// Sets `fetchedAt` to the current UTC datetime to track body cache age.
+    pub async fn save_body(
+        &self,
+        message_id: String,
+        value: String,
+        snippet: String,
+    ) -> Result<(), SyncError> {
+        self.writer
+            .call(move |db| -> Result<(), rusqlite::Error> {
+                db.execute(
+                    "INSERT OR REPLACE INTO MessageBody (id, value, fetchedAt) VALUES (?1, ?2, datetime('now'))",
+                    rusqlite::params![message_id, value],
+                )?;
+                // Update snippet on the Message row
+                db.execute(
+                    "UPDATE Message SET snippet = ?1 WHERE id = ?2",
+                    rusqlite::params![snippet, message_id],
+                )?;
+                Ok(())
+            })
+            .await
+            .map_err(|e| SyncError::Database(e.to_string()))
+    }
+
     // ========================================================================
     // Transaction support
     // ========================================================================

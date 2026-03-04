@@ -316,7 +316,6 @@ pub async fn background_sync(
     mut body_queue_rx: tokio::sync::mpsc::Receiver<Vec<String>>,
 ) {
     use crate::imap::mail_processor::BodyQueue;
-    use crate::imap::session::ImapSession;
     use std::time::Duration;
     use tokio::time::sleep;
 
@@ -504,15 +503,263 @@ async fn connect_and_authenticate(
 /// Run one sync cycle and process body queue items.
 /// Returns Ok(true) if any changes were found/fetched, Ok(false) for no changes.
 async fn run_sync_cycle_and_bodies(
-    _session: &mut crate::imap::session::ImapSession,
-    _account: &crate::account::Account,
-    _store: &crate::store::mail_store::MailStore,
-    _delta: &crate::delta::stream::DeltaStream,
-    _body_queue: &mut crate::imap::mail_processor::BodyQueue,
+    session: &mut crate::imap::session::ImapSession,
+    account: &crate::account::Account,
+    store: &crate::store::mail_store::MailStore,
+    delta: &crate::delta::stream::DeltaStream,
+    body_queue: &mut crate::imap::mail_processor::BodyQueue,
 ) -> Result<bool, SyncError> {
-    // TODO: Phase 8 will implement full run_sync_cycle() with folder enumeration.
-    // This stub returns Ok(false) (no changes) to drive the backoff scheduler.
-    Ok(false)
+    use crate::imap::mail_processor::process_fetched_message;
+    use crate::models::thread::Thread;
+    use crate::models::label::Label;
+    use crate::store::mail_store::SqlParam;
+    use tokio_stream::StreamExt;
+
+    let mut had_changes = false;
+
+    // -----------------------------------------------------------------------
+    // Step 1: Enumerate folders
+    // -----------------------------------------------------------------------
+    let (mut folders, mut labels) = session.list_folders(account).await?;
+
+    // Save each label (emits persist deltas to Electron UI)
+    for mut label in labels.drain(..) {
+        if let Err(e) = store.save::<Label>(&mut label).await {
+            tracing::warn!(account_id = %account.id, label_id = %label.id, error = %e, "Failed to save label");
+        }
+    }
+
+    // Sort folders in priority order (inbox first)
+    sort_folders_by_role_priority(&mut folders);
+
+    // Save each folder (emits persist deltas to Electron UI)
+    for folder in folders.iter_mut() {
+        if let Err(e) = store.save(folder).await {
+            tracing::warn!(account_id = %account.id, folder_id = %folder.id, error = %e, "Failed to save folder");
+        }
+    }
+
+    let total = folders.len();
+
+    // -----------------------------------------------------------------------
+    // Step 2: Per-folder sync loop
+    // -----------------------------------------------------------------------
+    for (idx, folder) in folders.iter_mut().enumerate() {
+        // Emit per-folder progress
+        delta.emit_sync_progress(&account.id, &folder.path, idx as f32 / total.max(1) as f32);
+
+        // SELECT with CONDSTORE to get mailbox state
+        let mailbox = match session.select_condstore(&folder.path).await {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::warn!(
+                    account_id = %account.id,
+                    folder = %folder.path,
+                    error = %e,
+                    "Failed to SELECT folder — skipping"
+                );
+                continue;
+            }
+        };
+
+        let server_uidvalidity = mailbox.uid_validity.unwrap_or(0);
+        let server_modseq = mailbox.highest_modseq.unwrap_or(0);
+        let server_uidnext = mailbox.uid_next.unwrap_or(0);
+
+        // Load stored sync state
+        let mut state = get_sync_state(folder);
+
+        // UIDVALIDITY check — RFC 4549 full re-sync on change
+        if needs_uidvalidity_reset(state.uidvalidity, server_uidvalidity) {
+            tracing::info!(
+                account_id = %account.id,
+                folder = %folder.path,
+                stored = state.uidvalidity,
+                server = server_uidvalidity,
+                "UIDVALIDITY changed — unlinking messages and resetting sync state"
+            );
+            if let Err(e) = store.unlink_messages_in_folder(&account.id, &folder.id).await {
+                tracing::warn!(account_id = %account.id, folder = %folder.path, error = %e, "Failed to unlink messages");
+            }
+            state = FolderSyncState {
+                uidvalidity: server_uidvalidity,
+                uidvalidity_reset_count: state.uidvalidity_reset_count + 1,
+                ..Default::default()
+            };
+            set_sync_state(folder, &state);
+            if let Err(e) = store.save(folder).await {
+                tracing::warn!(account_id = %account.id, folder = %folder.path, error = %e, "Failed to save folder after UIDVALIDITY reset");
+            }
+        }
+
+        // Determine sync strategy and UID set
+        let strategy = select_sync_strategy(mailbox.highest_modseq);
+        let (uid_set, use_changedsince) = match &strategy {
+            SyncStrategy::Condstore { server_modseq: sms } => {
+                let decision = decide_condstore_action(*sms, server_uidnext, state.highestmodseq, state.uidnext);
+                match decision {
+                    CondstoreDecision::NoChange => {
+                        tracing::debug!(account_id = %account.id, folder = %folder.path, "CONDSTORE NoChange — skipping folder");
+                        continue;
+                    }
+                    CondstoreDecision::Incremental { uid_set } => (uid_set, state.highestmodseq > 0),
+                    CondstoreDecision::Truncated { uid_set } => (uid_set, false),
+                }
+            }
+            SyncStrategy::UidRange => ("1:*".to_string(), false),
+        };
+
+        // Capture is_gmail before the mutable borrow from uid_fetch
+        let is_gmail = session.is_gmail();
+
+        // Build fetch query
+        let query = if is_gmail {
+            if use_changedsince && state.highestmodseq > 0 {
+                format!("(UID FLAGS ENVELOPE INTERNALDATE X-GM-LABELS X-GM-MSGID X-GM-THRID) (CHANGEDSINCE {})", state.highestmodseq)
+            } else {
+                "(UID FLAGS ENVELOPE INTERNALDATE X-GM-LABELS X-GM-MSGID X-GM-THRID)".to_string()
+            }
+        } else if use_changedsince && state.highestmodseq > 0 {
+            format!("(UID FLAGS ENVELOPE INTERNALDATE) (CHANGEDSINCE {})", state.highestmodseq)
+        } else {
+            "(UID FLAGS ENVELOPE INTERNALDATE)".to_string()
+        };
+
+        // UID FETCH
+        let mut fetch_stream = match session.uid_fetch(&uid_set, &query).await {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!(
+                    account_id = %account.id,
+                    folder = %folder.path,
+                    error = %e,
+                    "UID FETCH failed — skipping folder"
+                );
+                continue;
+            }
+        };
+
+        // Stream iteration — process each fetched message
+        while let Some(fetch_result) = fetch_stream.next().await {
+            let fetch = match fetch_result {
+                Ok(f) => f,
+                Err(e) => {
+                    tracing::warn!(account_id = %account.id, folder = %folder.path, error = %e, "Fetch stream error — skipping message");
+                    continue;
+                }
+            };
+
+            match process_fetched_message(&fetch, &[], folder, account, is_gmail) {
+                Ok((mut message, thread_opt)) => {
+                    if let Err(e) = store.save(&mut message).await {
+                        tracing::warn!(account_id = %account.id, msg_id = %message.id, error = %e, "Failed to save message");
+                        continue;
+                    }
+
+                    // Save thread if it's new (check DB first)
+                    if let Some(mut thread) = thread_opt {
+                        let thread_id_param = thread.id.clone();
+                        match store.find::<Thread>("id = ?1", vec![SqlParam::Text(thread_id_param)]).await {
+                            Ok(None) => {
+                                if let Err(e) = store.save(&mut thread).await {
+                                    tracing::warn!(account_id = %account.id, thread_id = %thread.id, error = %e, "Failed to save thread");
+                                }
+                            }
+                            Ok(Some(_)) => {} // Thread already exists
+                            Err(e) => {
+                                tracing::warn!(account_id = %account.id, thread_id = %thread.id, error = %e, "Failed to find thread");
+                            }
+                        }
+                    }
+
+                    had_changes = true;
+                }
+                Err(e) => {
+                    tracing::warn!(account_id = %account.id, folder = %folder.path, error = %e, "Failed to process fetched message");
+                }
+            }
+        }
+
+        // Update FolderSyncState after processing all fetches
+        state.uidvalidity = server_uidvalidity;
+        state.highestmodseq = server_modseq;
+        state.uidnext = server_uidnext;
+        set_sync_state(folder, &state);
+        if let Err(e) = store.save(folder).await {
+            tracing::warn!(account_id = %account.id, folder = %folder.path, error = %e, "Failed to save folder sync state");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3: Body queue processing
+    // -----------------------------------------------------------------------
+    let cutoff_ts = chrono::Utc::now().timestamp() - BODY_PREFETCH_AGE_SECS as i64;
+
+    for folder in &folders {
+        if !should_cache_bodies_in_folder(&folder.role) {
+            continue;
+        }
+
+        // Fetch bodies for messages needing them (background prefetch)
+        let needing_bodies = match store
+            .find_messages_needing_bodies(&account.id, &folder.id, cutoff_ts, BODY_SYNC_BATCH_SIZE as i64)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(account_id = %account.id, folder = %folder.path, error = %e, "find_messages_needing_bodies failed");
+                continue;
+            }
+        };
+
+        for (msg_id, uid) in needing_bodies {
+            if uid == 0 {
+                continue;
+            }
+            let mut body_stream = match session.uid_fetch(&uid.to_string(), "BODY.PEEK[]").await {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::warn!(account_id = %account.id, uid = uid, error = %e, "BODY.PEEK[] fetch failed");
+                    continue;
+                }
+            };
+
+            if let Some(fetch_result) = body_stream.next().await {
+                match fetch_result {
+                    Ok(fetch) => {
+                        if let Some(body_bytes) = fetch.body() {
+                            let body_str = String::from_utf8_lossy(body_bytes).into_owned();
+                            let snippet: String = body_str.chars().take(200).collect();
+                            if let Err(e) = store.save_body(msg_id.clone(), body_str, snippet).await {
+                                tracing::warn!(account_id = %account.id, msg_id = %msg_id, error = %e, "Failed to save body");
+                            } else {
+                                had_changes = true;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(account_id = %account.id, uid = uid, error = %e, "Body fetch stream error");
+                    }
+                }
+            }
+        }
+    }
+
+    // Drain priority body_queue items
+    while let Some(msg_id) = body_queue.next() {
+        tracing::debug!(account_id = %account.id, msg_id = %msg_id, "Processing priority body queue item");
+        // Priority items: find message in store to get UID and folder, then fetch body
+        // For now, log and continue — UID lookup requires find_all with a custom query
+        // which is deferred to Phase 8 when we have full message search helpers.
+        let _ = msg_id;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 4: Emit final progress
+    // -----------------------------------------------------------------------
+    delta.emit_sync_progress(&account.id, "", 1.0);
+
+    Ok(had_changes)
 }
 
 // ---------------------------------------------------------------------------
