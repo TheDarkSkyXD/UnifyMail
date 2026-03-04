@@ -1,0 +1,45 @@
+[package]
+name = "unifymail-sync"
+version = "2.0.0"
+edition = "2021"
+description = "Rust mailsync binary for UnifyMail — stdin/stdout IPC protocol, SQLite schema, sync modes"
+authors = ["UnifyMail Contributors"]
+
+[[bin]]
+name = "mailsync-rs"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime (shared workspace versions)
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+# JSON / IPC protocol (shared workspace versions)
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# SQLite — bundled feature required for FTS5 support and no system SQLite dependency
+# IMPORTANT: tokio-rusqlite 0.7 requires rusqlite 0.37 (not 0.38)
+# Using "0.37" here to match tokio-rusqlite's internal dependency
+rusqlite = { version = "0.37", features = ["bundled"] }
+tokio-rusqlite = "0.7"
+
+# Structured logging — stderr only, stdout is reserved for delta JSON
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+
+# Error types
+thiserror = "2"
+
+# Ordered map for delta coalesce buffer
+indexmap = "2"
+
+[dev-dependencies]
+tempfile = "3"
+rusqlite = { version = "0.37", features = ["bundled"] }
+
+# Release profile settings are inherited from workspace Cargo.toml
