@@ -111,27 +111,149 @@ pub fn is_noselect(attrs: &[NameAttribute<'_>]) -> bool {
 // ImapSession
 // ============================================================================
 
+use std::time::Duration;
+
 use async_imap::Session;
-use tokio::io::{AsyncRead, AsyncWrite};
+use base64::Engine;
+use tokio::net::TcpStream;
+use tokio::time::timeout;
+use tokio_stream::StreamExt;
+use tokio_rustls::client::TlsStream;
 
 use crate::account::Account;
+use crate::models::folder::Folder;
+use crate::models::label::Label;
 
-/// Trait alias for the boxed async I/O stream type used inside ImapSession.
+/// Concrete TLS stream type used in IMAP sessions.
 ///
-/// Both TLS-direct and STARTTLS connections are boxed into this trait object,
-/// allowing ImapSession to hold a single Session<Box<dyn AsyncReadWrite>> field.
-pub trait AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send + std::fmt::Debug {}
-impl<T: AsyncRead + AsyncWrite + Unpin + Send + std::fmt::Debug> AsyncReadWrite for T {}
+/// Both SSL/TLS direct and STARTTLS connections produce a TlsStream<TcpStream>
+/// after the handshake, so we use this concrete type throughout ImapSession
+/// rather than a boxed trait object.
+pub type ImapTlsStream = TlsStream<TcpStream>;
+
+/// Pre-authenticated IMAP connection.
+///
+/// Returned by `ImapSession::connect()`. Call `authenticate()` to obtain an `ImapSession`.
+/// Capabilities and Gmail detection are deferred to `authenticate()` — async-imap's
+/// `Client` (pre-auth) does not expose `capabilities()`; only `Session` (post-auth) does.
+pub struct ImapPreAuth {
+    client: async_imap::Client<ImapTlsStream>,
+}
+
+/// Internal XOAUTH2 SASL authenticator.
+///
+/// Constructs: base64("user=<email>\x01auth=Bearer <token>\x01\x01")
+struct XOAuth2Auth {
+    email: String,
+    token: String,
+}
+
+impl async_imap::Authenticator for XOAuth2Auth {
+    type Response = String;
+
+    fn process(&mut self, _challenge: &[u8]) -> Self::Response {
+        build_xoauth2_string(&self.email, &self.token)
+    }
+}
+
+/// Builds the XOAUTH2 SASL base64 payload for IMAP AUTHENTICATE XOAUTH2.
+///
+/// Format: base64("user=<email>\x01auth=Bearer <token>\x01\x01")
+pub fn build_xoauth2_string(email: &str, token: &str) -> String {
+    let raw = format!("user={}\x01auth=Bearer {}\x01\x01", email, token);
+    base64::engine::general_purpose::STANDARD.encode(raw.as_bytes())
+}
+
+impl ImapPreAuth {
+    /// Authenticates with the IMAP server and returns an active `ImapSession`.
+    ///
+    /// - `access_token` = Some(token): XOAUTH2 AUTHENTICATE (OAuth2 bearer token)
+    /// - `access_token` = None: password LOGIN via account.extra["settings"]["imap_password"]
+    ///
+    /// Wrapped with a 30-second timeout.
+    pub async fn authenticate(
+        self,
+        account: &Account,
+        access_token: Option<&str>,
+    ) -> Result<ImapSession, SyncError> {
+        let email = account
+            .email_address
+            .as_deref()
+            .ok_or_else(|| SyncError::Unexpected("account missing emailAddress".to_string()))?
+            .to_string();
+
+        let mut session = if let Some(token) = access_token {
+            // XOAUTH2 path
+            let auth = XOAuth2Auth {
+                email,
+                token: token.to_string(),
+            };
+            timeout(
+                Duration::from_secs(30),
+                self.client.authenticate("XOAUTH2", auth),
+            )
+            .await
+            .map_err(|_| SyncError::Timeout)?
+            .map_err(|(err, _client)| SyncError::from(err))?
+        } else {
+            // Password LOGIN path — extract password before consuming self.client
+            let pwd = account
+                .extra
+                .get("settings")
+                .and_then(|s| s.get("imap_password"))
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    SyncError::Unexpected("settings missing 'imap_password'".to_string())
+                })?
+                .to_string();
+
+            timeout(
+                Duration::from_secs(30),
+                self.client.login(email, pwd),
+            )
+            .await
+            .map_err(|_| SyncError::Timeout)?
+            .map_err(|(err, _client)| SyncError::from(err))?
+        };
+
+        // Read capabilities from the authenticated session (CAPABILITY command)
+        // This is where async-imap exposes capabilities() — only on Session, not Client.
+        let caps = timeout(Duration::from_secs(15), session.capabilities())
+            .await
+            .map_err(|_| SyncError::Timeout)?
+            .map_err(SyncError::from)?;
+
+        let capabilities: Vec<String> = caps
+            .iter()
+            .map(|c: &async_imap::types::Capability| format!("{c:?}"))
+            .collect();
+
+        let is_gmail = capabilities.iter().any(|c| c.contains("X-GM-EXT-1"));
+
+        Ok(ImapSession {
+            session,
+            capabilities,
+            is_gmail,
+        })
+    }
+}
 
 /// Authenticated IMAP session wrapping an async-imap Session.
 ///
 /// Supports both direct TLS (port 993) and STARTTLS (port 143) connections,
 /// and both password LOGIN and XOAUTH2 AUTHENTICATE.
 ///
-/// Plan 03 implements: connect(), authenticate(), list_folders(),
-/// select_condstore(), uid_fetch().
+/// # Usage
+///
+/// ```no_run
+/// let pre_auth = ImapSession::connect(&account).await?;
+/// let mut session = pre_auth.authenticate(&account, None).await?;        // password
+/// // or:
+/// let mut session = pre_auth.authenticate(&account, Some(token)).await?; // XOAUTH2
+/// let (folders, labels) = session.list_folders(&account).await?;
+/// ```
 pub struct ImapSession {
-    pub(crate) session: Session<Box<dyn AsyncReadWrite>>,
+    session: Session<ImapTlsStream>,
     /// Server capabilities as reported after greeting (or after CAPABILITY command).
     pub capabilities: Vec<String>,
     /// True if server advertised X-GM-EXT-1 capability (Gmail-specific extensions).
@@ -144,15 +266,251 @@ impl ImapSession {
         self.is_gmail
     }
 
-    /// Connects to the IMAP server and authenticates.
+    /// Connects to the IMAP server described by `account.extra["settings"]`.
     ///
-    /// Full implementation in Plan 03.
-    /// Reads account.extra["settings"]: imap_host, imap_port, imap_security.
-    #[allow(dead_code)]
-    pub async fn connect(_account: &Account) -> Result<Self, SyncError> {
-        Err(SyncError::NotImplemented(
-            "ImapSession::connect implemented in Plan 03".to_string(),
-        ))
+    /// Reads: `imap_host`, `imap_port`, `imap_security` ("SSL/TLS" or "STARTTLS").
+    ///
+    /// - SSL/TLS (port 993): TCP connect -> TLS handshake -> greeting
+    /// - STARTTLS (port 143): TCP connect -> greeting -> STARTTLS command -> TLS upgrade
+    ///
+    /// Capability detection (CAPABILITY command) is deferred to `authenticate()` since
+    /// async-imap's `Client` (pre-auth) does not expose `capabilities()` — only `Session`
+    /// (post-auth) does.
+    ///
+    /// All I/O wrapped with a 15-second connection timeout (IMPR-05).
+    /// Returns an `ImapPreAuth` handle; call `.authenticate()` to proceed.
+    pub async fn connect(account: &Account) -> Result<ImapPreAuth, SyncError> {
+        let settings = account
+            .extra
+            .get("settings")
+            .ok_or_else(|| {
+                SyncError::Unexpected("account missing 'settings' field".to_string())
+            })?;
+
+        let host = settings
+            .get("imap_host")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| SyncError::Unexpected("settings missing 'imap_host'".to_string()))?
+            .to_string();
+
+        let port = settings
+            .get("imap_port")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(993) as u16;
+
+        let security = settings
+            .get("imap_security")
+            .and_then(|v| v.as_str())
+            .unwrap_or("SSL/TLS")
+            .to_string();
+
+        let addr = format!("{host}:{port}");
+
+        // Build TLS connector using platform trust store (rustls-platform-verifier 0.6)
+        use rustls_platform_verifier::ConfigVerifierExt as _;
+        let tls_config = tokio_rustls::rustls::ClientConfig::with_platform_verifier()
+            .map_err(|e| SyncError::Unexpected(format!("TLS config error: {e}")))?;
+        let connector = tokio_rustls::TlsConnector::from(std::sync::Arc::new(tls_config));
+        let server_name =
+            tokio_rustls::rustls::pki_types::ServerName::try_from(host.as_str())
+                .map_err(|e| SyncError::Unexpected(format!("invalid hostname '{host}': {e}")))?
+                .to_owned();
+
+        let client = if security == "STARTTLS" {
+            // STARTTLS: plain TCP -> greeting -> STARTTLS command -> TLS upgrade
+            let tcp = timeout(Duration::from_secs(15), TcpStream::connect(&addr))
+                .await
+                .map_err(|_| SyncError::Timeout)?
+                .map_err(|_| SyncError::Connection)?;
+
+            let mut plain = async_imap::Client::new(tcp);
+
+            // Read server greeting
+            timeout(Duration::from_secs(15), plain.read_response())
+                .await
+                .map_err(|_| SyncError::Timeout)?
+                .map_err(SyncError::from)?;
+
+            // Send STARTTLS command
+            timeout(
+                Duration::from_secs(15),
+                plain.run_command_and_check_ok("STARTTLS", None),
+            )
+            .await
+            .map_err(|_| SyncError::Timeout)?
+            .map_err(SyncError::from)?;
+
+            // Extract TCP stream and upgrade to TLS (no greeting after STARTTLS per RFC 2595)
+            let tcp = plain.into_inner();
+            let tls = timeout(Duration::from_secs(15), connector.connect(server_name, tcp))
+                .await
+                .map_err(|_| SyncError::Timeout)?
+                .map_err(|_| SyncError::SslHandshakeFailed)?;
+
+            async_imap::Client::new(tls)
+        } else {
+            // SSL/TLS direct: TCP -> TLS handshake -> greeting
+            let tcp = timeout(Duration::from_secs(15), TcpStream::connect(&addr))
+                .await
+                .map_err(|_| SyncError::Timeout)?
+                .map_err(|_| SyncError::Connection)?;
+
+            let tls = timeout(Duration::from_secs(15), connector.connect(server_name, tcp))
+                .await
+                .map_err(|_| SyncError::Timeout)?
+                .map_err(|_| SyncError::SslHandshakeFailed)?;
+
+            let mut client = async_imap::Client::new(tls);
+
+            // Read server greeting (SSL/TLS only — no greeting after STARTTLS)
+            timeout(Duration::from_secs(15), client.read_response())
+                .await
+                .map_err(|_| SyncError::Timeout)?
+                .map_err(SyncError::from)?;
+
+            client
+        };
+
+        // capabilities/is_gmail deferred to authenticate() — async-imap Client
+        // (pre-auth) does not expose capabilities(); only Session (post-auth) does.
+        Ok(ImapPreAuth { client })
+    }
+
+    /// Enumerates all selectable folders on the server.
+    ///
+    /// Issues LIST "" * with a 30-second timeout. Skips NoSelect folders.
+    /// Assigns roles via two-pass detection (RFC 6154 attributes first, name fallback).
+    ///
+    /// For Gmail accounts (`is_gmail == true`):
+    ///   - 6 whitelisted folders (INBOX, All Mail, Trash, Spam, Drafts, Sent Mail) become Folder objects
+    ///   - All others become Label objects (GMAL-01)
+    ///
+    /// For non-Gmail accounts:
+    ///   - All selectable folders become Folder objects, no Labels produced
+    ///
+    /// `Folder.id` is set to `"{account_id}:{folder_path}"` matching the C++ ID scheme.
+    pub async fn list_folders(
+        &mut self,
+        account: &Account,
+    ) -> Result<(Vec<Folder>, Vec<Label>), SyncError> {
+        let names_stream = timeout(
+            Duration::from_secs(30),
+            self.session.list(Some(""), Some("*")),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)?;
+
+        // Collect all folder names before processing
+        let mut name_list = Vec::new();
+        let mut s = names_stream;
+        while let Some(result) = s.next().await {
+            let name = result.map_err(SyncError::from)?;
+            name_list.push(name);
+        }
+
+        let mut folders: Vec<Folder> = Vec::new();
+        let mut labels: Vec<Label> = Vec::new();
+
+        for name in name_list {
+            let attrs = name.attributes();
+            let path = name.name();
+
+            // Skip container-only folders
+            if is_noselect(attrs) {
+                continue;
+            }
+
+            let role = detect_folder_role(attrs, path).unwrap_or_default();
+            let id = format!("{}:{}", account.id, path);
+
+            if self.is_gmail {
+                if is_gmail_sync_folder(attrs, path) {
+                    folders.push(Folder {
+                        id,
+                        account_id: account.id.clone(),
+                        version: 1,
+                        path: path.to_string(),
+                        role,
+                        local_status: Some(serde_json::json!({})),
+                    });
+                } else {
+                    labels.push(Label {
+                        id,
+                        account_id: account.id.clone(),
+                        version: 1,
+                        path: path.to_string(),
+                        role,
+                        local_status: Some(serde_json::json!({})),
+                    });
+                }
+            } else {
+                folders.push(Folder {
+                    id,
+                    account_id: account.id.clone(),
+                    version: 1,
+                    path: path.to_string(),
+                    role,
+                    local_status: Some(serde_json::json!({})),
+                });
+            }
+        }
+
+        Ok((folders, labels))
+    }
+
+    /// SELECT with CONDSTORE extension.
+    ///
+    /// Selects the named mailbox and returns the Mailbox struct containing
+    /// uid_validity, highest_modseq, exists count, etc.
+    /// Wrapped with a 30-second timeout.
+    pub async fn select_condstore(
+        &mut self,
+        path: &str,
+    ) -> Result<async_imap::types::Mailbox, SyncError> {
+        timeout(
+            Duration::from_secs(30),
+            self.session.select_condstore(path),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)
+    }
+
+    /// UID FETCH wrapper.
+    ///
+    /// Initiates UID FETCH with a 120-second timeout for stream creation.
+    /// The caller iterates the returned stream with per-item timeouts.
+    ///
+    /// The stream borrows `self` mutably — the caller must exhaust or drop it before
+    /// calling other session methods.
+    /// UID FETCH wrapper — returns a pinned boxed stream.
+    ///
+    /// The stream is boxed to avoid `impl Stream + '_` RPIT lifetime issues across
+    /// the `async fn` boundary. Callers use `tokio_stream::StreamExt` to iterate.
+    pub async fn uid_fetch(
+        &mut self,
+        uid_set: &str,
+        query: &str,
+    ) -> Result<
+        std::pin::Pin<
+            Box<
+                dyn tokio_stream::Stream<
+                    Item = Result<async_imap::types::Fetch, async_imap::error::Error>,
+                > + '_,
+            >,
+        >,
+        SyncError,
+    > {
+        let stream = timeout(
+            Duration::from_secs(120),
+            self.session.uid_fetch(uid_set, query),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)?;
+
+        Ok(Box::pin(stream))
     }
 }
 
