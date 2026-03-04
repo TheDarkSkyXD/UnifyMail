@@ -1,8 +1,8 @@
 {
-  "name": "mailcore-napi-rs",
+  "name": "mailcore-napi",
   "version": "0.1.0",
   "description": "Rust napi-rs addon for UnifyMail — provider detection and email account validation",
-  "main": "index.js",
+  "main": "loader.js",
   "types": "index.d.ts",
   "private": true,
   "napi": {

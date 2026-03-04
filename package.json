@@ -67,7 +67,6 @@
     "license-extractor": "^1.0.4",
     "load-grunt-parent-tasks": "^0.1.2",
     "mkdirp": "^0.5.1",
-    "node-gyp": "^12.1.0",
     "prettier": "^1.10.0",
     "rimraf": "^2.6.1",
     "targz": "^1.0.1",
