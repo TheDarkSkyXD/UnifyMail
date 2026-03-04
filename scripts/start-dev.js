@@ -59,6 +59,31 @@ if (rustBuild.status !== 0) {
 
 log(COLORS.green, 'Rust addon built successfully.');
 
+// 0b. Build Rust sync binary (mailsync-rs) — debug build only, incremental compilation
+//     handles no-op builds in ~1-2s when sources are unchanged.
+log(COLORS.yellow, 'Building Rust sync binary (app/mailsync-rs)...');
+
+const mailsyncRsDir = path.join(__dirname, '..', 'app');
+const mailsyncArgs = ['build', '-p', 'unifymail-sync'];
+if (process.platform === 'win32') {
+    mailsyncArgs.push('--target', 'x86_64-pc-windows-gnu');
+}
+
+const mailsyncBuild = spawnSync('cargo', mailsyncArgs, {
+    shell: true,
+    stdio: 'inherit',
+    cwd: mailsyncRsDir,
+    env: buildEnv,
+});
+
+if (mailsyncBuild.status !== 0) {
+    log(COLORS.red, `Rust sync binary build failed (exit code ${mailsyncBuild.status}).`);
+    log(COLORS.red, 'The C++ mailsync binary will be used as fallback.');
+    // Non-fatal: C++ mailsync binary still functional during Phases 5-9
+} else {
+    log(COLORS.green, 'Rust sync binary built successfully.');
+}
+
 // 1. Start Tailwind CSS Watcher
 log(COLORS.yellow, 'Starting Tailwind CSS watcher...');
 const tailwind = spawn('npm', ['run', 'tailwind:dev', '--prefix', 'app'], {

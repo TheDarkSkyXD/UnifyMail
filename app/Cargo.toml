@@ -1,0 +1,23 @@
+[workspace]
+members = ["mailcore-rs", "mailsync-rs"]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "=1.50.0", features = ["rt-multi-thread", "net", "time", "io-util", "io-std", "macros", "sync", "fs"] }
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.149"
+
+# Release profile — applied to all workspace members.
+# mailcore-rs (.node cdylib) and mailsync-rs (binary) both benefit from:
+# - lto: enables link-time optimization for smaller, faster binaries
+# - codegen-units = 1: maximum optimization (slower compile, best runtime)
+# - panic = "abort": removes unwinding code (safe for both cdylib and bin)
+# - opt-level = "z": optimize for size (mailcore-rs prefers "z"; mailsync-rs 3 is fine too)
+# Note: mailsync-rs Cargo.toml specifies opt-level = 3 but per-crate profiles are
+# ignored in a workspace — workspace profile takes precedence.
+[profile.release]
+lto = true
+strip = "symbols"
+codegen-units = 1
+panic = "abort"
+opt-level = "z"

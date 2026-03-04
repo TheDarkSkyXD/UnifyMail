@@ -1,8 +1,83 @@
 # Phase 5: Core Infrastructure and IPC Protocol - Research
 
-**Researched:** 2026-03-02
+**Researched:** 2026-03-04
 **Domain:** Rust standalone binary — stdin/stdout IPC protocol, process mode dispatch, SQLite schema creation, delta emission pipeline, tokio task architecture
 **Confidence:** HIGH (IPC protocol extracted directly from C++ source and TypeScript consumer; schema SQL extracted from constants.h verbatim; delta coalescing algorithm extracted from DeltaStream.cpp; tokio patterns from official documentation)
+
+---
+
+<user_constraints>
+## User Constraints (from CONTEXT.md)
+
+### Locked Decisions
+
+**Binary coexistence strategy**
+- Rust binary uses a distinct name during development: `mailsync-rs.exe` (Windows) / `mailsync-rs.bin` (macOS/Linux)
+- Source code lives at `app/mailsync-rs/` — mirrors the v1.0 pattern (`app/mailcore-rs/`)
+- C++ `mailsync` binary stays fully functional and unchanged through Phases 5-9
+- Phase 10 renames Rust binary to `mailsync` and deletes C++
+- `mailsync-process.ts` is modified to check for `mailsync-rs` first, falling back to C++ `mailsync` — simple conditional in `_spawnProcess`
+- Rust binary build is integrated into `npm start` (same pattern as mailcore-rs — Cargo incremental compilation handles no-op builds in ~1-2s)
+- Debug builds for development (`npm start`), release builds only for production
+
+**Stub behavior for sync mode**
+- `--mode sync`: Completes stdin handshake, emits a `ProcessState` delta (showing account as 'online'), then loops reading stdin commands. Unimplemented commands (queue-task, need-bodies, etc.) are accepted and logged but produce no action — the account shows as 'connected' in the Electron UI
+- `--mode migrate`: Creates the full SQLite schema in one go — all tables, indexes, and FTS5 virtual tables matching the C++ baseline. Phase 6 focuses on model code, not schema changes
+- `--mode reset`: Fully functional — drops and recreates the database
+- `--mode install-check`: Fully functional — verifies binary runs and exits with code 0
+- `--mode test`: Claude's discretion — the N-API `validateAccount` path in mailsync-process.ts handles account validation already (v1.0), so test mode is vestigial
+
+**Logging and debug output**
+- Use the **tracing** crate for structured logging with spans and levels — industry standard for async Rust, integrates with tokio
+- Write logs to `{configDirPath}/mailsync-{accountId}.log` files — same file pattern as C++. The MailsyncBridge `tailClientLog` method reads these files for error reporting, so same path = zero TypeScript changes
+- **Verbose control:** Both `--verbose` flag (sets tracing to DEBUG level) and `RUST_LOG` env var (overrides if present). The existing UI toggle button passes `--verbose`, developers can use `RUST_LOG` for fine-grained control
+- **Debug output goes to stderr only** — stdout is exclusively for IPC protocol messages (JSON deltas). Clean separation. mailsync-process.ts already captures stderr
+
+**Error key compatibility**
+- Use **identical error key strings** as C++ binary: `ErrorAuthentication`, `ErrorConnection`, `ErrorTLSNotAvailable`, `ErrorCertificate`, `ErrorParse`, `ErrorGmailIMAPNotEnabled`, etc. — `LocalizedErrorStrings` in mailsync-process.ts maps these to user-facing messages without changes
+- **Exact same JSON error shape** on failure: `{ error: "ErrorKey", error_service: "imap"|"smtp", log: "..." }` — mailsync-process.ts `_spawnAndWait` parses this shape at lines 290-293
+- **Full error enum defined upfront** covering all ~20 C++ error keys as Rust enum variants. Each variant maps to the C++ error string. Later phases use existing variants rather than adding new ones
+- **Same exit codes** as C++: 0 for success, non-zero with JSON error on stdout for failure, 141 for stdin EOF (orphan detection)
+
+**Cargo workspace setup**
+- Create a Cargo workspace at `app/Cargo.toml` with members `mailcore-rs` and `mailsync-rs`
+- Shared workspace dependency versions for tokio, serde, rustls, aws-lc-rs — consistent across both crates
+- No shared library crate — mailcore-rs (N-API addon) and mailsync-rs (standalone binary) are independent members with no code coupling
+- Dependency pinning strategy: Claude's discretion based on what worked in v1.0
+
+**Windows build pipeline**
+- Use GNU target (`x86_64-pc-windows-gnu`) — same as mailcore-rs, proven toolchain with MSYS2 MinGW
+- Build step added to `scripts/start-dev.js` before Electron launch — `cargo build` with incremental compilation (~1-2s no-op)
+- Binary output at standard `app/mailsync-rs/target/debug/` (dev) and `target/release/` (prod) — mailsync-process.ts resolves path accordingly
+- Binary name includes platform suffix: `mailsync-rs.exe` (Windows) / `mailsync-rs.bin` (macOS/Linux) — matches existing C++ naming convention
+
+**Testing strategy**
+- **IPC contract tests**: Rust integration tests that spawn the binary as a child process, pipe stdin/stdout, verify handshake and delta format — runs in `cargo test`
+- **Schema validation**: Diff-based validation against C++ constants.h schema, then snapshot locked for regression
+- **Mode coverage**: All 5 modes have at least one integration test verifying correct behavior and exit code
+- **Electron E2E**: Claude's discretion on whether to include minimal Electron integration test in Phase 5 or defer to Phase 6
+
+**Stdin command handling**
+- **Structured dispatch**: Parse all 10+ C++ command types into a Rust enum with handler functions — unimplemented handlers log at debug level and return silently
+- **Full command enum upfront**: All command variants defined (queue-task, cancel-task, wake-workers, need-bodies, sync-calendar, detect-provider, query-capabilities, subscribe-folder-status, test-crash, test-segfault) — later phases implement real handlers
+- **Unknown commands**: Warn-level log and continue — forward compatible if TypeScript adds new commands before Rust catches up
+- **No response for stubs**: Silent accept + debug log. Electron UI doesn't expect responses for most commands
+
+### Claude's Discretion
+
+- `--mode test` implementation depth (stub vs minimal success response)
+- Exact Cargo.toml dependency versions for tracing, tokio-rusqlite, clap, serde
+- Internal module organization (ipc.rs, schema.rs, delta.rs, etc.)
+- Delta coalescing window implementation (500ms from research)
+- tokio task architecture details (stdin reader, stdout writer, command dispatcher)
+- Whether to use clap for CLI argument parsing or hand-roll the `--mode` flag
+- Log rotation strategy (if any) for the mailsync-{accountId}.log files
+- Electron E2E test inclusion in Phase 5 vs deferral
+
+### Deferred Ideas (OUT OF SCOPE)
+
+None — discussion stayed within phase scope
+</user_constraints>
 
 ---
 
@@ -30,7 +105,7 @@ The C++ source read in this research reveals the exact protocol at the byte leve
 
 In Rust, Phase 5 implements: (1) a clap `--mode` argument selecting one of five modes; (2) the sync mode's three-task tokio skeleton (stdin_loop, delta_flush_task, and a stub sync loop); (3) the DeltaStream as an `mpsc::unbounded_channel` with the exact coalescing algorithm from C++; (4) the SQLite schema creation matching the 9-version C++ migration history; and (5) the stdout flush pattern using a dedicated task that exclusively owns stdout, calling `flush()` after every batch.
 
-**Primary recommendation:** Implement the binary at `app/mailsync-rust/src/main.rs`. Use clap derive for `--mode`. Use `tokio::sync::mpsc::unbounded_channel` for the delta channel. Implement the coalescing buffer as `IndexMap<String, Vec<DeltaStreamItem>>` keyed by `modelClass`. Call `std::io::stdout().flush()` (not tokio's async stdout) inside the dedicated flush task after each batch write to ensure the OS pipe buffer is drained immediately.
+**Primary recommendation:** Implement the binary at `app/mailsync-rs/src/main.rs`. Use clap derive for `--mode`. Use `tokio::sync::mpsc::unbounded_channel` for the delta channel. Implement the coalescing buffer as `IndexMap<String, Vec<DeltaStreamItem>>` keyed by `modelClass`. Call `std::io::stdout().flush()` (not tokio's async stdout) inside the dedicated flush task after each batch write to ensure the OS pipe buffer is drained immediately.
 
 ---
 
@@ -66,7 +141,7 @@ In Rust, Phase 5 implements: (1) a clap `--mode` argument selecting one of five 
 
 **Installation:**
 ```bash
-# Add to app/mailsync-rust/Cargo.toml
+# Add to app/mailsync-rs/Cargo.toml
 # Core Phase 5 dependencies only — subsequent phases add async-imap, lettre, etc.
 tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "io-util", "macros", "sync", "fs"] }
 tokio-util = { version = "0.7", features = ["codec"] }
@@ -89,7 +164,7 @@ indexmap = "2"
 ### Recommended Project Structure (Phase 5 scope)
 
 ```
-app/mailsync-rust/
+app/mailsync-rs/
 ├── Cargo.toml                    # Package: name="mailsync", bin target
 ├── Cargo.lock
 ├── src/
@@ -115,7 +190,9 @@ app/mailsync-rust/
 │       ├── test_auth.rs          # --mode test: stub for Phase 5 (returns not-implemented)
 │       └── sync.rs               # --mode sync: spawn tasks, run sync skeleton
 ├── tests/
-│   └── ipc_contract.rs           # Contract test: verify delta field names and handshake
+│   ├── ipc_contract.rs           # Contract test: verify delta field names and handshake
+│   ├── mode_tests.rs             # Integration tests for migrate, install-check, reset
+│   └── delta_coalesce.rs         # Delta coalescing unit tests
 └── docs/
     └── protocol.md               # Wire format reference
 ```
@@ -899,7 +976,7 @@ version = "2.0.0"
 edition = "2021"
 
 [[bin]]
-name = "mailsync"
+name = "mailsync-rs"
 path = "src/main.rs"
 
 [dependencies]
@@ -972,6 +1049,152 @@ opt-level = 3
 
 ---
 
+## Validation Architecture
+
+### Test Framework
+
+| Property | Value |
+|----------|-------|
+| Framework | Rust built-in test harness (`cargo test`) |
+| Config file | None — standard `cargo test` conventions |
+| Quick run command | `cd app/mailsync-rs && cargo test --lib` |
+| Full suite command | `cd app/mailsync-rs && cargo test --test-threads=1` |
+
+### Phase Requirements to Test Map
+
+| Req ID | Behavior | Test Type | Automated Command | File Exists? |
+|--------|----------|-----------|-------------------|-------------|
+| IPC-01 | Binary prints startup prompt, then reads account + identity JSON from stdin after any stdout data | integration | `cd app/mailsync-rs && cargo test --test ipc_contract -- test_handshake` | Wave 0 |
+| IPC-02 | Delta messages have exact field names `type`, `modelJSONs`, `modelClass` (no snake_case) | unit + integration | `cd app/mailsync-rs && cargo test --test ipc_contract -- test_delta_field_names` | Wave 0 |
+| IPC-03 | All 10+ stdin command types parsed into Rust enum; unknown commands produce warn log and continue | unit | `cd app/mailsync-rs && cargo test --lib -- stdin_loop` | Wave 0 |
+| IPC-04 (migrate) | `--mode migrate` creates edgehill.db with schema version 9, all 22+ tables, 3 FTS5 tables, all indexes | integration | `cd app/mailsync-rs && cargo test --test mode_tests -- test_migrate` | Wave 0 |
+| IPC-04 (install-check) | `--mode install-check` exits 0 with valid JSON on stdout | integration | `cd app/mailsync-rs && cargo test --test mode_tests -- test_install_check` | Wave 0 |
+| IPC-04 (reset) | `--mode reset` with account JSON deletes all rows for that account only | integration | `cd app/mailsync-rs && cargo test --test mode_tests -- test_reset` | Wave 0 |
+| IPC-04 (sync) | `--mode sync` completes handshake, emits ProcessState delta, accepts stdin commands | integration | `cd app/mailsync-rs && cargo test --test ipc_contract -- test_sync_mode_startup` | Wave 0 |
+| IPC-05 | Binary exits with code 141 when stdin closes (EOF received) | integration | `cd app/mailsync-rs && cargo test --test ipc_contract -- test_stdin_eof_exit_141` | Wave 0 |
+| IPC-06 | stdout flushes after every batch — pipe reader receives data within 500ms | integration | `cd app/mailsync-rs && cargo test --test ipc_contract -- test_stdout_flush_timing` | Wave 0 |
+| IMPR-08 | Stdin reader and stdout writer are independent tokio tasks — 500KB+ stdin does not deadlock stdout | integration | `cd app/mailsync-rs && cargo test --test ipc_contract -- test_no_deadlock_large_stdin` | Wave 0 |
+
+### Sampling Rate
+
+- **Per task commit:** `cd app/mailsync-rs && cargo test --lib && cargo clippy -- -D warnings`
+- **Per wave merge:** `cd app && cargo build && cd mailsync-rs && cargo test --test-threads=1`
+- **Phase gate:** Full suite green (`cargo test --test-threads=1`) plus `cargo clippy -- -D warnings` before `/gsd:verify-work`
+
+### Wave 0 Gaps
+
+All test files are new (greenfield crate) — must be created in Wave 1:
+
+- [ ] `app/mailsync-rs/tests/ipc_contract.rs` — covers IPC-01, IPC-02, IPC-05, IPC-06, IMPR-08
+  - Spawns binary as child process, pipes stdin/stdout, verifies handshake and delta field names
+  - Tests: `test_handshake`, `test_delta_field_names`, `test_sync_mode_startup`, `test_stdin_eof_exit_141`, `test_stdout_flush_timing`, `test_no_deadlock_large_stdin`
+
+- [ ] `app/mailsync-rs/tests/mode_tests.rs` — covers IPC-04 (all modes), IPC-03
+  - Uses `tempfile::TempDir` for CONFIG_DIR_PATH isolation
+  - Tests: `test_migrate_creates_schema`, `test_migrate_idempotent`, `test_migrate_fts5_tables`, `test_install_check_exits_0`, `test_reset_isolates_account_data`
+
+- [ ] `app/mailsync-rs/tests/delta_coalesce.rs` — covers IPC-02 (coalescing correctness)
+  - Unit tests for DeltaStreamItem coalescing algorithm (key merge, same-type merge, cross-type no-merge)
+
+- [ ] Framework install: `rusqlite = { version = "0.38", features = ["bundled"] }` and `tempfile = "3"` as dev-dependencies — required for test infrastructure
+
+### Key Test Patterns
+
+**Child process spawn pattern (for all integration tests):**
+```rust
+// tests/ipc_contract.rs
+use std::process::{Command, Stdio};
+use std::io::Write;
+
+fn binary_path() -> std::path::PathBuf {
+    // Locate the built binary in target/debug/
+    let mut path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("target");
+    path.push("debug");
+    path.push(if cfg!(windows) { "mailsync-rs.exe" } else { "mailsync-rs" });
+    path
+}
+
+fn run_mode(mode: &str, config_dir: &str, stdin_data: Option<&str>) -> (i32, String, String) {
+    let mut child = Command::new(binary_path())
+        .arg("--mode").arg(mode)
+        .env("CONFIG_DIR_PATH", config_dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn binary");
+
+    if let Some(data) = stdin_data {
+        child.stdin.take().unwrap().write_all(data.as_bytes()).unwrap();
+    }
+
+    let output = child.wait_with_output().expect("failed to wait");
+    let exit_code = output.status.code().unwrap_or(-1);
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    (exit_code, stdout, stderr)
+}
+```
+
+**IPC contract test pattern (handshake + delta field names):**
+```rust
+#[test]
+fn test_handshake_and_delta_field_names() {
+    // Use a tempdir for schema
+    let tmp = tempfile::tempdir().unwrap();
+    // First migrate to create schema
+    run_mode("migrate", tmp.path().to_str().unwrap(), None);
+
+    let account_json = r#"{"id":"test-acct","emailAddress":"test@example.com","provider":"gmail"}"#;
+    let identity_json = r#"{"id":"test-identity"}"#;
+    let stdin = format!("{}\n{}\n", account_json, identity_json);
+
+    // Spawn in sync mode, send handshake data, then close stdin after 2s
+    let mut child = Command::new(binary_path())
+        .arg("--mode").arg("sync")
+        .env("CONFIG_DIR_PATH", tmp.path().to_str().unwrap())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn().unwrap();
+
+    // Write stdin after receiving first stdout byte (simulating TypeScript behavior)
+    let mut stdin_pipe = child.stdin.take().unwrap();
+
+    // Read first stdout output (startup prompt)
+    // Then write handshake data and close stdin
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        stdin_pipe.write_all(stdin.as_bytes()).unwrap();
+        drop(stdin_pipe); // Close stdin -> triggers exit(141)
+    });
+
+    let output = child.wait_with_output().unwrap();
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+
+    // Find ProcessState delta line
+    let delta_line = stdout_str.lines()
+        .find(|l| l.contains("ProcessState"))
+        .expect("ProcessState delta not found in stdout");
+
+    let delta: serde_json::Value = serde_json::from_str(delta_line)
+        .expect("delta line is not valid JSON");
+
+    // Verify exact field names (IPC-02)
+    assert!(delta.get("type").is_some(), "missing 'type'");
+    assert!(delta.get("modelClass").is_some(), "missing 'modelClass' (camelCase)");
+    assert!(delta.get("modelJSONs").is_some(), "missing 'modelJSONs' (camelCase)");
+    assert!(delta.get("model_class").is_none(), "snake_case 'model_class' must not appear");
+    assert!(delta.get("model_jsons").is_none(), "snake_case 'model_jsons' must not appear");
+
+    // Verify exit code 141 (IPC-05)
+    assert_eq!(output.status.code(), Some(141), "expected exit 141 on stdin EOF");
+}
+```
+
+---
+
 ## Sources
 
 ### Primary (HIGH confidence)
@@ -1001,6 +1224,7 @@ opt-level = 3
 - Tokio task architecture: HIGH — verified against official tokio documentation
 - stdout flush behavior: HIGH — verified against tokio issue #7174 and official rust-lang/rust issues
 - clap derive mode enum: HIGH — verified against clap 4 derive tutorial
+- Validation architecture: HIGH — test patterns follow v1.0 mailcore-rs integration test conventions
 
-**Research date:** 2026-03-02
+**Research date:** 2026-03-04
 **Valid until:** 2026-06-01 (crate versions stable; tokio/rusqlite APIs change slowly)
