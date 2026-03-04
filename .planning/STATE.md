@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4.2 context gathered
-last_updated: "2026-03-04T04:35:30.923Z"
+stopped_at: Completed 04.2-01-PLAN.md
+last_updated: "2026-03-04T05:02:22.087Z"
 last_activity: "2026-03-03 — Completed Plan 02-02: 12 mock IMAP server tests, greeting consumption bug fix, testIMAPConnection live in Rust wrapper"
 progress:
   total_phases: 12
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 9
+  completed_phases: 6
+  total_plans: 12
+  completed_plans: 10
 ---
 
 ---
@@ -117,6 +117,7 @@ Progress: [██████████] 100%
 | Phase 04 P01 | 3 | 2 tasks | 7 files |
 | Phase 04-cross-platform-packaging-and-cleanup P02 | 7 | 2 tasks | 4 files |
 | Phase 04.1-ci-hardening-and-smoke-test-expansion P01 | 3 | 2 tasks | 6 files |
+| Phase 04.2-validate-account-integration-verification P01 | 12 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,8 @@ Recent decisions affecting current work:
 - [Phase 04-cross-platform-packaging-and-cleanup]: 8MB binary size gate on Linux x64 CI only (per user decision); Windows smoke test uses default shell not msys2 -- only needs Node.js, no MinGW64 tools needed
 - [Phase 04.1-ci-hardening-and-smoke-test-expansion]: Smoke test uses functional check for providerForEmail, type-check only for async functions (testIMAPConnection, testSMTPConnection, validateAccount) — live server calls would require infrastructure
 - [Phase 04.1-ci-hardening-and-smoke-test-expansion]: macOS CI cache key: hashFiles('yarn.lock') -> hashFiles('package-lock.json') — project uses npm, yarn.lock never existed, cache never hit
+- [Phase 04.2-validate-account-integration-verification]: napi-rs v3 Option<String> accepts undefined (not null) from JS — pass undefined for oauth2Token in field echo test
+- [Phase 04.2-validate-account-integration-verification]: Per-protocol credential split in ValidateAccountOptions closes INTG-VALIDATE-USERNAME and FLOW-VALIDATE-RUNTIME audit gaps
 
 ### Pending Todos
 
@@ -172,9 +175,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T04:35:30.920Z
-Stopped at: Phase 4.2 context gathered
-Resume file: .planning/phases/04.2-validate-account-integration-verification/04.2-CONTEXT.md
+Last session: 2026-03-04T05:02:22.084Z
+Stopped at: Completed 04.2-01-PLAN.md
+Resume file: None
 
 ---
 *Last updated: 2026-03-03*

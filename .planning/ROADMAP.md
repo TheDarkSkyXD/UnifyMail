@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: SMTP Testing and Account Validation** - Implement testSMTPConnection and validateAccount composing all proven components (completed 2026-03-04)
 - [x] **Phase 4: Cross-Platform Packaging and Cleanup** - GitHub Actions CI for all 5 targets, binary size validation, remove all C++ code (completed 2026-03-04)
 - [ ] **Phase 4.1: CI Hardening and Smoke Test Expansion** - Expand CI smoke tests to cover all 5 exports, fix macOS cache key, delete stale index.js (Gap Closure)
-- [ ] **Phase 4.2: validateAccount Integration Verification** - Verify validateAccount call site field mapping and E2E credential passing (Gap Closure)
+- [x] **Phase 4.2: validateAccount Integration Verification** - Verify validateAccount call site field mapping and E2E credential passing (Gap Closure) (completed 2026-03-04)
 
 ## Phase Details
 
@@ -127,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 4.1 → 4.2
 | 3. SMTP Testing and Account Validation | 2/2 | Complete   | 2026-03-04 |
 | 4. Cross-Platform Packaging and Cleanup | 2/2 | Complete   | 2026-03-04 |
 | 4.1 CI Hardening and Smoke Test Expansion | 0/1 | Not started | - |
-| 4.2 validateAccount Integration Verification | 0/1 | Not started | - |
+| 4.2 validateAccount Integration Verification | 1/1 | Complete   | 2026-03-04 |
 
 ---
 
