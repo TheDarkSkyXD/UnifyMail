@@ -27,8 +27,10 @@ mod account;
 mod cli;
 mod delta;
 mod error;
+mod imap;
 mod modes;
 mod models;
+mod oauth2;
 mod stdin_loop;
 mod store;
 
