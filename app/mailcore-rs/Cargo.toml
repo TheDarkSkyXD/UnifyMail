@@ -25,6 +25,19 @@ rustls = "0.23"
 rustls-platform-verifier = "0.6"
 base64 = "0.22"
 
+# Phase 3: SMTP connection testing and account validation
+# CRITICAL: default-features = false prevents lettre from pulling in native-tls (OpenSSL),
+# which conflicts with Electron's BoringSSL. rustls-platform-verifier uses the OS cert store
+# (same verifier pattern as imap.rs). aws-lc-rs is the crypto provider matching rustls 0.23 default.
+lettre = { version = "=0.11.19", default-features = false, features = [
+    "smtp-transport",
+    "tokio1",
+    "tokio1-rustls",
+    "rustls-platform-verifier",
+    "aws-lc-rs",
+] }
+hickory-resolver = { version = "=0.25.2", features = ["tokio", "system-config"] }
+
 [build-dependencies]
 napi-build = "=2.3.1"
 
