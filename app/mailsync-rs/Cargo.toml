@@ -46,7 +46,7 @@ rustls-platform-verifier = "0.6"
 mail-parser = "0.11"
 ammonia = "4"
 oauth2 = { version = "5", features = ["reqwest"] }
-reqwest = { version = "0.13", default-features = false, features = ["rustls-native-certs", "json"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-native-certs", "json", "form"] }
 sha2 = "0.10"
 bs58 = "0.5"
 rfc2047-decoder = "1"

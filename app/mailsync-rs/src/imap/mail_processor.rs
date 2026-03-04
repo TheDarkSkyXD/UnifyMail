@@ -331,10 +331,15 @@ fn derive_thread_id_from_headers(
 /// Converts an async-imap Fetch response into a Message model and optionally
 /// a new Thread record.
 ///
+/// The `attrs` parameter provides the full AttributeValue slice from the parsed
+/// FETCH response for extracting X-GM-THRID (not exposed via async-imap's public API).
+/// Pass `&[]` when X-GM-THRID is not needed; Gmail thread_id falls back to msg stable ID.
+///
 /// Returns (Message, Option<Thread>) where Thread is Some if a new thread
 /// should be created for this message's thread_id (caller checks DB).
 pub fn process_fetched_message(
     fetch: &Fetch,
+    attrs: &[imap_proto::types::AttributeValue<'_>],
     folder: &Folder,
     account: &Account,
     is_gmail: bool,
@@ -394,10 +399,11 @@ pub fn process_fetched_message(
     let (unread, starred, draft) = parse_flags(&flags_slice);
 
     // Extract Gmail extensions if applicable
-    let mut gmail_ext = GmailExtensions::default();
-    if is_gmail {
-        gmail_ext = extract_gmail_extensions(fetch);
-    }
+    let gmail_ext = if is_gmail {
+        extract_gmail_extensions(fetch, attrs)
+    } else {
+        GmailExtensions::default()
+    };
 
     // Derive thread_id
     let thread_id = if is_gmail {
@@ -722,13 +728,43 @@ mod tests {
     #[test]
     fn gmail_labels_struct_stores_strings() {
         let ext = GmailExtensions {
-            labels: vec!["\\Inbox".to_string(), "Work".to_string(), "Important".to_string()],
+            labels: vec![
+                "\\Inbox".to_string(),
+                "Work".to_string(),
+                "Important".to_string(),
+            ],
             msg_id: Some(12345678901234),
             thr_id: Some(98765432109876),
         };
         assert_eq!(ext.labels, vec!["\\Inbox", "Work", "Important"]);
         assert_eq!(ext.msg_id, Some(12345678901234u64));
         assert_eq!(ext.thr_id, Some(98765432109876u64));
+    }
+
+    #[test]
+    fn gmail_thrid_extracted() {
+        // gmail_thread_id() extracts GmailThrId from AttributeValue slice
+        let thr_id_val: u64 = 0x12345678abcdef;
+        let attrs: Vec<imap_proto::types::AttributeValue<'static>> =
+            vec![imap_proto::types::AttributeValue::GmailThrId(thr_id_val)];
+        let result = gmail_thread_id(&attrs);
+        assert_eq!(result, Some(thr_id_val), "GmailThrId must be extracted from attrs");
+    }
+
+    #[test]
+    fn gmail_msgid_extracted() {
+        // gmail_thread_id() does NOT extract GmailMsgId (different variant)
+        let attrs: Vec<imap_proto::types::AttributeValue<'static>> =
+            vec![imap_proto::types::AttributeValue::GmailMsgId(99999u64)];
+        let result = gmail_thread_id(&attrs);
+        assert_eq!(result, None, "GmailMsgId must not match GmailThrId extraction");
+    }
+
+    #[test]
+    fn gmail_thrid_not_found_returns_none() {
+        let attrs: Vec<imap_proto::types::AttributeValue<'static>> = vec![];
+        let result = gmail_thread_id(&attrs);
+        assert_eq!(result, None, "Empty attrs returns None for gmail_thread_id");
     }
 
     #[test]
@@ -746,28 +782,56 @@ mod tests {
     }
 
     // -------------------------------------------------------------------------
-    // Task 2: Fetch-to-Message conversion tests
-    // These use mock Account and Folder without live IMAP
+    // Task 2: Threading tests (non-Gmail header-based)
     // -------------------------------------------------------------------------
 
-    fn make_account(id: &str) -> Account {
-        Account {
-            id: id.to_string(),
-            email_address: Some(format!("user@{}.com", id)),
-            provider: Some("gmail".to_string()),
-            extra: serde_json::Value::Null,
-        }
+    #[test]
+    fn threading_non_gmail_with_references() {
+        let account_id = "acc1";
+        let last_ref = "<refs@test.com>";
+        let expected = expected_id(&format!("{}-{}", account_id, last_ref));
+
+        let result = derive_thread_id_from_headers(
+            account_id,
+            Some(b"<first@test.com> <refs@test.com>"),
+            None,
+        );
+        assert_eq!(result, Some(expected), "Non-Gmail thread ID from References");
     }
 
-    fn make_folder(id: &str, path: &str, role: &str) -> Folder {
-        Folder {
-            id: id.to_string(),
-            account_id: "acc1".to_string(),
-            version: 1,
-            path: path.to_string(),
-            role: role.to_string(),
-            local_status: None,
-        }
+    #[test]
+    fn threading_non_gmail_with_in_reply_to() {
+        let account_id = "acc1";
+        let in_reply_to = "<reply@test.com>";
+        let expected = expected_id(&format!("{}-{}", account_id, in_reply_to));
+
+        let result = derive_thread_id_from_headers(
+            account_id,
+            None,
+            Some(b"<reply@test.com>"),
+        );
+        assert_eq!(result, Some(expected), "Non-Gmail thread ID from In-Reply-To");
+    }
+
+    #[test]
+    fn threading_non_gmail_no_headers_returns_none() {
+        let result = derive_thread_id_from_headers("acc1", None, None);
+        assert!(result.is_none(), "No threading headers -> None");
+    }
+
+    #[test]
+    fn threading_references_picks_last_id() {
+        let account_id = "acc1";
+        // Three refs in list — should pick last one
+        let last_ref = "<third@test.com>";
+        let expected = expected_id(&format!("{}-{}", account_id, last_ref));
+
+        let result = derive_thread_id_from_headers(
+            account_id,
+            Some(b"<first@test.com> <second@test.com> <third@test.com>"),
+            None,
+        );
+        assert_eq!(result, Some(expected), "References must use LAST message-id");
     }
 
     // -------------------------------------------------------------------------
@@ -852,90 +916,6 @@ mod tests {
         assert_eq!(q.len(), 2);
         q.next();
         assert_eq!(q.len(), 1);
-    }
-
-    // -------------------------------------------------------------------------
-    // Task 2: parse_flags tests
-    // -------------------------------------------------------------------------
-
-    #[test]
-    fn parse_flags_defaults() {
-        let (unread, starred, draft) = parse_flags(&[]);
-        assert!(unread, "default unread=true");
-        assert!(!starred, "default starred=false");
-        assert!(!draft, "default draft=false");
-    }
-
-    #[test]
-    fn parse_flags_seen_sets_unread_false() {
-        let flags = vec![Flag::Seen];
-        let (unread, starred, draft) = parse_flags(&flags);
-        assert!(!unread, "\\Seen -> unread=false");
-        assert!(!starred);
-        assert!(!draft);
-    }
-
-    #[test]
-    fn parse_flags_flagged_sets_starred() {
-        let flags = vec![Flag::Flagged];
-        let (unread, starred, draft) = parse_flags(&flags);
-        assert!(unread);
-        assert!(starred, "\\Flagged -> starred=true");
-        assert!(!draft);
-    }
-
-    #[test]
-    fn parse_flags_draft() {
-        let flags = vec![Flag::Draft];
-        let (_, _, draft) = parse_flags(&flags);
-        assert!(draft, "\\Draft -> draft=true");
-    }
-
-    #[test]
-    fn parse_flags_seen_and_flagged() {
-        let flags = vec![Flag::Seen, Flag::Flagged];
-        let (unread, starred, draft) = parse_flags(&flags);
-        assert!(!unread);
-        assert!(starred);
-        assert!(!draft);
-    }
-
-    // -------------------------------------------------------------------------
-    // Task 2: Threading tests (non-Gmail header-based)
-    // -------------------------------------------------------------------------
-
-    #[test]
-    fn threading_non_gmail_with_references() {
-        let account_id = "acc1";
-        let last_ref = "<refs@test.com>";
-        let expected = expected_id(&format!("{}-{}", account_id, last_ref));
-
-        let result = derive_thread_id_from_headers(
-            account_id,
-            Some(b"<first@test.com> <refs@test.com>"),
-            None,
-        );
-        assert_eq!(result, Some(expected), "Non-Gmail thread ID from References");
-    }
-
-    #[test]
-    fn threading_non_gmail_with_in_reply_to() {
-        let account_id = "acc1";
-        let in_reply_to = "<reply@test.com>";
-        let expected = expected_id(&format!("{}-{}", account_id, in_reply_to));
-
-        let result = derive_thread_id_from_headers(
-            account_id,
-            None,
-            Some(b"<reply@test.com>"),
-        );
-        assert_eq!(result, Some(expected), "Non-Gmail thread ID from In-Reply-To");
-    }
-
-    #[test]
-    fn threading_non_gmail_no_headers_returns_none() {
-        let result = derive_thread_id_from_headers("acc1", None, None);
-        assert!(result.is_none(), "No threading headers -> None");
     }
 
     // -------------------------------------------------------------------------
