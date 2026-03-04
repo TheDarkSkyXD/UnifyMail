@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
+stopped_at: Completed 07-01-PLAN.md — Phase 7 deps, imap/oauth2 scaffold, SyncError classification methods
+last_updated: "2026-03-04T18:32:26.302Z"
+last_activity: 2026-03-04 — Completed v1.0 milestone
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 6
+  percent: 55
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Rewrite mailsync Engine in Rust
+status: executing
 stopped_at: Completed 06-03-PLAN.md — lifecycle hooks, pipeline tests, schema validation, full round-trips
 last_updated: "2026-03-04T17:22:35.664Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
-  total_phases: 6
+  [██████░░░░] 55%
   completed_phases: 2
   total_plans: 5
   completed_plans: 5
@@ -97,6 +113,8 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 06-02]: busy_timeout corrected to 5000ms — DATA-01 spec matches C++ MailStore.cpp, Phase 5's 10s was conservative placeholder
 - [Phase 06-03]: Thread::after_save() implements ThreadCategory maintenance but defers ThreadCounts diff algorithm to Phase 7 (requires full message snapshot-diff cycle from IMAP sync)
 - [Phase 06-03]: Event search fields use #[serde(skip)] transient pattern — not stored in data blob, gated on search_title non-empty, populated by ICS parsing in Phase 9
+- [Phase 07-01]: async-imap Error::Tls variant doesn't exist in 0.11; TLS errors surface via Io(IoError), mapped to SyncError::Connection
+- [Phase 07-01]: reqwest uses rustls-native-certs (platform cert store) not rustls-tls — consistent with rustls-platform-verifier
 
 ### Pending Todos
 
@@ -110,8 +128,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T16:08:28.059Z
-Stopped at: Completed 06-03-PLAN.md — lifecycle hooks, pipeline tests, schema validation, full round-trips
+Last session: 2026-03-04T18:32:26.300Z
+Stopped at: Completed 07-01-PLAN.md — Phase 7 deps, imap/oauth2 scaffold, SyncError classification methods
 Resume file: None
 
 ---
