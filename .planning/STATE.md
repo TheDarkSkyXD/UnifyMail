@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: planning
-stopped_at: Completed 05-01-PLAN.md — binary crate scaffold, SQLite migrations, offline modes
-last_updated: "2026-03-04T14:04:28.722Z"
+stopped_at: Completed 05-02-PLAN.md — delta pipeline, stdin loop, sync mode skeleton, IPC contract tests
+last_updated: "2026-03-04T14:33:00.147Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 ---
@@ -57,6 +57,8 @@ Last activity: 2026-03-04 — Completed v1.0 milestone
 Decisions are logged in PROJECT.md Key Decisions table.
 v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 05-01]: rusqlite pinned to 0.37 for tokio-rusqlite 0.7 compatibility; io-std added to workspace tokio features; ThreadListSortIndex moved to V8 migration (column doesn't exist in V1)
+- [Phase 05-02]: Single shared BufReader/Lines for stdin: multiple BufReader instances cause OS pipe data loss; shared Lines iterator passed through handshake reads into stdin_loop
+- [Phase 05-02]: process::exit(141) called from sync::run() after awaiting delta_flush_task completion, NOT from stdin_loop, ensuring all pending deltas flush before exit
 
 ### Pending Todos
 
@@ -70,8 +72,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T14:04:28.720Z
-Stopped at: Completed 05-01-PLAN.md — binary crate scaffold, SQLite migrations, offline modes
+Last session: 2026-03-04T14:33:00.144Z
+Stopped at: Completed 05-02-PLAN.md — delta pipeline, stdin loop, sync mode skeleton, IPC contract tests
 Resume file: None
 
 ---

@@ -27,7 +27,7 @@ Replace the `app/mailsync/` C++ sync engine (~16,200 LOC, 50 source files) with 
 
 **Depends on:** v1.0 completion (Phases 1-4)
 
-- [ ] **Phase 5: Core Infrastructure and IPC Protocol** - Rust binary skeleton with correct stdin/stdout protocol, all process modes, SQLite schema creation, and delta emission pipeline
+- [x] **Phase 5: Core Infrastructure and IPC Protocol** - Rust binary skeleton with correct stdin/stdout protocol, all process modes, SQLite schema creation, and delta emission pipeline (completed 2026-03-04)
 - [ ] **Phase 6: SQLite Layer and Model Infrastructure** - Complete MailStore with all data models, WAL mode, single-writer pattern, and schema migrations matching the C++ baseline
 - [ ] **Phase 7: IMAP Background Sync Worker** - Full IMAP sync against live accounts: folder enumeration, CONDSTORE/UID-range incremental sync, body caching, OAuth2, and Gmail-specific behaviors
 - [ ] **Phase 8: Foreground IDLE and Task Execution** - IMAP IDLE monitoring, task processor for all 13+ task types, SMTP send via lettre, and crash recovery
@@ -147,7 +147,7 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 (can overlap with 7-8) ->
 | 4. Cross-Platform Packaging and Cleanup | v1.0 | 2/2 | Complete | 2026-03-04 |
 | 4.1 CI Hardening and Smoke Test Expansion | v1.0 | 1/1 | Complete | 2026-03-04 |
 | 4.2 validateAccount Integration Verification | v1.0 | 1/1 | Complete | 2026-03-04 |
-| 5. Core Infrastructure and IPC Protocol | 1/2 | In Progress|  | - |
+| 5. Core Infrastructure and IPC Protocol | 2/2 | Complete   | 2026-03-04 | - |
 | 6. SQLite Layer and Model Infrastructure | v2.0 | 0/? | Not started | - |
 | 7. IMAP Background Sync Worker | v2.0 | 0/? | Not started | - |
 | 8. Foreground IDLE and Task Execution | v2.0 | 0/? | Not started | - |
