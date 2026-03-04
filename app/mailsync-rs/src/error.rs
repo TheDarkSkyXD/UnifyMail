@@ -84,6 +84,40 @@ pub enum SyncError {
 }
 
 impl SyncError {
+    /// Retry after backoff -- connection-level failures that may resolve.
+    pub fn is_retryable(&self) -> bool {
+        matches!(
+            self,
+            Self::Connection
+                | Self::Timeout
+                | Self::Retryable(_)
+                | Self::NoRouteToHost
+                | Self::DnsResolutionFailed
+                | Self::SslHandshakeFailed
+        )
+    }
+
+    /// Backoff aggressively -- likely offline.
+    pub fn is_offline(&self) -> bool {
+        matches!(
+            self,
+            Self::Connection | Self::NoRouteToHost | Self::DnsResolutionFailed
+        )
+    }
+
+    /// Stop retrying -- credentials are invalid.
+    pub fn is_auth(&self) -> bool {
+        matches!(
+            self,
+            Self::Authentication | Self::InvalidCredentials | Self::GmailIMAPNotEnabled
+        )
+    }
+
+    /// Never retry -- database corruption or fatal state.
+    pub fn is_fatal(&self) -> bool {
+        matches!(self, Self::Database(_))
+    }
+
     /// Returns the exact C++ error key string for this error.
     /// These strings are used as keys in LocalizedErrorStrings in mailsync-process.ts.
     pub fn error_key(&self) -> &str {
@@ -152,9 +186,69 @@ impl From<tokio_rusqlite::Error> for SyncError {
     }
 }
 
+impl From<async_imap::error::Error> for SyncError {
+    fn from(e: async_imap::error::Error) -> Self {
+        match &e {
+            async_imap::error::Error::No(_) => {
+                // IMAP NO response — typically auth failure
+                SyncError::Authentication
+            }
+            async_imap::error::Error::Io(_) => SyncError::Connection,
+            async_imap::error::Error::ConnectionLost => SyncError::Connection,
+            async_imap::error::Error::Parse(_) => SyncError::Parse(e.to_string()),
+            _ => SyncError::Protocol(e.to_string()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- is_auth tests ----
+
+    #[test]
+    fn is_auth_variants() {
+        assert!(SyncError::Authentication.is_auth());
+        assert!(SyncError::InvalidCredentials.is_auth());
+        assert!(SyncError::GmailIMAPNotEnabled.is_auth());
+        assert!(!SyncError::Connection.is_auth());
+        assert!(!SyncError::Timeout.is_auth());
+    }
+
+    // ---- is_retryable tests ----
+
+    #[test]
+    fn is_retryable_variants() {
+        assert!(SyncError::Connection.is_retryable());
+        assert!(SyncError::Timeout.is_retryable());
+        assert!(SyncError::Retryable("x".into()).is_retryable());
+        assert!(SyncError::NoRouteToHost.is_retryable());
+        assert!(SyncError::DnsResolutionFailed.is_retryable());
+        assert!(SyncError::SslHandshakeFailed.is_retryable());
+        assert!(!SyncError::Authentication.is_retryable());
+        assert!(!SyncError::Database("x".into()).is_retryable());
+    }
+
+    // ---- is_offline tests ----
+
+    #[test]
+    fn is_offline_variants() {
+        assert!(SyncError::Connection.is_offline());
+        assert!(SyncError::NoRouteToHost.is_offline());
+        assert!(SyncError::DnsResolutionFailed.is_offline());
+        assert!(!SyncError::Timeout.is_offline());
+        assert!(!SyncError::SslHandshakeFailed.is_offline());
+    }
+
+    // ---- is_fatal tests ----
+
+    #[test]
+    fn is_fatal_variants() {
+        assert!(SyncError::Database("x".into()).is_fatal());
+        assert!(!SyncError::Connection.is_fatal());
+        assert!(!SyncError::Authentication.is_fatal());
+    }
 
     #[test]
     fn error_key_authentication() {
