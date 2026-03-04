@@ -161,10 +161,11 @@ Replace the `app/mailsync/` C++ sync engine (~16,200 LOC, 50 source files) with 
   4. The binary detects stdin EOF (parent process closed pipe) and exits with code 141
   5. stdout is explicitly flushed after every message with no block buffering — the Electron UI receives deltas in real time during a 10-second idle test
   6. The stdin reader and stdout writer run as independent tokio tasks — a large payload (500KB+) on stdin does not deadlock with concurrent stdout writes
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Binary crate scaffold, CLI parsing, error types, SQLite schema migrations, and offline modes (migrate, install-check, reset)
+- [ ] 05-02-PLAN.md — Delta emission pipeline with coalescing, stdin handshake and command loop, sync mode skeleton, npm start integration, and mailsync-process.ts coexistence
 
 ### Phase 6: SQLite Layer and Model Infrastructure
 **Goal**: The complete MailStore is proven correct — all data models persist and round-trip through the database with WAL mode, tokio-rusqlite single-writer access, and delta emission with 500ms coalescing
@@ -254,7 +255,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (can overlap with 7-8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Core Infrastructure and IPC Protocol | 0/? | Not started | - |
+| 5. Core Infrastructure and IPC Protocol | 0/2 | Not started | - |
 | 6. SQLite Layer and Model Infrastructure | 0/? | Not started | - |
 | 7. IMAP Background Sync Worker | 0/? | Not started | - |
 | 8. Foreground IDLE and Task Execution | 0/? | Not started | - |
