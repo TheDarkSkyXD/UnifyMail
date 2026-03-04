@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Scaffolding and Provider Detection** - Prove Electron integration is sound; implement sync provider lookup with full regex cross-validation (completed 2026-03-03)
 - [x] **Phase 2: IMAP Connection Testing** - Implement testIMAPConnection with all three TLS paths, XOAUTH2 auth, and 7 capability detections (completed 2026-03-03)
-- [x] **Phase 3: SMTP Testing and Account Validation** - Implement testSMTPConnection and validateAccount composing all proven components (completed 2026-03-04)
+- [x] **Phase 3: SMTP Testing and Account Validation** - Implement testSMTPConnection and validateAccount composing all proven components (completed 2026-03-04)
 - [ ] **Phase 4: Cross-Platform Packaging and Cleanup** - GitHub Actions CI for all 5 targets, binary size validation, remove all C++ code
 
 ## Phase Details
@@ -79,10 +79,11 @@ Plans:
   3. onboarding-helpers.ts and mailsync-process.ts import the Rust addon via the existing `require('mailcore-napi')` path without modification
   4. All C++ source files, node-gyp configs, and vendored mailcore2 source are deleted from the repository
   5. node-addon-api and node-gyp are removed from package.json with no remaining references
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Cargo release profile optimization, wrapper removal, C++ deletion, package.json rewiring
+- [ ] 04-02-PLAN.md — Insert Rust build steps into all 4 CI workflows, remove C++ build infrastructure, add smoke tests
 
 ## Progress
 
@@ -94,7 +95,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Scaffolding and Provider Detection | 2/2 | Complete   | 2026-03-03 |
 | 2. IMAP Connection Testing | 2/2 | Complete   | 2026-03-03 |
 | 3. SMTP Testing and Account Validation | 2/2 | Complete   | 2026-03-04 |
-| 4. Cross-Platform Packaging and Cleanup | 0/? | Not started | - |
+| 4. Cross-Platform Packaging and Cleanup | 0/2 | Not started | - |
 
 ---
 
