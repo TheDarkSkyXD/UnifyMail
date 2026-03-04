@@ -63,10 +63,12 @@ Plans:
   3. Delta emission produces persist/unpersist messages with a 500ms coalescing window — repeated saves of the same model within 500ms emit a single delta, not one per save
   4. The SQLite schema matches the C++ baseline — all tables, indexes, and FTS5 virtual tables (ThreadSearch, EventSearch, ContactSearch) exist after migration
   5. All database writes go through the tokio-rusqlite single-writer connection — no synchronous rusqlite calls appear on async tokio threads
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — MailModel trait and all 13 data model structs with serde rename fidelity and JSON round-trip tests
+- [ ] 06-02-PLAN.md — MailStore CRUD (save/remove/find/find_all/count), WAL reader connection, transaction support with delta accumulation
+- [ ] 06-03-PLAN.md — Lifecycle hooks (metadata, FTS5, join tables, ThreadCounts), end-to-end pipeline tests, schema validation
 
 ### Phase 7: IMAP Background Sync Worker
 **Goal**: The background sync worker syncs a real email account end-to-end — folders enumerate, messages appear in the Electron UI via delta emission, OAuth2 tokens refresh automatically, and Gmail-specific behaviors produce correct results
@@ -148,7 +150,7 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 (can overlap with 7-8) ->
 | 4.1 CI Hardening and Smoke Test Expansion | v1.0 | 1/1 | Complete | 2026-03-04 |
 | 4.2 validateAccount Integration Verification | v1.0 | 1/1 | Complete | 2026-03-04 |
 | 5. Core Infrastructure and IPC Protocol | 2/2 | Complete   | 2026-03-04 | - |
-| 6. SQLite Layer and Model Infrastructure | v2.0 | 0/? | Not started | - |
+| 6. SQLite Layer and Model Infrastructure | v2.0 | 0/3 | Not started | - |
 | 7. IMAP Background Sync Worker | v2.0 | 0/? | Not started | - |
 | 8. Foreground IDLE and Task Execution | v2.0 | 0/? | Not started | - |
 | 9. CalDAV, CardDAV, and Metadata Workers | v2.0 | 0/? | Not started | - |
