@@ -1,8 +1,0 @@
-{
-  "name": "mailcore-napi",
-  "version": "2.0.0",
-  "description": "Wrapper routing provider functions to Rust addon and network functions to C++ addon",
-  "main": "index.js",
-  "types": "../mailcore/types/index.d.ts",
-  "private": true
-}
