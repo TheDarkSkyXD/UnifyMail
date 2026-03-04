@@ -1,24 +1,16 @@
-// Wrapper module: routes each function to the correct addon
-// Provider functions (Phase 1+): Rust addon (app/mailcore-rs/)
-// testIMAPConnection (Phase 2): Rust addon (app/mailcore-rs/)
-// testSMTPConnection, validateAccount (Phase 3): C++ addon (app/mailcore/) until replaced
+// Wrapper module: all functions routed to Rust addon (app/mailcore-rs/)
+// Phase 1: providerForEmail, registerProviders
+// Phase 2: testIMAPConnection
+// Phase 3: testSMTPConnection, validateAccount
 'use strict';
 
 let rustAddon = null;
-let cppAddon = null;
 
 function getRust() {
   if (!rustAddon) {
     rustAddon = require('../mailcore-rs/loader.js');
   }
   return rustAddon;
-}
-
-function getCpp() {
-  if (!cppAddon) {
-    cppAddon = require('../mailcore/build/Release/mailcore_napi.node');
-  }
-  return cppAddon;
 }
 
 // Phase 1: Provider functions routed to Rust
@@ -29,7 +21,7 @@ exports.registerProviders = function registerProviders(jsonPath) {
   return getRust().registerProviders(jsonPath);
 };
 
-// Phase 2: testIMAPConnection now routed to Rust
+// Phase 2: IMAP connection testing routed to Rust
 exports.testIMAPConnection = function testIMAPConnection(opts) {
   if (process.env.MAILCORE_DEBUG === '1') {
     console.log('testIMAPConnection -> Rust');
@@ -37,10 +29,18 @@ exports.testIMAPConnection = function testIMAPConnection(opts) {
   return getRust().testIMAPConnection(opts);
 };
 
-// Phases 3+: SMTP and account validation still routed to C++ until replaced
-exports.validateAccount = function validateAccount(opts) {
-  return getCpp().validateAccount(opts);
-};
+// Phase 3: SMTP connection testing routed to Rust
 exports.testSMTPConnection = function testSMTPConnection(opts) {
-  return getCpp().testSMTPConnection(opts);
+  if (process.env.MAILCORE_DEBUG === '1') {
+    console.log('testSMTPConnection -> Rust');
+  }
+  return getRust().testSMTPConnection(opts);
+};
+
+// Phase 3: Account validation routed to Rust
+exports.validateAccount = function validateAccount(opts) {
+  if (process.env.MAILCORE_DEBUG === '1') {
+    console.log('validateAccount -> Rust');
+  }
+  return getRust().validateAccount(opts);
 };
