@@ -101,4 +101,36 @@ pub trait MailModel:
     {
         false
     }
+
+    /// Whether saving this model type should increment the global labels version counter.
+    /// Returns true for Label — IMAP sync (Phase 7) uses this counter to detect label changes.
+    /// Default: false.
+    fn increments_labels_version() -> bool
+    where
+        Self: Sized,
+    {
+        false
+    }
+
+    /// Called by MailStore.save() after the primary INSERT/UPDATE succeeds.
+    ///
+    /// Runs inside the same tokio-rusqlite writer.call() closure as the primary write,
+    /// ensuring atomicity: if a hook fails, the entire save fails.
+    ///
+    /// Default: no-op. Override in models that maintain secondary tables.
+    fn after_save(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        let _ = conn;
+        Ok(())
+    }
+
+    /// Called by MailStore.remove() after the primary DELETE succeeds.
+    ///
+    /// Runs inside the same tokio-rusqlite writer.call() closure as the primary delete,
+    /// ensuring atomicity: if a hook fails, the entire remove fails.
+    ///
+    /// Default: no-op. Override in models that need cleanup of secondary tables.
+    fn after_remove(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        let _ = conn;
+        Ok(())
+    }
 }

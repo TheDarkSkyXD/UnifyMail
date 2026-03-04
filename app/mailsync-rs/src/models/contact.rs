@@ -116,6 +116,45 @@ impl MailModel for Contact {
     fn supports_metadata() -> bool {
         false
     }
+
+    /// Contact::after_save — maintains the ContactSearch FTS5 index.
+    ///
+    /// - version == 1 (new contact): INSERT INTO ContactSearch
+    /// - version > 1 AND source != "mail": UPDATE ContactSearch
+    ///   (mail-sourced contacts are ephemeral; only addressbook contacts get updated)
+    ///
+    /// The search content matches C++ Contact::searchContent():
+    /// "{name} {email}" (space-separated name and email address)
+    fn after_save(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        let content = format!(
+            "{} {}",
+            self.name.as_deref().unwrap_or(""),
+            self.email
+        );
+
+        if self.version == 1 {
+            conn.execute(
+                "INSERT INTO ContactSearch (content_id, content) VALUES (?1, ?2)",
+                rusqlite::params![self.id, content],
+            )?;
+        } else if self.source != "mail" {
+            conn.execute(
+                "UPDATE ContactSearch SET content = ?1 WHERE content_id = ?2",
+                rusqlite::params![content, self.id],
+            )?;
+        }
+
+        Ok(())
+    }
+
+    /// Contact::after_remove — removes the ContactSearch FTS5 row.
+    fn after_remove(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute(
+            "DELETE FROM ContactSearch WHERE content_id = ?1",
+            rusqlite::params![self.id],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

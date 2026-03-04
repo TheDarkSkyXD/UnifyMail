@@ -15,6 +15,7 @@
 // This matches the C++ MailStore split-connection design (DATA-01).
 
 use std::io::Write;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_rusqlite::Connection;
@@ -68,7 +69,7 @@ impl rusqlite::types::ToSql for SqlParam {
 /// In offline modes (migrate, reset), a single connection is sufficient.
 pub struct MailStore {
     /// Primary connection — all writes go through this connection
-    writer: Connection,
+    pub(crate) writer: Connection,
     /// Reader connection — queries go through this connection (WAL concurrency)
     /// None in offline modes (migrate, reset) where concurrent reads are not needed.
     reader: Option<Connection>,
@@ -80,6 +81,9 @@ pub struct MailStore {
     /// On commit, the vec is drained and all deltas are emitted.
     /// On rollback, the vec is dropped without emitting.
     pub(crate) transaction_deltas: Arc<Mutex<Option<Vec<DeltaStreamItem>>>>,
+    /// Global labels version counter — incremented when any Label is saved.
+    /// Phase 7 (IMAP sync) reads this to invalidate label caches after sync.
+    pub labels_version: Arc<AtomicU64>,
 }
 
 impl MailStore {
@@ -99,6 +103,7 @@ impl MailStore {
             reader: None,
             delta_tx: None,
             transaction_deltas: Arc::new(Mutex::new(None)),
+            labels_version: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -121,6 +126,7 @@ impl MailStore {
             reader: Some(reader),
             delta_tx: Some(delta_stream),
             transaction_deltas: Arc::new(Mutex::new(None)),
+            labels_version: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -149,6 +155,12 @@ impl MailStore {
         .map_err(|e| SyncError::Database(e.to_string()))?;
 
         Ok(conn)
+    }
+
+    /// Returns the current labels version counter value.
+    /// Used by Phase 7 IMAP sync to detect when label caches need invalidation.
+    pub fn labels_version(&self) -> u64 {
+        self.labels_version.load(Ordering::Relaxed)
     }
 
     // ========================================================================
@@ -272,7 +284,13 @@ impl MailStore {
     /// If version == 1 after increment (was 0): INSERT (new model).
     /// If version > 1 after increment: UPDATE (existing model).
     ///
-    /// After a successful write, emits a "persist" delta to the delta channel.
+    /// After a successful write, runs lifecycle hooks:
+    /// 1. If T::supports_metadata(): DELETE + re-INSERT ModelPluginMetadata rows
+    /// 2. model.after_save(db) — model-specific side effects (ThreadCategory, FTS5, etc.)
+    ///
+    /// All hooks run INSIDE the writer.call() closure for atomicity.
+    ///
+    /// After a successful write+hooks, emits a "persist" delta.
     /// If a transaction is active, the delta is accumulated instead of emitted.
     ///
     /// Uses prepare_cached for repeated saves of the same model type.
@@ -281,7 +299,8 @@ impl MailStore {
         let version = model.version();
         let table = T::table_name();
         let columns = T::columns_for_query();
-        let data_json = serde_json::to_string(&model.to_json())
+        let model_json = model.to_json();
+        let data_json = serde_json::to_string(&model_json)
             .map_err(|e| SyncError::Json(e.to_string()))?;
 
         // Build SQL based on INSERT vs UPDATE
@@ -313,19 +332,87 @@ impl MailStore {
             )
         };
 
-        // Clone data_json and model JSON for the closure (must be Send + 'static)
+        // Collect metadata entries for the closure (must be owned, Send + 'static)
+        let supports_metadata = T::supports_metadata();
+        let metadata_entries: Vec<(String, String, String, Option<i64>)> = if supports_metadata {
+            // Extract from model JSON metadata array
+            // Each entry: {"pluginId": "...", "expiration": ..., "value": "..."}
+            model_json
+                .get("metadata")
+                .and_then(|m| m.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|entry| {
+                            let plugin_id = entry.get("pluginId")?.as_str()?.to_string();
+                            let value = entry
+                                .get("value")
+                                .and_then(|v| {
+                                    if v.is_string() {
+                                        v.as_str().map(|s| s.to_string())
+                                    } else {
+                                        Some(v.to_string())
+                                    }
+                                })
+                                .unwrap_or_default();
+                            let expiration = entry.get("expiration").and_then(|v| v.as_i64());
+                            Some((plugin_id, value, table.to_string(), expiration))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
+
+        // Clone model and data_json for the closure (must be Send + 'static)
         let data_json_clone = data_json.clone();
         let model_json_dispatch = model.to_json_dispatch();
         let model_clone = model.clone();
+        let model_id = model.id().to_string();
+        let account_id = model.account_id().to_string();
 
         self.writer
             .call(move |db| -> Result<(), rusqlite::Error> {
+                // Primary INSERT or UPDATE
                 let mut stmt = db.prepare_cached(&sql)?;
                 model_clone.bind_to_statement(&mut stmt, &data_json_clone)?;
+
+                // Metadata maintenance (ModelPluginMetadata join table)
+                if supports_metadata {
+                    // Delete all existing metadata rows for this model
+                    db.execute(
+                        "DELETE FROM ModelPluginMetadata WHERE id = ?1",
+                        rusqlite::params![model_id],
+                    )?;
+                    // Re-insert all current metadata entries
+                    for (plugin_id, _value, object_type, expiration) in &metadata_entries {
+                        db.execute(
+                            "INSERT INTO ModelPluginMetadata \
+                             (id, accountId, objectType, value, expiration) \
+                             VALUES (?1, ?2, ?3, ?4, ?5)",
+                            rusqlite::params![
+                                model_id,
+                                account_id,
+                                object_type,
+                                plugin_id,
+                                expiration,
+                            ],
+                        )?;
+                    }
+                }
+
+                // Model-specific lifecycle hook
+                model_clone.after_save(db)?;
+
                 Ok(())
             })
             .await
             .map_err(|e| SyncError::Database(e.to_string()))?;
+
+        // Increment global labels version counter if this model type requires it
+        if T::increments_labels_version() {
+            self.labels_version.fetch_add(1, Ordering::Relaxed);
+        }
 
         // Emit delta (or accumulate in transaction)
         let delta_item = DeltaStreamItem::new("persist", table, vec![model_json_dispatch]);
@@ -336,18 +423,39 @@ impl MailStore {
 
     /// Deletes a model from its table.
     ///
-    /// After a successful delete, emits an "unpersist" delta.
+    /// After a successful delete, runs lifecycle hooks:
+    /// 1. If T::supports_metadata(): DELETE ModelPluginMetadata rows for this model
+    /// 2. model.after_remove(db) — model-specific cleanup (ThreadCategory, FTS5, etc.)
+    ///
+    /// All hooks run INSIDE the writer.call() closure for atomicity.
+    ///
+    /// After a successful delete+hooks, emits an "unpersist" delta.
     /// If a transaction is active, the delta is accumulated instead of emitted.
     pub async fn remove<T: MailModel>(&self, model: &T) -> Result<(), SyncError> {
         let table = T::table_name();
         let id = model.id().to_string();
         let id_for_delta = id.clone();
+        let supports_metadata = T::supports_metadata();
+        let model_clone = model.clone();
 
         let sql = format!("DELETE FROM `{}` WHERE id = ?1", table);
 
         self.writer
             .call(move |db| -> Result<(), rusqlite::Error> {
+                // Primary DELETE
                 db.execute(&sql, rusqlite::params![id])?;
+
+                // Metadata cleanup
+                if supports_metadata {
+                    db.execute(
+                        "DELETE FROM ModelPluginMetadata WHERE id = ?1",
+                        rusqlite::params![model_clone.id()],
+                    )?;
+                }
+
+                // Model-specific lifecycle hook
+                model_clone.after_remove(db)?;
+
                 Ok(())
             })
             .await
@@ -558,7 +666,7 @@ impl MailStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Folder, Message, Thread};
+    use crate::models::{Contact, ContactBook, ContactGroup, Event, Folder, Label, Message, Task, Thread, Calendar, File};
     use crate::store::migrations::V1_SETUP;
     use tokio::sync::mpsc;
 
@@ -945,5 +1053,354 @@ mod tests {
         assert_eq!(found_folder.path, "INBOX");
         assert_eq!(found_thread.subject, "Test Thread");
         assert_eq!(found_msg.subject, "Test Subject");
+    }
+
+    // -----------------------------------------------------------------------
+    // Sample constructors for additional model types (Task 1 lifecycle tests)
+    // -----------------------------------------------------------------------
+
+    fn sample_label(id: &str, account_id: &str) -> Label {
+        Label {
+            id: id.to_string(),
+            account_id: account_id.to_string(),
+            version: 0,
+            path: "\\Important".to_string(),
+            role: "important".to_string(),
+            local_status: None,
+        }
+    }
+
+    fn sample_contact(id: &str, account_id: &str) -> Contact {
+        Contact {
+            id: id.to_string(),
+            account_id: account_id.to_string(),
+            version: 0,
+            email: format!("{}@test.com", id),
+            source: "mail".to_string(),
+            refs: 1,
+            contact_groups: vec![],
+            info: None,
+            name: Some(id.to_string()),
+            google_resource_name: None,
+            etag: None,
+            book_id: None,
+            hidden: false,
+        }
+    }
+
+    fn sample_contact_group(id: &str, account_id: &str) -> ContactGroup {
+        ContactGroup {
+            id: id.to_string(),
+            account_id: account_id.to_string(),
+            version: 0,
+            name: "Test Group".to_string(),
+            book_id: "book1".to_string(),
+            google_resource_name: None,
+        }
+    }
+
+    fn sample_event(id: &str, account_id: &str) -> Event {
+        Event {
+            id: id.to_string(),
+            account_id: account_id.to_string(),
+            version: 0,
+            calendar_id: "cal1".to_string(),
+            icsuid: format!("{}@test.com", id),
+            ics: None,
+            href: None,
+            etag: None,
+            recurrence_id: String::new(),
+            status: None,
+            recurrence_start: 0,
+            recurrence_end: 0,
+            search_title: String::new(),
+            search_description: String::new(),
+            search_location: String::new(),
+            search_participants: String::new(),
+        }
+    }
+
+    fn sample_thread_with_folder(id: &str, account_id: &str, folder_id: &str) -> Thread {
+        Thread {
+            id: id.to_string(),
+            account_id: account_id.to_string(),
+            version: 0,
+            subject: "Test Thread".to_string(),
+            last_message_timestamp: 1700001000,
+            first_message_timestamp: 1700000000,
+            last_message_sent_timestamp: 1700001000,
+            last_message_received_timestamp: 1700000500,
+            g_thr_id: None,
+            unread: 1,
+            starred: 0,
+            in_all_mail: true,
+            attachment_count: 0,
+            search_row_id: None,
+            folders: vec![serde_json::json!({"id": folder_id, "_refs": 1, "_u": 1, "_im": 1})],
+            labels: vec![],
+            participants: vec![],
+            metadata: None,
+        }
+    }
+
+    fn sample_message_with_metadata(id: &str, account_id: &str) -> Message {
+        Message {
+            id: id.to_string(),
+            account_id: account_id.to_string(),
+            version: 0,
+            synced_at: None,
+            sync_unsaved_changes: None,
+            remote_uid: 1,
+            date: 1700000000,
+            subject: "Test".to_string(),
+            header_message_id: format!("<{}@test.com>", id),
+            g_msg_id: None,
+            g_thr_id: None,
+            reply_to_header_message_id: None,
+            forwarded_header_message_id: None,
+            unread: true,
+            starred: false,
+            draft: false,
+            labels: vec![],
+            extra_headers: None,
+            from: vec![],
+            to: vec![],
+            cc: vec![],
+            bcc: vec![],
+            reply_to: vec![],
+            folder: None,
+            remote_folder: None,
+            thread_id: "t:thr1".to_string(),
+            snippet: None,
+            plaintext: None,
+            files: vec![],
+            metadata: Some(vec![
+                serde_json::json!({"pluginId": "snooze-plugin", "expiration": 1800000000, "value": "{}"}),
+                serde_json::json!({"pluginId": "read-receipt", "expiration": null, "value": "{}"}),
+            ]),
+        }
+    }
+
+    // Helper to count rows in a secondary table
+    async fn count_rows_in(store: &MailStore, table: &str, where_clause: &str, id: &str) -> i64 {
+        let sql = format!("SELECT COUNT(*) FROM `{}` WHERE {} = ?1", table, where_clause);
+        let id_owned = id.to_string();
+        store.writer.call(move |db| -> Result<i64, rusqlite::Error> {
+            db.query_row(&sql, rusqlite::params![id_owned], |row| row.get(0))
+        }).await.expect("count_rows_in failed")
+    }
+
+    // -----------------------------------------------------------------------
+    // Lifecycle hook tests (Task 1)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_lifecycle_message_with_metadata_maintains_join_table() {
+        let (store, _rx) = setup_test_store().await;
+        let mut msg = sample_message_with_metadata("msg1", "acc1");
+
+        store.save(&mut msg).await.expect("save failed");
+
+        // ModelPluginMetadata rows should be created for each metadata entry
+        let count = count_rows_in(&store, "ModelPluginMetadata", "id", "msg1").await;
+        assert_eq!(count, 2, "Should have 2 ModelPluginMetadata rows for 2 metadata entries");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_message_empty_metadata_deletes_join_rows() {
+        let (store, _rx) = setup_test_store().await;
+        let mut msg = sample_message_with_metadata("msg1", "acc1");
+
+        // First save: creates 2 metadata rows
+        store.save(&mut msg).await.expect("first save failed");
+
+        // Second save: empty metadata -> should delete all metadata rows
+        msg.metadata = Some(vec![]);
+        store.save(&mut msg).await.expect("second save failed");
+
+        let count = count_rows_in(&store, "ModelPluginMetadata", "id", "msg1").await;
+        assert_eq!(count, 0, "Should have 0 ModelPluginMetadata rows after clearing metadata");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_thread_with_metadata_maintains_join_table() {
+        let (store, _rx) = setup_test_store().await;
+        let mut thread = sample_thread("t:thr1", "acc1");
+        thread.metadata = Some(vec![
+            serde_json::json!({"pluginId": "snooze-plugin", "expiration": 1800000000, "value": "{}"}),
+        ]);
+
+        store.save(&mut thread).await.expect("save failed");
+
+        let count = count_rows_in(&store, "ModelPluginMetadata", "id", "t:thr1").await;
+        assert_eq!(count, 1, "Should have 1 ModelPluginMetadata row for thread");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_folder_v1_inserts_thread_counts() {
+        let (store, _rx) = setup_test_store().await;
+        let mut folder = sample_folder("folder1", "acc1");
+
+        store.save(&mut folder).await.expect("save failed");
+        assert_eq!(folder.version, 1);
+
+        let count = count_rows_in(&store, "ThreadCounts", "categoryId", "folder1").await;
+        assert_eq!(count, 1, "Saving Folder v1 should create a ThreadCounts row");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_folder_remove_deletes_thread_counts() {
+        let (store, _rx) = setup_test_store().await;
+        let mut folder = sample_folder("folder1", "acc1");
+
+        store.save(&mut folder).await.expect("save failed");
+        store.remove(&folder).await.expect("remove failed");
+
+        let count = count_rows_in(&store, "ThreadCounts", "categoryId", "folder1").await;
+        assert_eq!(count, 0, "Removing Folder should delete its ThreadCounts row");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_label_v1_inserts_thread_counts() {
+        let (store, _rx) = setup_test_store().await;
+        let mut label = sample_label("label1", "acc1");
+
+        store.save(&mut label).await.expect("save failed");
+        assert_eq!(label.version, 1);
+
+        let count = count_rows_in(&store, "ThreadCounts", "categoryId", "label1").await;
+        assert_eq!(count, 1, "Saving Label v1 should create a ThreadCounts row");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_contact_v1_inserts_contact_search() {
+        let (store, _rx) = setup_test_store().await;
+        let mut contact = sample_contact("contact1", "acc1");
+
+        store.save(&mut contact).await.expect("save failed");
+        assert_eq!(contact.version, 1);
+
+        let count = count_rows_in(&store, "ContactSearch", "content_id", "contact1").await;
+        assert_eq!(count, 1, "Saving Contact v1 should create a ContactSearch FTS5 row");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_contact_remove_deletes_contact_search() {
+        let (store, _rx) = setup_test_store().await;
+        let mut contact = sample_contact("contact1", "acc1");
+
+        store.save(&mut contact).await.expect("save failed");
+        store.remove(&contact).await.expect("remove failed");
+
+        let count = count_rows_in(&store, "ContactSearch", "content_id", "contact1").await;
+        assert_eq!(count, 0, "Removing Contact should delete its ContactSearch row");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_contact_non_mail_source_updates_search() {
+        let (store, _rx) = setup_test_store().await;
+        let mut contact = sample_contact("contact1", "acc1");
+        contact.source = "carddav".to_string();
+
+        // First save (v1): insert into ContactSearch
+        store.save(&mut contact).await.expect("first save failed");
+        assert_eq!(contact.version, 1);
+
+        // Second save (v2, source != "mail"): update ContactSearch
+        contact.name = Some("Updated Name".to_string());
+        store.save(&mut contact).await.expect("second save failed");
+        assert_eq!(contact.version, 2);
+
+        // Should still have exactly 1 row
+        let count = count_rows_in(&store, "ContactSearch", "content_id", "contact1").await;
+        assert_eq!(count, 1, "ContactSearch should still have 1 row after update");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_event_with_search_fields_inserts_event_search() {
+        let (store, _rx) = setup_test_store().await;
+        let mut event = sample_event("event1", "acc1");
+        event.search_title = "Team Meeting".to_string();
+        event.search_description = "Quarterly review".to_string();
+
+        store.save(&mut event).await.expect("save failed");
+
+        let count = count_rows_in(&store, "EventSearch", "content_id", "event1").await;
+        assert_eq!(count, 1, "Saving Event with search fields should create EventSearch row");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_event_remove_deletes_event_search() {
+        let (store, _rx) = setup_test_store().await;
+        let mut event = sample_event("event1", "acc1");
+        event.search_title = "Meeting".to_string();
+
+        store.save(&mut event).await.expect("save failed");
+        store.remove(&event).await.expect("remove failed");
+
+        let count = count_rows_in(&store, "EventSearch", "content_id", "event1").await;
+        assert_eq!(count, 0, "Removing Event should delete its EventSearch row");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_contact_group_remove_deletes_join_rows() {
+        let (store, _rx) = setup_test_store().await;
+
+        // Insert a ContactContactGroup join row manually before removal
+        let group_id = "group1";
+        let group_id_owned = group_id.to_string();
+        store.writer.call(move |db| -> Result<(), rusqlite::Error> {
+            db.execute(
+                "INSERT INTO ContactContactGroup (id, value) VALUES (?1, ?2)",
+                rusqlite::params!["contact1", group_id_owned],
+            )?;
+            Ok(())
+        }).await.expect("manual insert failed");
+
+        let mut group = sample_contact_group(group_id, "acc1");
+        group.version = 1; // simulate already saved
+
+        store.remove(&group).await.expect("remove failed");
+
+        let count = count_rows_in(&store, "ContactContactGroup", "value", group_id).await;
+        assert_eq!(count, 0, "Removing ContactGroup should delete ContactContactGroup join rows");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_thread_after_save_maintains_thread_category() {
+        let (store, _rx) = setup_test_store().await;
+
+        // Create a folder first (so it exists in ThreadCounts)
+        let mut folder = sample_folder("folder1", "acc1");
+        store.save(&mut folder).await.expect("save folder failed");
+
+        // Create a thread with that folder
+        let mut thread = sample_thread_with_folder("t:thr1", "acc1", "folder1");
+        store.save(&mut thread).await.expect("save thread failed");
+
+        // ThreadCategory should have a row for this thread+folder combination
+        let sql = "SELECT COUNT(*) FROM ThreadCategory WHERE id = ?1 AND value = ?2";
+        let count: i64 = store.writer.call(|db| -> Result<i64, rusqlite::Error> {
+            db.query_row(sql, rusqlite::params!["t:thr1", "folder1"], |row| row.get(0))
+        }).await.expect("ThreadCategory query failed");
+        assert_eq!(count, 1, "Thread afterSave should populate ThreadCategory for each folder");
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_thread_after_remove_clears_thread_category() {
+        let (store, _rx) = setup_test_store().await;
+        let mut folder = sample_folder("folder1", "acc1");
+        store.save(&mut folder).await.expect("save folder failed");
+
+        let mut thread = sample_thread_with_folder("t:thr1", "acc1", "folder1");
+        store.save(&mut thread).await.expect("save thread failed");
+
+        store.remove(&thread).await.expect("remove thread failed");
+
+        let sql = "SELECT COUNT(*) FROM ThreadCategory WHERE id = ?1";
+        let count: i64 = store.writer.call(|db| -> Result<i64, rusqlite::Error> {
+            db.query_row(sql, rusqlite::params!["t:thr1"], |row| row.get(0))
+        }).await.expect("ThreadCategory count failed");
+        assert_eq!(count, 0, "Thread afterRemove should clear ThreadCategory rows");
     }
 }

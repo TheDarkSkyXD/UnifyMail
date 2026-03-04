@@ -81,6 +81,29 @@ impl MailModel for Folder {
     fn supports_metadata() -> bool {
         false
     }
+
+    /// Folder::after_save — on version 1, inserts a ThreadCounts row for this folder.
+    ///
+    /// This ensures the Electron UI can display unread/total counts for the folder
+    /// immediately after it is discovered during sync.
+    fn after_save(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        if self.version == 1 {
+            conn.execute(
+                "INSERT OR IGNORE INTO ThreadCounts (categoryId, unread, total) VALUES (?1, 0, 0)",
+                rusqlite::params![self.id],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Folder::after_remove — deletes the ThreadCounts row for this folder.
+    fn after_remove(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute(
+            "DELETE FROM ThreadCounts WHERE categoryId = ?1",
+            rusqlite::params![self.id],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

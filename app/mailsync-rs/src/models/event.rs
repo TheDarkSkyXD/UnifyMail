@@ -64,6 +64,27 @@ pub struct Event {
     /// Recurrence end (unix int) — JSON key "re"
     #[serde(rename = "re", default)]
     pub recurrence_end: i64,
+
+    // ---- Transient FTS5 search fields (not persisted, set during ICS parsing) ----
+    // These are populated by ICS parsing (Phase 9). When non-empty, after_save() writes
+    // to EventSearch FTS5 table. Skipped in serialization so they are not stored in
+    // the `data` blob or emitted in deltas.
+
+    /// FTS5 search title (from ICS SUMMARY field) — transient, not serialized
+    #[serde(skip)]
+    pub search_title: String,
+
+    /// FTS5 search description (from ICS DESCRIPTION field) — transient, not serialized
+    #[serde(skip)]
+    pub search_description: String,
+
+    /// FTS5 search location (from ICS LOCATION field) — transient, not serialized
+    #[serde(skip)]
+    pub search_location: String,
+
+    /// FTS5 search participants (from ICS ATTENDEE fields) — transient, not serialized
+    #[serde(skip)]
+    pub search_participants: String,
 }
 
 impl MailModel for Event {
@@ -121,6 +142,40 @@ impl MailModel for Event {
         ])?;
         Ok(())
     }
+
+    /// Event::after_save — populates EventSearch FTS5 index if search fields are set.
+    ///
+    /// Search fields (search_title, search_description, search_location, search_participants)
+    /// are transient (#[serde(skip)]) — they are set by ICS parsing (Phase 9) and are NOT
+    /// stored in the `data` blob. Only populate EventSearch when at least title is non-empty.
+    ///
+    /// Phase 9 will set these fields from parsed ICS SUMMARY/DESCRIPTION/LOCATION/ATTENDEE.
+    fn after_save(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        if !self.search_title.is_empty() {
+            conn.execute(
+                "INSERT OR REPLACE INTO EventSearch \
+                 (content_id, title, description, location, participants) \
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                rusqlite::params![
+                    self.id,
+                    self.search_title,
+                    self.search_description,
+                    self.search_location,
+                    self.search_participants,
+                ],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Event::after_remove — deletes the EventSearch FTS5 row for this event.
+    fn after_remove(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute(
+            "DELETE FROM EventSearch WHERE content_id = ?1",
+            rusqlite::params![self.id],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -141,6 +196,10 @@ mod tests {
             status: Some("CONFIRMED".to_string()),
             recurrence_start: 1704067200,
             recurrence_end: 1704070800,
+            search_title: String::new(),
+            search_description: String::new(),
+            search_location: String::new(),
+            search_participants: String::new(),
         }
     }
 

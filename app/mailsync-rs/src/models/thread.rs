@@ -158,6 +158,89 @@ impl MailModel for Thread {
     fn supports_metadata() -> bool {
         true
     }
+
+    /// Thread::after_save — maintains ThreadCategory join table and optionally ThreadSearch.
+    ///
+    /// ThreadCategory is the primary index used by the Electron thread list to show
+    /// which threads belong to which folders/labels with their unread counts.
+    ///
+    /// Algorithm (matches C++ Thread::afterSave):
+    /// 1. DELETE all ThreadCategory rows for this thread id
+    /// 2. For each folder in `self.folders`: INSERT ThreadCategory row
+    /// 3. For each label in `self.labels`: INSERT ThreadCategory row
+    /// 4. If search_row_id is set: UPDATE ThreadSearch categories column
+    ///
+    /// ThreadCounts update (unread/total diff) is deferred to Phase 7 when
+    /// the full message-to-thread propagation cycle is implemented.
+    /// See: 06-DEEP-DIVE-THREAD-MAINTENANCE.md for the full algorithm.
+    /// TODO(Phase 7): Implement ThreadCounts unread/total diff updates via
+    ///   applyMessageAttributeChanges snapshot-diff algorithm.
+    fn after_save(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        // Step 1: Clear existing ThreadCategory rows for this thread
+        conn.execute(
+            "DELETE FROM ThreadCategory WHERE id = ?1",
+            rusqlite::params![self.id],
+        )?;
+
+        // Step 2+3: Insert ThreadCategory rows for each folder and label
+        // folders and labels are JSON values with fields:
+        //   "id"   — the category id (folder id or label id)
+        //   "_u"   — unread count for this thread in this category
+        //   "_im"  — inAllMail flag
+        //   "lmrt" / "lmst" — timestamps (may not be in category objects, fall back to thread)
+        let insert_sql = "INSERT OR REPLACE INTO ThreadCategory \
+            (id, value, inAllMail, unread, lastMessageReceivedTimestamp, lastMessageSentTimestamp) \
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6)";
+
+        for category in self.folders.iter().chain(self.labels.iter()) {
+            let cat_id = category.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            if cat_id.is_empty() {
+                continue;
+            }
+            let unread = category.get("_u").and_then(|v| v.as_i64()).unwrap_or(0);
+            let in_all_mail = category.get("_im").and_then(|v| v.as_i64()).unwrap_or(0);
+
+            conn.execute(
+                insert_sql,
+                rusqlite::params![
+                    self.id,                              // id = thread id
+                    cat_id,                               // value = folder/label id
+                    in_all_mail,                          // inAllMail
+                    unread,                               // unread
+                    self.last_message_received_timestamp, // lastMessageReceivedTimestamp
+                    self.last_message_sent_timestamp,     // lastMessageSentTimestamp
+                ],
+            )?;
+        }
+
+        // Step 4: Update ThreadSearch categories column if search was previously indexed
+        if let Some(row_id) = self.search_row_id {
+            // Build categories string: space-separated category ids
+            let categories: Vec<&str> = self
+                .folders
+                .iter()
+                .chain(self.labels.iter())
+                .filter_map(|c| c.get("id").and_then(|v| v.as_str()))
+                .collect();
+            let categories_str = categories.join(" ");
+
+            conn.execute(
+                "UPDATE ThreadSearch SET categories = ?1 WHERE rowid = ?2",
+                rusqlite::params![categories_str, row_id],
+            )?;
+        }
+
+        Ok(())
+    }
+
+    /// Thread::after_remove — clears ThreadCategory rows for this thread.
+    fn after_remove(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute(
+            "DELETE FROM ThreadCategory WHERE id = ?1",
+            rusqlite::params![self.id],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

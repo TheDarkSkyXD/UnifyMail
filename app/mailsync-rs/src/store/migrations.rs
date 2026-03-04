@@ -35,7 +35,10 @@ pub const V1_SETUP: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS `ThreadCounts` (categoryId VARCHAR(40) PRIMARY KEY, unread INTEGER, total INTEGER)",
     "CREATE TABLE IF NOT EXISTS `Account` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), email_address TEXT)",
     "CREATE TABLE IF NOT EXISTS `Message` (id VARCHAR(40) PRIMARY KEY, accountId VARCHAR(8), version INTEGER, data BLOB, headerMessageId TEXT, gMsgId VARCHAR(20), gThrId VARCHAR(20), subject TEXT, date INTEGER, draft INTEGER, unread INTEGER, starred INTEGER, remoteUID INTEGER, remoteXGMLabels TEXT, remoteFolderId VARCHAR(40), replyToHeaderMessageId TEXT, threadId VARCHAR(40))",
-    "CREATE TABLE IF NOT EXISTS `ModelPluginMetadata` (id VARCHAR(40) PRIMARY KEY, accountId VARCHAR(8), objectType TEXT, value TEXT, expiration INTEGER)",
+    // ModelPluginMetadata: id = parent model id (Thread/Message), value = pluginId.
+    // Multiple plugins can be attached to one model, so PK is (value, id) composite.
+    // Matches C++ ModelPluginMetadata which uses pluginId as primary differentiator.
+    "CREATE TABLE IF NOT EXISTS `ModelPluginMetadata` (id VARCHAR(40), accountId VARCHAR(8), objectType TEXT, value TEXT, expiration INTEGER, PRIMARY KEY (value, id))",
     "CREATE TABLE IF NOT EXISTS `DetatchedPluginMetadata` (objectId VARCHAR(40), objectType TEXT, accountId VARCHAR(8), pluginId TEXT, value TEXT, version INTEGER)",
     "CREATE TABLE IF NOT EXISTS `MessageBody` (id VARCHAR(40) PRIMARY KEY, value TEXT)",
     "CREATE TABLE IF NOT EXISTS `Contact` (id VARCHAR(40) PRIMARY KEY, data BLOB, accountId VARCHAR(8), email TEXT, version INTEGER)",

@@ -74,6 +74,18 @@ impl MailModel for ContactGroup {
         ])?;
         Ok(())
     }
+
+    /// ContactGroup::after_remove — cleans up ContactContactGroup join rows.
+    ///
+    /// When a contact group is deleted, all entries where the group's id
+    /// appears as the `value` column must be removed to avoid dangling references.
+    fn after_remove(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute(
+            "DELETE FROM ContactContactGroup WHERE value = ?1",
+            rusqlite::params![self.id],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

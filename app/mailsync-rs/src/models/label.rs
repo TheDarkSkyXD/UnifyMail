@@ -82,6 +82,37 @@ impl MailModel for Label {
     fn supports_metadata() -> bool {
         false
     }
+
+    fn increments_labels_version() -> bool {
+        true
+    }
+
+    /// Label::after_save — on version 1, inserts a ThreadCounts row for this label.
+    ///
+    /// Same as Folder::after_save — Labels are categories like Folders and require
+    /// a ThreadCounts row for the Electron UI to show unread/total counts.
+    ///
+    /// Note: The `globalLabelsVersion` counter increment is handled by MailStore
+    /// via the `labels_version` Arc<AtomicU64>. IMAP sync (Phase 7) reads this
+    /// counter to invalidate label caches.
+    fn after_save(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        if self.version == 1 {
+            conn.execute(
+                "INSERT OR IGNORE INTO ThreadCounts (categoryId, unread, total) VALUES (?1, 0, 0)",
+                rusqlite::params![self.id],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Label::after_remove — deletes the ThreadCounts row for this label.
+    fn after_remove(&self, conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        conn.execute(
+            "DELETE FROM ThreadCounts WHERE categoryId = ?1",
+            rusqlite::params![self.id],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
