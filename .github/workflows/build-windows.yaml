@@ -76,8 +76,7 @@ jobs:
 
       - name: Smoke test -- verify mailcore-napi loads
         working-directory: app
-        run: |
-          node -e "const m = require('mailcore-napi'); const r = m.providerForEmail('test@gmail.com'); if (!r) { process.exit(1); } console.log('PASS:', r.displayName || JSON.stringify(r));"
+        run: node mailcore-rs/test/smoke.js
 
       - name: Lint
         run: npm run lint
