@@ -23,12 +23,15 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y \
             software-properties-common \
-            autoconf automake build-essential clang cmake fakeroot git \
-            libc-ares-dev libctemplate-dev libcurl4-openssl-dev libglib2.0-dev \
-            libicu-dev libsasl2-dev libsasl2-modules libsasl2-modules-gssapi-mit \
-            libsecret-1-dev libssl-dev libnss3 libnss3-dev libtidy-dev libtool \
-            libxext-dev libxkbfile-dev libxml2-dev libxtst-dev pkg-config rpm \
+            build-essential fakeroot git \
+            libc-ares-dev libglib2.0-dev \
+            libsecret-1-dev libnss3 libnss3-dev \
+            libxext-dev libxkbfile-dev libxtst-dev pkg-config rpm \
             uuid-dev xvfb
+          # C++-only packages removed: autoconf automake clang cmake
+          # libctemplate-dev libcurl4-openssl-dev libicu-dev libsasl2-dev
+          # libsasl2-modules libsasl2-modules-gssapi-mit libssl-dev libtidy-dev
+          # libtool libxml2-dev (mailcore2 C++ addon has been removed)
           # Note: execstack is not available on ARM64 and not needed for aarch64 binaries.
 
       - name: Setup Node.js
@@ -41,7 +44,37 @@ jobs:
         run: npm ci
         working-directory: .
 
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
 
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            app/mailcore-rs/target/
+          key: linux-arm64-cargo-${{ hashFiles('app/mailcore-rs/Cargo.lock') }}
+          restore-keys: |
+            linux-arm64-cargo-
+
+      - name: Build napi-rs addon (Linux ARM64)
+        working-directory: app/mailcore-rs
+        run: npx @napi-rs/cli build --release --target aarch64-unknown-linux-gnu
+
+      - name: Smoke test -- verify mailcore-napi loads
+        working-directory: app
+        run: |
+          node -e "
+            const m = require('mailcore-napi');
+            if (typeof m.providerForEmail !== 'function') { console.error('FAIL: providerForEmail not a function'); process.exit(1); }
+            const r = m.providerForEmail('test@gmail.com');
+            if (!r || typeof r !== 'object') { console.error('FAIL: no result'); process.exit(1); }
+            console.log('PASS: mailcore-napi loaded, provider:', r.displayName || JSON.stringify(r));
+          "
 
       - name: Lint
         run: npm run lint
