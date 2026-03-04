@@ -19,6 +19,7 @@
 
 mod account;
 mod cli;
+mod delta;
 mod error;
 mod modes;
 mod store;
