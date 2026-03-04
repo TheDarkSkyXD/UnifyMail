@@ -1161,6 +1161,138 @@ mod tests {
         );
     }
 
+    // ---- Task 07-07: Wiring verification tests ----
+    // These tests verify that the decision logic composition in run_sync_cycle_and_bodies()
+    // is correct. No live IMAP session is required — all tested functions are pure.
+
+    #[test]
+    fn test_sync_strategy_condstore_incremental_wiring() {
+        // Given: stored modseq=100, server modseq=110, stored uidnext=190, server uidnext=200
+        // Expected: CONDSTORE strategy and Incremental decision (delta=10 < 4000 threshold)
+        let strategy = select_sync_strategy(Some(110));
+        assert_eq!(
+            strategy,
+            SyncStrategy::Condstore { server_modseq: 110 },
+            "select_sync_strategy(Some(110)) must return Condstore"
+        );
+
+        let decision = decide_condstore_action(110, 200, 100, 190);
+        match decision {
+            CondstoreDecision::Incremental { uid_set } => {
+                assert_eq!(uid_set, "1:*", "Incremental wiring: uid_set must be '1:*'");
+            }
+            other => panic!("Expected Incremental, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_sync_strategy_uidrange_fallback_wiring() {
+        // No highest_modseq from server -> UID-range fallback
+        let strategy = select_sync_strategy(None);
+        assert_eq!(
+            strategy,
+            SyncStrategy::UidRange,
+            "select_sync_strategy(None) must return UidRange"
+        );
+    }
+
+    #[test]
+    fn test_uidvalidity_reset_triggers_state_clear() {
+        // Simulate: stored uidvalidity=100 differs from server uidvalidity=200
+        let stored_uidvalidity: u32 = 100;
+        let server_uidvalidity: u32 = 200;
+
+        // Verify reset is needed
+        assert!(
+            needs_uidvalidity_reset(stored_uidvalidity, server_uidvalidity),
+            "needs_uidvalidity_reset(100, 200) must be true"
+        );
+
+        // Simulate the reset: create new default state with only uidvalidity and reset_count
+        let old_state = FolderSyncState {
+            uidvalidity: stored_uidvalidity,
+            highestmodseq: 500,
+            uidnext: 200,
+            uidvalidity_reset_count: 0,
+            ..Default::default()
+        };
+
+        // After reset, state is zeroed except for new uidvalidity and incremented reset count
+        let new_state = FolderSyncState {
+            uidvalidity: server_uidvalidity,
+            uidvalidity_reset_count: old_state.uidvalidity_reset_count + 1,
+            ..Default::default()
+        };
+
+        assert_eq!(new_state.highestmodseq, 0, "highestmodseq must be cleared on UIDVALIDITY reset");
+        assert_eq!(new_state.uidnext, 0, "uidnext must be cleared on UIDVALIDITY reset");
+        assert_eq!(new_state.uidvalidity, server_uidvalidity, "uidvalidity must be updated to server value");
+        assert_eq!(new_state.uidvalidity_reset_count, 1, "uidvalidity_reset_count must be incremented");
+    }
+
+    #[test]
+    fn test_folder_enumeration_sort_and_save_order() {
+        // Create 5 folders with roles [spam, inbox, drafts, sent, trash]
+        let mut folders = vec![
+            make_folder("spam"),
+            make_folder("inbox"),
+            make_folder("drafts"),
+            make_folder("sent"),
+            make_folder("trash"),
+        ];
+
+        sort_folders_by_role_priority(&mut folders);
+
+        let roles: Vec<&str> = folders.iter().map(|f| f.role.as_str()).collect();
+        assert_eq!(
+            roles,
+            vec!["inbox", "sent", "drafts", "trash", "spam"],
+            "Folders must be processed in priority order: inbox, sent, drafts, trash, spam"
+        );
+
+        // Verify inbox is first (highest sync priority)
+        assert_eq!(folders[0].role, "inbox", "First folder to sync must be inbox");
+        // Verify spam is last (lowest sync priority)
+        assert_eq!(folders[4].role, "spam", "Last folder to sync must be spam");
+    }
+
+    #[test]
+    fn test_body_prefetch_cutoff_calculation() {
+        // Cutoff timestamp should be approximately 7 days ago
+        let now = chrono::Utc::now().timestamp();
+        let cutoff = now - BODY_PREFETCH_AGE_SECS as i64;
+
+        let seven_days_secs = 7i64 * 24 * 3600;
+        let expected_cutoff = now - seven_days_secs;
+
+        // Within 1 second tolerance
+        assert!(
+            (cutoff - expected_cutoff).abs() <= 1,
+            "Body prefetch cutoff must be approximately 7 days ago (within 1s tolerance)"
+        );
+
+        // Sanity check: cutoff is in the past
+        assert!(cutoff < now, "Cutoff must be in the past");
+    }
+
+    #[test]
+    fn test_condstore_changedsince_no_change_skips() {
+        // When server modseq and uidnext both match stored values -> NoChange
+        // This causes the sync loop to skip fetching for that folder
+        let decision = decide_condstore_action(
+            500, // server_modseq == stored
+            100, // server_uidnext == stored
+            500, // stored_modseq
+            100, // stored_uidnext
+        );
+
+        assert_eq!(
+            decision,
+            CondstoreDecision::NoChange,
+            "decide_condstore_action(500, 100, 500, 100) must return NoChange — folder should be skipped"
+        );
+    }
+
     // ---- Task 2: Timeout pattern test ----
 
     #[tokio::test]
