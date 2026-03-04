@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 07-05-PLAN.md — CONDSTORE sync algorithms, FolderSyncState, folder priority sort, 25 tests passing
-last_updated: "2026-03-04T19:52:12.411Z"
+stopped_at: Completed 07-06-PLAN.md — background sync loop, body age policy, stdin channel wiring, MailStore body query helpers, 249 tests passing
+last_updated: "2026-03-04T20:00:01.866Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 55
 ---
 
@@ -122,6 +122,7 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 07-04]: id_for_message RFC 2047 decode for subject/message-id only: C++ MailUtils::idForMessage() decodes subject via mailcore2 but treats addresses as raw bytes — our implementation matches this exactly
 - [Phase 07]: CONDSTORE decision logic extracted as pure functions for unit testability — async IMAP wrappers deferred to Phase 8 integration
 - [Phase 07]: highestmodseq serialized as JSON string via custom serialize_modseq/deserialize_modseq — prevents JavaScript Number precision loss above 2^53
+- [Phase 07-06]: background_sync stub replaced — stub replaced with full function; stdin channels: try_send for WakeWorkers/NeedBodies (non-blocking); Account has no Clone — Arc::new(account) consumes owned value
 
 ### Pending Todos
 
@@ -135,8 +136,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T19:52:12.409Z
-Stopped at: Completed 07-05-PLAN.md — CONDSTORE sync algorithms, FolderSyncState, folder priority sort, 25 tests passing
+Last session: 2026-03-04T20:00:01.863Z
+Stopped at: Completed 07-06-PLAN.md — background sync loop, body age policy, stdin channel wiring, MailStore body query helpers, 249 tests passing
 Resume file: None
 
 ---
