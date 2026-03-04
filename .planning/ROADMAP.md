@@ -82,7 +82,7 @@ Plans:
   5. Gmail accounts show only INBOX, All Mail, Trash, and Spam folders; X-GM-LABELS, X-GM-MSGID, and X-GM-THRID extension data are parsed and stored on message records
   6. OAuth2 tokens are checked for expiry within a 5-minute buffer before every IMAP authenticate; expired tokens refresh automatically and the updated credentials emit a `ProcessAccountSecretsUpdated` delta to the UI
   7. All IMAP network operations complete within their per-operation timeout or resolve with a structured error classifying the failure as auth, TLS, network, or server error
-**Plans**: 6 plans
+**Plans**: 7 plans
 
 Plans:
 - [ ] 07-01-PLAN.md — Cargo deps, imap/oauth2 module scaffold, SyncError classification methods
@@ -91,6 +91,7 @@ Plans:
 - [ ] 07-04-PLAN.md — Stable message ID (SHA-256+Base58), Fetch-to-Message conversion, Gmail extensions, threading, BodyQueue
 - [ ] 07-05-PLAN.md — CONDSTORE incremental sync, UID-range fallback, UIDVALIDITY reset, folder priority, timeouts
 - [ ] 07-06-PLAN.md — Body caching with age policy, sync loop with backoff/wake, stdin dispatch wiring, stub replacement
+- [ ] 07-07-PLAN.md — Gap closure: wire sync algorithms into run_sync_cycle_and_bodies() live loop
 
 ### Phase 8: Foreground IDLE and Task Execution
 **Goal**: Users can send email, move messages, and change flags from the Electron UI with changes reflected immediately — the foreground IDLE worker monitors for new mail in real time and executes all task types reliably with crash recovery
