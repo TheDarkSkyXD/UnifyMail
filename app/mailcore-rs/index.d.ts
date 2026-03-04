@@ -48,3 +48,134 @@ export interface ProviderServers {
  * Newly-seen identifiers are appended.
  */
 export declare function registerProviders(jsonPath: string): void
+
+// ---------------------------------------------------------------------------
+// IMAP connection testing (Phase 2)
+// ---------------------------------------------------------------------------
+
+/** Options for testIMAPConnection. */
+export interface IMAPConnectionOptions {
+  hostname: string
+  port: number
+  /** "tls" | "starttls" | "clear". Defaults to "tls". */
+  connectionType?: string | null
+  username?: string | null
+  password?: string | null
+  /** OAuth2 bearer token for XOAUTH2 SASL authentication. */
+  oauth2Token?: string | null
+}
+
+/** Result of testIMAPConnection. The Promise ALWAYS resolves. */
+export interface IMAPConnectionResult {
+  success: boolean
+  error?: string | null
+  /** "connection_refused" | "timeout" | "tls_error" | "auth_failed" | "unknown" */
+  errorType?: string | null
+  /** Detected IMAP capabilities (e.g. "idle", "condstore"). Present only on success. */
+  capabilities?: Array<string> | null
+}
+
+/**
+ * Test an IMAP connection with the given settings.
+ *
+ * Returns a result object — never rejects. Wraps the operation in a 15-second timeout.
+ */
+export declare function testIMAPConnection(opts: IMAPConnectionOptions): Promise<IMAPConnectionResult>
+
+// ---------------------------------------------------------------------------
+// SMTP connection testing (Phase 3 Plan 01)
+// ---------------------------------------------------------------------------
+
+/** Options for testSMTPConnection. */
+export interface SMTPConnectionOptions {
+  hostname: string
+  port: number
+  /** "tls" | "starttls" | "clear". Defaults to "tls". */
+  connectionType?: string | null
+  username?: string | null
+  password?: string | null
+  /** OAuth2 bearer token for XOAUTH2 SASL authentication. */
+  oauth2Token?: string | null
+}
+
+/** Result of testSMTPConnection. The Promise ALWAYS resolves. */
+export interface SMTPConnectionResult {
+  success: boolean
+  error?: string | null
+  /** "connection_refused" | "timeout" | "tls_error" | "auth_failed" | "unknown" */
+  errorType?: string | null
+}
+
+/**
+ * Test an SMTP connection with the given settings.
+ *
+ * Returns a result object — never rejects. Wraps the operation in a 15-second timeout.
+ */
+export declare function testSMTPConnection(opts: SMTPConnectionOptions): Promise<SMTPConnectionResult>
+
+// ---------------------------------------------------------------------------
+// Account validation (Phase 3 Plan 02)
+// ---------------------------------------------------------------------------
+
+/** IMAP sub-result within AccountValidationResult. */
+export interface IMAPSubResult {
+  success: boolean
+  error?: string | null
+  errorType?: string | null
+  capabilities?: Array<string> | null
+}
+
+/** SMTP sub-result within AccountValidationResult. */
+export interface SMTPSubResult {
+  success: boolean
+  error?: string | null
+  errorType?: string | null
+}
+
+/** Server connection info. */
+export interface ServerInfo {
+  hostname: string
+  port: number
+}
+
+/** Options for validateAccount. */
+export interface ValidateAccountOptions {
+  email: string
+  imapHostname: string
+  imapPort: number
+  imapConnectionType?: string | null
+  smtpHostname: string
+  smtpPort: number
+  smtpConnectionType?: string | null
+  username?: string | null
+  password?: string | null
+  oauth2Token?: string | null
+}
+
+/** Full result of validateAccount. The Promise ALWAYS resolves. */
+export interface AccountValidationResult {
+  /** true only when both IMAP and SMTP succeed. */
+  success: boolean
+  /** Prefixed with "IMAP: " or "SMTP: ". IMAP takes priority when both fail. */
+  error?: string | null
+  /** Error type from the failing protocol. */
+  errorType?: string | null
+  /** Provider identifier from MX record matching, or null. */
+  identifier?: string | null
+  /** IMAP sub-result (always present). */
+  imapResult: IMAPSubResult
+  /** SMTP sub-result (always present). */
+  smtpResult: SMTPSubResult
+  /** IMAP server info (hostname + port from opts). */
+  imapServer: ServerInfo
+  /** SMTP server info (hostname + port from opts). */
+  smtpServer: ServerInfo
+}
+
+/**
+ * Validate an email account by testing IMAP and SMTP concurrently.
+ *
+ * Runs IMAP test, SMTP test, and MX DNS resolution via tokio::join!().
+ * Total time = max(IMAP, SMTP, MX) — not their sum. 15-second timeout.
+ */
+export declare function validateAccount(opts: ValidateAccountOptions): Promise<AccountValidationResult>
