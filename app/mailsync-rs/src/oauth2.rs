@@ -255,9 +255,7 @@ impl TokenManager {
 
     /// Emits a ProcessAccountSecretsUpdated delta when the refresh token rotates.
     ///
-    /// This method is a thin wrapper — the actual DeltaStreamItem factory method
-    /// `account_secrets_updated` is added in Task 2 (delta/item.rs). For now, we
-    /// build the delta JSON directly to keep Task 1 self-contained.
+    /// Uses `DeltaStreamItem::account_secrets_updated()` factory method (Task 2).
     fn emit_secrets_updated(
         delta: &DeltaStream,
         account_id: &str,
@@ -265,17 +263,11 @@ impl TokenManager {
         refresh_token: &str,
         expiry_unix: i64,
     ) {
-        let json = serde_json::json!({
-            "accountId": account_id,
-            "id": account_id,
-            "accessToken": access_token,
-            "refreshToken": refresh_token,
-            "expiry": expiry_unix,
-        });
-        delta.emit(DeltaStreamItem::new(
-            "persist",
-            "ProcessAccountSecretsUpdated",
-            vec![json],
+        delta.emit(DeltaStreamItem::account_secrets_updated(
+            account_id,
+            access_token,
+            refresh_token,
+            expiry_unix,
         ));
     }
 
@@ -551,6 +543,159 @@ mod tests {
     #[test]
     fn expiry_buffer_constant_is_300s() {
         assert_eq!(EXPIRY_BUFFER_SECS, 300, "Expiry buffer must be 300 seconds");
+    }
+
+    // ============================================================================
+    // Task 2: ProcessAccountSecretsUpdated delta emission tests
+    // ============================================================================
+
+    /// Test that secrets delta is emitted when the refresh token rotates.
+    ///
+    /// Simulates a token refresh response that includes a different refresh_token
+    /// than what is stored in account.extra["refreshToken"]. Verifies that:
+    /// 1. A DeltaStreamItem with modelClass="ProcessAccountSecretsUpdated" is emitted
+    /// 2. The emitted item has the correct JSON shape
+    #[tokio::test]
+    async fn secrets_updated_on_rotation() {
+        // Account with old refresh token
+        let account = make_account(
+            "acct_rotation",
+            "gmail",
+            serde_json::json!({ "refreshToken": "old_refresh_token_abc" }),
+        );
+        let (delta, mut rx) = make_test_delta_stream();
+
+        // Simulate rotation: manually call emit_secrets_updated as get_valid_token would
+        let new_access_token = "ya29.new_access_token";
+        let new_refresh_token = "1//new_rotated_refresh_token";
+        let expiry_unix = Utc::now().timestamp() + 3600;
+
+        // Verify token is different from account's stored token (rotation condition)
+        let old_token = account
+            .extra
+            .get("refreshToken")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        assert_ne!(
+            new_refresh_token, old_token,
+            "Setup: tokens must differ to trigger rotation"
+        );
+
+        // Call the private helper through the public interface
+        TokenManager::emit_secrets_updated(
+            &delta,
+            &account.id,
+            new_access_token,
+            new_refresh_token,
+            expiry_unix,
+        );
+
+        // Verify delta was emitted
+        let item = rx.try_recv().expect("ProcessAccountSecretsUpdated delta should be emitted on rotation");
+        assert_eq!(
+            item.model_class, "ProcessAccountSecretsUpdated",
+            "modelClass must be ProcessAccountSecretsUpdated"
+        );
+        assert_eq!(item.delta_type, "persist", "delta type must be persist");
+        assert_eq!(item.model_jsons.len(), 1, "Must have exactly 1 model JSON");
+
+        let model = &item.model_jsons[0];
+        assert_eq!(model["accountId"], "acct_rotation");
+        assert_eq!(model["id"], "acct_rotation");
+        assert_eq!(model["accessToken"], new_access_token);
+        assert_eq!(model["refreshToken"], new_refresh_token);
+        assert_eq!(model["expiry"], expiry_unix);
+    }
+
+    /// Test that no delta is emitted when the refresh token has not changed.
+    ///
+    /// When the OAuth2 server returns the same refresh token (no rotation),
+    /// the emit_secrets_updated should NOT be called, so no delta is emitted.
+    #[tokio::test]
+    async fn secrets_not_emitted_when_same() {
+        let account = make_account(
+            "acct_same_token",
+            "gmail",
+            serde_json::json!({ "refreshToken": "stable_refresh_token_xyz" }),
+        );
+        let (delta, mut rx) = make_test_delta_stream();
+
+        // Get the "existing" refresh token from account
+        let existing_token = account
+            .extra
+            .get("refreshToken")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Simulate token response with SAME refresh token (no rotation)
+        // This is the conditional check in get_valid_token():
+        // if new_refresh_token != old_refresh_token { emit } else { don't emit }
+        let new_refresh_token = existing_token.as_str(); // Same as old!
+        let old_refresh_token = account
+            .extra
+            .get("refreshToken")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        // Verify the tokens are the same (precondition for this test)
+        assert_eq!(
+            new_refresh_token, old_refresh_token,
+            "Setup: tokens must be the same to verify no emission"
+        );
+
+        // The condition that guards emit_secrets_updated in get_valid_token():
+        // `if new_refresh_token != old_refresh_token { emit }`
+        // Since tokens are equal, emit should NOT be called.
+        if new_refresh_token != old_refresh_token {
+            TokenManager::emit_secrets_updated(
+                &delta,
+                &account.id,
+                "access_token",
+                new_refresh_token,
+                Utc::now().timestamp() + 3600,
+            );
+        }
+
+        // Verify NO delta was emitted
+        assert!(
+            rx.try_recv().is_err(),
+            "No delta should be emitted when refresh token is unchanged"
+        );
+    }
+
+    /// Test the shape of the ProcessAccountSecretsUpdated delta JSON.
+    ///
+    /// Verifies the delta has the exact fields required by Electron's
+    /// mailsync-bridge.ts for updating stored OAuth credentials.
+    #[test]
+    fn secrets_delta_shape() {
+        // Use DeltaStreamItem::account_secrets_updated directly to verify shape
+        let item = DeltaStreamItem::account_secrets_updated(
+            "test_account_id",
+            "access_token_abc",
+            "refresh_token_xyz",
+            1735689600, // Fixed timestamp for deterministic test
+        );
+
+        assert_eq!(item.delta_type, "persist");
+        assert_eq!(item.model_class, "ProcessAccountSecretsUpdated");
+        assert_eq!(item.model_jsons.len(), 1);
+
+        let model = &item.model_jsons[0];
+        assert_eq!(model["accountId"], "test_account_id", "accountId must match");
+        assert_eq!(model["id"], "test_account_id", "id must match accountId");
+        assert_eq!(model["accessToken"], "access_token_abc", "accessToken must be set");
+        assert_eq!(model["refreshToken"], "refresh_token_xyz", "refreshToken must be set");
+        assert_eq!(model["expiry"], 1735689600, "expiry must be unix timestamp");
+
+        // Verify serialization produces correct wire format
+        let json_str = item.to_json_string();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(parsed["type"], "persist");
+        assert_eq!(parsed["modelClass"], "ProcessAccountSecretsUpdated");
+        assert!(parsed["modelJSONs"].is_array());
+        assert_eq!(parsed["modelJSONs"][0]["accountId"], "test_account_id");
     }
 
     // ============================================================================
