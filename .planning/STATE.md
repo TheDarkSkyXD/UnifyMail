@@ -2,15 +2,30 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
-status: planning
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-04T15:15:17.278Z"
+status: executing
+stopped_at: Completed 06-03-PLAN.md — lifecycle hooks, pipeline tests, schema validation, full round-trips
+last_updated: "2026-03-04T17:22:35.664Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 2
+  total_plans: 5
+  completed_plans: 5
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Rewrite mailsync Engine in Rust
+status: executing
+stopped_at: Completed 06-03-PLAN.md — lifecycle hooks, pipeline tests, schema validation, full round-trips
+last_updated: "2026-03-04T18:00:00.000Z"
+last_activity: 2026-03-04 — Executing phase 06
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 8
 ---
 
 ---
@@ -74,6 +89,14 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 05-01]: rusqlite pinned to 0.37 for tokio-rusqlite 0.7 compatibility; io-std added to workspace tokio features; ThreadListSortIndex moved to V8 migration (column doesn't exist in V1)
 - [Phase 05-02]: Single shared BufReader/Lines for stdin: multiple BufReader instances cause OS pipe data loss; shared Lines iterator passed through handshake reads into stdin_loop
 - [Phase 05-02]: process::exit(141) called from sync::run() after awaiting delta_flush_task completion, NOT from stdin_loop, ensuring all pending deltas flush before exit
+- [Phase 06]: Calendar/Event bind_to_statement does NOT bind version (no version column in C++ table design)
+- [Phase 06]: Task.to_json() overrides default to preserve pre-set __cls (task type name) rather than inject table_name 'Task'
+- [Phase 06]: Identity is plain struct (no MailModel) — C++ Identity::tableName() calls assert(false)
+- [Phase 06-02]: SqlParam enum for owned ToSql values — tokio-rusqlite closures must be Send + 'static, reference params cannot be captured
+- [Phase 06-02]: MailStoreTransaction takes &MailStore for commit/rollback — transaction cannot own connection; store.execute_commit/rollback are pub(crate)
+- [Phase 06-02]: busy_timeout corrected to 5000ms — DATA-01 spec matches C++ MailStore.cpp, Phase 5's 10s was conservative placeholder
+- [Phase 06-03]: Thread::after_save() implements ThreadCategory maintenance but defers ThreadCounts diff algorithm to Phase 7 (requires full message snapshot-diff cycle from IMAP sync)
+- [Phase 06-03]: Event search fields use #[serde(skip)] transient pattern — not stored in data blob, gated on search_title non-empty, populated by ICS parsing in Phase 9
 
 ### Pending Todos
 
@@ -87,9 +110,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T15:15:17.276Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-sqlite-layer-and-model-infrastructure/06-CONTEXT.md
+Last session: 2026-03-04T16:08:28.059Z
+Stopped at: Completed 06-03-PLAN.md — lifecycle hooks, pipeline tests, schema validation, full round-trips
+Resume file: None
 
 ---
 *Last updated: 2026-03-04 after v1.0 milestone completion*
