@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: planning
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-04T15:15:17.278Z"
+stopped_at: Completed 06-01-PLAN.md — MailModel trait and all 13 model structs with serde renames
+last_updated: "2026-03-04T15:50:47.591Z"
 last_activity: 2026-03-04 — Completed v1.0 milestone
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 5
+  completed_plans: 3
 ---
 
 ---
@@ -74,6 +74,9 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 05-01]: rusqlite pinned to 0.37 for tokio-rusqlite 0.7 compatibility; io-std added to workspace tokio features; ThreadListSortIndex moved to V8 migration (column doesn't exist in V1)
 - [Phase 05-02]: Single shared BufReader/Lines for stdin: multiple BufReader instances cause OS pipe data loss; shared Lines iterator passed through handshake reads into stdin_loop
 - [Phase 05-02]: process::exit(141) called from sync::run() after awaiting delta_flush_task completion, NOT from stdin_loop, ensuring all pending deltas flush before exit
+- [Phase 06]: Calendar/Event bind_to_statement does NOT bind version (no version column in C++ table design)
+- [Phase 06]: Task.to_json() overrides default to preserve pre-set __cls (task type name) rather than inject table_name 'Task'
+- [Phase 06]: Identity is plain struct (no MailModel) — C++ Identity::tableName() calls assert(false)
 
 ### Pending Todos
 
@@ -87,9 +90,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T15:15:17.276Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-sqlite-layer-and-model-infrastructure/06-CONTEXT.md
+Last session: 2026-03-04T15:50:47.589Z
+Stopped at: Completed 06-01-PLAN.md — MailModel trait and all 13 model structs with serde renames
+Resume file: None
 
 ---
 *Last updated: 2026-03-04 after v1.0 milestone completion*
