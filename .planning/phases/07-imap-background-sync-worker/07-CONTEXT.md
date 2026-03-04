@@ -29,7 +29,7 @@ Full IMAP background sync worker that syncs real email accounts end-to-end: fold
 
 ### Gmail-specific behaviors
 - Hardcoded folder whitelist: only sync INBOX, [Gmail]/All Mail, [Gmail]/Trash, [Gmail]/Spam, [Gmail]/Drafts, [Gmail]/Sent Mail. All other Gmail virtual folders hidden
-- X-GM-LABELS stored as Label records in the database via MessageLabel join table — Electron UI already renders labels from Label model
+- X-GM-LABELS stored as Vec<String> JSON array on Message.labels field — matches existing Phase 6 Message model (revised from join table approach per user approval 2026-03-04)
 - X-GM-THRID used as primary Thread record ID for Gmail accounts — gives exact Gmail threading behavior. Non-Gmail accounts fall back to References/In-Reply-To header-based threading
 - X-GM-MSGID stored on Message.gMsgId field for stable message identity
 - Gmail detection via `account.provider == "gmail"` from handshake JSON — set by onboarding providerForEmail()
