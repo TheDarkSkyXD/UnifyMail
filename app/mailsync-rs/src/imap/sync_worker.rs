@@ -221,6 +221,32 @@ pub fn decide_condstore_action(
     }
 }
 
+/// Select the sync strategy based on whether the server supports CONDSTORE.
+///
+/// When `select_condstore()` returns a Mailbox with `highest_modseq = Some(...)`,
+/// CONDSTORE incremental sync is used. When `highest_modseq = None`, the server
+/// doesn't support CONDSTORE and UID-range fallback sync is used instead.
+#[derive(Debug, PartialEq)]
+pub enum SyncStrategy {
+    /// Server supports CONDSTORE — use `decide_condstore_action()`.
+    Condstore { server_modseq: u64 },
+    /// Server does not support CONDSTORE — use UID-range fallback sync.
+    UidRange,
+}
+
+/// Determine the sync strategy from a server's reported highest_modseq.
+///
+/// Returns `SyncStrategy::Condstore` if `highest_modseq` is Some, otherwise
+/// `SyncStrategy::UidRange`.
+pub fn select_sync_strategy(highest_modseq: Option<u64>) -> SyncStrategy {
+    match highest_modseq {
+        Some(modseq) => SyncStrategy::Condstore {
+            server_modseq: modseq,
+        },
+        None => SyncStrategy::UidRange,
+    }
+}
+
 /// Determine if a UIDVALIDITY change requires a full re-sync.
 ///
 /// Per RFC 4549: if stored uidvalidity is non-zero AND differs from the server's
@@ -525,6 +551,27 @@ mod tests {
         );
         // Delta = 100 < 4000 -> Incremental
         assert!(matches!(decision, CondstoreDecision::Incremental { .. }));
+    }
+
+    // ---- Task 2: UID-range fallback strategy tests ----
+
+    #[test]
+    fn uid_range_fallback_when_condstore_unavailable() {
+        // When highest_modseq is None, server doesn't support CONDSTORE
+        let strategy = select_sync_strategy(None);
+        assert_eq!(strategy, SyncStrategy::UidRange);
+    }
+
+    #[test]
+    fn condstore_strategy_when_modseq_present() {
+        // When highest_modseq is Some, use CONDSTORE sync
+        let strategy = select_sync_strategy(Some(12345));
+        assert_eq!(
+            strategy,
+            SyncStrategy::Condstore {
+                server_modseq: 12345
+            }
+        );
     }
 
     // ---- Task 2: UIDVALIDITY reset tests ----
