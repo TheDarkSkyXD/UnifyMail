@@ -125,17 +125,17 @@ async function run() {
     );
   }
 
-  // Check for optional mailcore-napi addon
-  const napiAddonPath = path.join(appPath, 'mailcore', 'build', 'Release', 'mailcore_napi.node');
-  if (!fs.existsSync(napiAddonPath)) {
+  // Check for Rust napi-rs addon (built automatically by npm start)
+  const rustAddonLoader = path.join(appPath, 'mailcore-rs', 'loader.js');
+  if (fs.existsSync(rustAddonLoader)) {
     console.log(
-      `\n-- Note: mailcore-napi addon not built (optional). --\n` +
-      `   The app will use the mailsync process for all operations.\n` +
-      `   To build it: cd app/mailcore && npm run build\n`
+      `\n-- Rust mailcore-napi addon detected. N-API fast path available! --`
     );
   } else {
     console.log(
-      `\n-- mailcore-napi addon detected. N-API fast path available! --`
+      `\n-- Note: mailcore-napi Rust addon loader not found (optional). --\n` +
+      `   The app will use the mailsync process for all operations.\n` +
+      `   The addon builds automatically when running npm start.\n`
     );
   }
 }

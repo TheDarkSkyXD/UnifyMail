@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-04T01:13:07.516Z"
+last_activity: "2026-03-03 — Completed Plan 02-02: 12 mock IMAP server tests, greeting consumption bug fix, testIMAPConnection live in Rust wrapper"
+progress:
+  total_phases: 10
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
+  percent: 88
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
 stopped_at: Completed 03-02-PLAN.md
 last_updated: "2026-03-04T00:28:22.888Z"
 last_activity: "2026-03-03 — Completed Plan 02-02: 12 mock IMAP server tests, greeting consumption bug fix, testIMAPConnection live in Rust wrapper"
 progress:
-  total_phases: 10
+  [█████████░] 88%
   completed_phases: 3
   total_plans: 6
   completed_plans: 6
@@ -83,6 +99,8 @@ Progress: [██████████] 100%
 *Updated after each plan completion*
 | Phase 03-smtp-testing-and-account-validation P01 | 10 | 2 tasks | 5 files |
 | Phase 03-smtp-testing-and-account-validation P02 | 5 | 2 tasks | 6 files |
+| Phase 04 P01 | 3 | 2 tasks | 7 files |
+| Phase 04-cross-platform-packaging-and-cleanup P02 | 7 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -116,6 +134,11 @@ Recent decisions affecting current work:
 - [Phase 03-01]: do_test_smtp always returns Ok(SMTPConnectionResult) — SMTP errors classified in-band, unlike do_test_imap which propagates BoxError; napi wrapper needs no error conversion
 - [Phase 03-smtp-testing-and-account-validation]: pub(crate) on Provider fields and PROVIDERS static — minimum visibility for validate.rs MX matching
 - [Phase 03-smtp-testing-and-account-validation]: IMAPSubResult/SMTPSubResult as separate napi(object) types — reusing IMAPConnectionResult would cause napi-rs duplicate registration errors
+- [Phase 04]: Rename mailcore-rs package to mailcore-napi — require('mailcore-napi') resolves via npm symlink directly to Rust addon without wrapper
+- [Phase 04]: Add codegen-units=1, panic=abort, opt-level=z to Cargo release profile — 5-flag optimization suite for sub-8MB binary CI gating
+- [Phase 04]: Delete app/mailcore/ and app/mailcore-wrapper/ — C++ N-API addon removed; mailcore-rs is now the sole addon, pointed to directly from app/package.json
+- [Phase 04-cross-platform-packaging-and-cleanup]: Insert Rust build steps AFTER npm ci and BEFORE Lint in all CI workflows -- npm ci creates node_modules/mailcore-napi symlink first; napi build must precede electron-packager Build step which bundles the .node binary
+- [Phase 04-cross-platform-packaging-and-cleanup]: 8MB binary size gate on Linux x64 CI only (per user decision); Windows smoke test uses default shell not msys2 -- only needs Node.js, no MinGW64 tools needed
 
 ### Pending Todos
 
@@ -131,8 +154,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T00:23:45.868Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-03-04T01:07:17.282Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
 
 ---
