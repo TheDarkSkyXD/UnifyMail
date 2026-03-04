@@ -1,6 +1,7 @@
 # Phase 5: Core Infrastructure and IPC Protocol - Context
 
 **Gathered:** 2026-03-03
+**Updated:** 2026-03-03
 **Status:** Ready for planning
 
 <domain>
@@ -41,6 +42,30 @@ Rust standalone binary skeleton (`app/mailsync-rs/`) with correct stdin/stdout I
 - **Full error enum defined upfront** covering all ~20 C++ error keys as Rust enum variants. Each variant maps to the C++ error string. Later phases use existing variants rather than adding new ones
 - **Same exit codes** as C++: 0 for success, non-zero with JSON error on stdout for failure, 141 for stdin EOF (orphan detection)
 
+### Cargo workspace setup
+- Create a Cargo workspace at `app/Cargo.toml` with members `mailcore-rs` and `mailsync-rs`
+- Shared workspace dependency versions for tokio, serde, rustls, aws-lc-rs — consistent across both crates
+- No shared library crate — mailcore-rs (N-API addon) and mailsync-rs (standalone binary) are independent members with no code coupling
+- Dependency pinning strategy: Claude's discretion based on what worked in v1.0
+
+### Windows build pipeline
+- Use GNU target (`x86_64-pc-windows-gnu`) — same as mailcore-rs, proven toolchain with MSYS2 MinGW
+- Build step added to `scripts/start-dev.js` before Electron launch — `cargo build` with incremental compilation (~1-2s no-op)
+- Binary output at standard `app/mailsync-rs/target/debug/` (dev) and `target/release/` (prod) — mailsync-process.ts resolves path accordingly
+- Binary name includes platform suffix: `mailsync-rs.exe` (Windows) / `mailsync-rs.bin` (macOS/Linux) — matches existing C++ naming convention
+
+### Testing strategy
+- **IPC contract tests**: Rust integration tests that spawn the binary as a child process, pipe stdin/stdout, verify handshake and delta format — runs in `cargo test`
+- **Schema validation**: Diff-based validation against C++ constants.h schema, then snapshot locked for regression
+- **Mode coverage**: All 5 modes have at least one integration test verifying correct behavior and exit code
+- **Electron E2E**: Claude's discretion on whether to include minimal Electron integration test in Phase 5 or defer to Phase 6
+
+### Stdin command handling
+- **Structured dispatch**: Parse all 10+ C++ command types into a Rust enum with handler functions — unimplemented handlers log at debug level and return silently
+- **Full command enum upfront**: All command variants defined (queue-task, cancel-task, wake-workers, need-bodies, sync-calendar, detect-provider, query-capabilities, subscribe-folder-status, test-crash, test-segfault) — later phases implement real handlers
+- **Unknown commands**: Warn-level log and continue — forward compatible if TypeScript adds new commands before Rust catches up
+- **No response for stubs**: Silent accept + debug log. Electron UI doesn't expect responses for most commands
+
 ### Claude's Discretion
 - `--mode test` implementation depth (stub vs minimal success response)
 - Exact Cargo.toml dependency versions for tracing, tokio-rusqlite, clap, serde
@@ -49,6 +74,7 @@ Rust standalone binary skeleton (`app/mailsync-rs/`) with correct stdin/stdout I
 - tokio task architecture details (stdin reader, stdout writer, command dispatcher)
 - Whether to use clap for CLI argument parsing or hand-roll the `--mode` flag
 - Log rotation strategy (if any) for the mailsync-{accountId}.log files
+- Electron E2E test inclusion in Phase 5 vs deferral
 
 </decisions>
 
@@ -60,6 +86,8 @@ Rust standalone binary skeleton (`app/mailsync-rs/`) with correct stdin/stdout I
 - The `ProcessState` delta format uses `modelClass: "ProcessState"` with `modelJSONs` containing status info — OnlineStatusStore.onSyncProcessStateReceived() handles it in the TypeScript side
 - `ProcessAccountSecretsUpdated` is a special delta type for OAuth2 token refresh — Phase 5 doesn't need to emit this but the delta pipeline should support it structurally
 - CONFIG_DIR_PATH, GMAIL_CLIENT_ID, GMAIL_OAUTH_PROXY_URL, IDENTITY_SERVER are passed as environment variables to the binary (mailsync-process.ts `_spawnProcess` lines 164-174)
+- C++ main.cpp has 10 stdin command types in `runListenOnMainThread` — all should be captured as Rust enum variants for structured dispatch
+- mailcore-rs is currently a standalone crate (not a workspace member) — workspace migration needed as part of Phase 5
 
 </specifics>
 
@@ -67,9 +95,10 @@ Rust standalone binary skeleton (`app/mailsync-rs/`) with correct stdin/stdout I
 ## Existing Code Insights
 
 ### Reusable Assets
-- `app/mailcore-rs/Cargo.toml`: Existing Rust workspace member — mailsync-rs can share workspace config (rustls, tokio versions)
-- `app/mailcore-rs/build.rs`: Example of napi-rs build integration — mailsync-rs won't need napi but can reference the Cargo workspace setup
+- `app/mailcore-rs/Cargo.toml`: Will become workspace member — shared dependency versions for tokio, serde, rustls
+- `app/mailcore-rs/build.rs`: Example of napi-rs build integration — mailsync-rs won't need napi but references the Cargo config patterns
 - `05-RESEARCH.md`: Contains complete C++ schema SQL, delta format, IPC protocol details, and tokio architecture patterns
+- `scripts/start-dev.js`: Existing build pipeline — already builds mailcore-rs before Electron launch
 
 ### Established Patterns
 - Binary path resolution in mailsync-process.ts: `path.join(resourcePath, binaryName).replace('app.asar', 'app.asar.unpacked')` — Rust binary follows same pattern
@@ -77,6 +106,7 @@ Rust standalone binary skeleton (`app/mailsync-rs/`) with correct stdin/stdout I
 - Newline-delimited JSON on stdout, parsed by splitting on `\n` — must emit `\n` after every JSON message
 - Stdin high water mark set to 1MB (line 206) — Rust stdin reader should handle large payloads
 - `--mode` and `--verbose` CLI flags, `--info` for email address (cosmetic)
+- v1.0 test pattern: Rust integration tests (`cargo test`) + JS cross-validation + Electron integration test
 
 ### Integration Points
 - `app/frontend/mailsync-process.ts`: Primary consumer — spawns the binary, pipes stdin/stdout, handles exit codes
