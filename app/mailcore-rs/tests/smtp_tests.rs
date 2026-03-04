@@ -13,7 +13,7 @@
 //! # TLS note
 //! Direct TLS (port 465-style) tests against a plain TCP mock will fail because
 //! rustls-platform-verifier rejects untrusted/self-signed certs. We test TLS error
-//! classification by checking that the result is a failure. Phase 4 validates against
+//! classification by checking that the result is a failure. Integration tests validate against
 //! real servers.
 
 use mailcore_napi_rs::smtp::{do_test_smtp, SMTPConnectionOptions};
@@ -455,7 +455,7 @@ async fn test_starttls_against_plain_server() {
 }
 
 // ===========================================================================
-// Validation tests (Phase 3 Plan 02)
+// Validation tests
 // ===========================================================================
 //
 // These tests cover `do_validate` from validate.rs (internal function that

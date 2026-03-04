@@ -18,14 +18,12 @@ serde_json = "=1.0.149"
 regex = "=1.12.3"
 tokio = { version = "=1.50.0", features = ["rt-multi-thread", "net", "time", "io-util", "macros"] }
 
-# Phase 2: IMAP connection testing
 async-imap = { version = "0.11", features = ["runtime-tokio"], default-features = false }
 tokio-rustls = "0.26"
 rustls = "0.23"
 rustls-platform-verifier = "0.6"
 base64 = "0.22"
 
-# Phase 3: SMTP connection testing and account validation
 # CRITICAL: default-features = false prevents lettre from pulling in native-tls (OpenSSL),
 # which conflicts with Electron's BoringSSL. rustls-platform-verifier uses the OS cert store
 # (same verifier pattern as imap.rs). aws-lc-rs is the crypto provider matching rustls 0.23 default.

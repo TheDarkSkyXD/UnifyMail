@@ -1,4 +1,4 @@
-//! Phase 3: SMTP connection testing.
+//! SMTP connection testing.
 //!
 //! Implements `testSMTPConnection` as an async napi-rs export that handles:
 //! - Three TLS connection paths: direct TLS (port 465), STARTTLS upgrade, clear/unencrypted
@@ -8,7 +8,7 @@
 //!
 //! lettre handles the full SMTP handshake internally: greeting consumption, EHLO,
 //! AUTH (multi-step LOGIN or XOAUTH2), and NOOP via `transport.test_connection()`.
-//! This is simpler than async-imap (Phase 2) which required manual greeting consumption.
+//! This is simpler than async-imap which required manual greeting consumption.
 
 use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::transport::smtp::Error as SmtpError;

@@ -1,4 +1,4 @@
-//! Phase 2: IMAP connection testing.
+//! IMAP connection testing.
 //!
 //! Implements `testIMAPConnection` as an async napi-rs export that handles:
 //! - Three TLS connection paths: direct TLS (port 993), STARTTLS upgrade, clear/unencrypted

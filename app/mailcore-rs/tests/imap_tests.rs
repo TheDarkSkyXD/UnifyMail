@@ -13,7 +13,7 @@
 //! # TLS note
 //! Direct TLS (port 993-style) tests against a plain TCP mock will fail because
 //! rustls-platform-verifier rejects untrusted/self-signed certs. We test TLS error
-//! classification by checking the error message. Phase 3 validates against real servers.
+//! classification by checking the error message. Integration tests validate against real servers.
 
 use base64::{engine::general_purpose, Engine as _};
 use mailcore_napi_rs::imap::{do_test_imap, IMAPConnectionOptions};
@@ -516,7 +516,7 @@ async fn test_mid_connection_drop() {
 /// (`test_imap_connection`) formats the error as "Connection to {host}:{port} failed: {e}".
 /// This test verifies that a connection refused error from 127.0.0.1 is correctly
 /// classified — the hostname/port inclusion in the formatted message is tested at
-/// the napi wrapper level (requires a JS runtime) and covered in Phase 3 integration tests.
+/// the napi wrapper level (requires a JS runtime) and covered in integration tests.
 #[tokio::test]
 async fn test_error_includes_hostname_port() {
     // Use 127.0.0.1 with a closed port for a deterministic connection refused error.
@@ -548,7 +548,7 @@ async fn test_error_includes_hostname_port() {
 /// Direct TLS to a plain TCP mock returns Err classified as "tls_error".
 ///
 /// rustls-platform-verifier rejects untrusted certs and non-TLS connections.
-/// This test verifies TLS error classification. Real certs are validated in Phase 3.
+/// This test verifies TLS error classification. Real certs are validated in integration tests.
 #[tokio::test]
 async fn test_tls_connection_fails_with_tls_error_on_plain_server() {
     let (port, _handle) = start_mock_imap_server("IDLE", MockAuthMode::AcceptPassword).await;

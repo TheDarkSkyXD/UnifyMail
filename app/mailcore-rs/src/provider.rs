@@ -93,7 +93,7 @@ pub(crate) struct Provider {
     domain_match_compiled: Vec<(String, Regex)>,
     /// (original_pattern, compiled_regex) pairs for domain exclusion
     domain_exclude_compiled: Vec<(String, Regex)>,
-    /// Raw MX patterns used in Phase 3 for provider identifier resolution via DNS MX lookup
+    /// Raw MX patterns used for provider identifier resolution via DNS MX lookup
     pub(crate) mx_match_patterns: Vec<String>,
 }
 

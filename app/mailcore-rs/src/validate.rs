@@ -1,4 +1,4 @@
-//! Phase 3 Plan 02: Account validation with concurrent IMAP + SMTP + MX testing.
+//! Account validation with concurrent IMAP + SMTP + MX testing.
 //!
 //! Implements `validateAccount` as an async napi-rs export that:
 //! - Runs IMAP test, SMTP test, and MX DNS resolution concurrently via tokio::join!()
