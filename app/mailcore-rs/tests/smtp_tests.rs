@@ -560,11 +560,13 @@ fn validate_opts(imap_port: u16, smtp_port: u16) -> ValidateAccountOptions {
         imap_hostname: "127.0.0.1".to_string(),
         imap_port: imap_port as u32,
         imap_connection_type: Some("clear".to_string()),
+        imap_username: Some("user@example.com".to_string()),
+        imap_password: Some("password123".to_string()),
         smtp_hostname: "127.0.0.1".to_string(),
         smtp_port: smtp_port as u32,
         smtp_connection_type: Some("clear".to_string()),
-        username: Some("user@example.com".to_string()),
-        password: Some("password123".to_string()),
+        smtp_username: Some("user@example.com".to_string()),
+        smtp_password: Some("password123".to_string()),
         oauth2_token: None,
     }
 }

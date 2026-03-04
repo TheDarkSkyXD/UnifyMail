@@ -80,7 +80,7 @@ pub struct AccountValidationResult {
 
 /// Options for validateAccount.
 ///
-/// Contains both IMAP and SMTP settings plus shared auth credentials.
+/// Contains both IMAP and SMTP settings plus per-protocol auth credentials.
 #[napi(object)]
 pub struct ValidateAccountOptions {
     pub email: String,
@@ -88,13 +88,17 @@ pub struct ValidateAccountOptions {
     pub imap_hostname: String,
     pub imap_port: u32,
     pub imap_connection_type: Option<String>,
+    // Per-protocol IMAP auth
+    pub imap_username: Option<String>,
+    pub imap_password: Option<String>,
     // SMTP settings
     pub smtp_hostname: String,
     pub smtp_port: u32,
     pub smtp_connection_type: Option<String>,
-    // Shared auth
-    pub username: Option<String>,
-    pub password: Option<String>,
+    // Per-protocol SMTP auth
+    pub smtp_username: Option<String>,
+    pub smtp_password: Option<String>,
+    // Account-wide OAuth2 token (shared per locked decision)
     pub oauth2_token: Option<String>,
 }
 
@@ -174,8 +178,8 @@ fn build_imap_opts(opts: &ValidateAccountOptions) -> IMAPConnectionOptions {
         hostname: opts.imap_hostname.clone(),
         port: opts.imap_port,
         connection_type: opts.imap_connection_type.clone(),
-        username: opts.username.clone(),
-        password: opts.password.clone(),
+        username: opts.imap_username.clone(),
+        password: opts.imap_password.clone(),
         oauth2_token: opts.oauth2_token.clone(),
     }
 }
@@ -186,8 +190,8 @@ fn build_smtp_opts(opts: &ValidateAccountOptions) -> SMTPConnectionOptions {
         hostname: opts.smtp_hostname.clone(),
         port: opts.smtp_port,
         connection_type: opts.smtp_connection_type.clone(),
-        username: opts.username.clone(),
-        password: opts.password.clone(),
+        username: opts.smtp_username.clone(),
+        password: opts.smtp_password.clone(),
         oauth2_token: opts.oauth2_token.clone(),
     }
 }
