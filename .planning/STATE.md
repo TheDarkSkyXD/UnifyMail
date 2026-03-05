@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-03-05T00:04:42.552Z"
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-03-05T00:07:15.676Z"
 last_activity: 2026-03-04 — Completed 07-03-PLAN.md (ImapSession with TLS/STARTTLS connect, XOAUTH2/password auth, two-pass role detection, Gmail 6-folder whitelist)
 progress:
   total_phases: 6
@@ -102,9 +102,9 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v2.0 — Rewrite mailsync Engine in Rust
-Phase: 7 of 10 (IMAP Background Sync Worker) — Plan 03 of 07 complete
+Phase: 7 of 10 (IMAP Background Sync Worker) — Plan 05 of 07 complete
 Status: Executing
-Last activity: 2026-03-04 — Completed 07-03-PLAN.md (ImapSession with TLS/STARTTLS connect, XOAUTH2/password auth, two-pass role detection, Gmail 6-folder whitelist)
+Last activity: 2026-03-04 — Completed 07-05-PLAN.md (CONDSTORE incremental sync, UID-range fallback, UIDVALIDITY reset, folder priority sort, FolderSyncState with modseq-as-string, 42 tests)
 
 ## Completed Milestones
 
@@ -158,8 +158,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-05T00:04:42.549Z
-Stopped at: Completed 07-03-PLAN.md
+Last session: 2026-03-05T00:07:09.410Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
 
 ---
