@@ -266,6 +266,15 @@ impl ImapSession {
         self.is_gmail
     }
 
+    /// Consumes the ImapSession and returns the inner async-imap Session.
+    ///
+    /// Used by the foreground IDLE worker to obtain direct access to the raw
+    /// session for calling `session.idle()`, which consumes the session and
+    /// returns a Handle that gives back the session via `handle.done().await`.
+    pub fn into_inner(self) -> Session<ImapTlsStream> {
+        self.session
+    }
+
     /// Connects to the IMAP server described by `account.extra["settings"]`.
     ///
     /// Reads: `imap_host`, `imap_port`, `imap_security` ("SSL/TLS" or "STARTTLS").

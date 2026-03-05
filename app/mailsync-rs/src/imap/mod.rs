@@ -8,6 +8,7 @@
 //   sync_worker.rs — Background sync loop and folder orchestration (Plan 02, 03)
 //   mail_processor.rs — Message parsing and database persistence (Plan 04)
 
+pub mod foreground_worker;
 pub mod mail_processor;
 pub mod session;
 pub mod sync_worker;
