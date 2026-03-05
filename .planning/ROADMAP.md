@@ -29,7 +29,7 @@ Replace the `app/mailsync/` C++ sync engine (~16,200 LOC, 50 source files) with 
 
 - [x] **Phase 5: Core Infrastructure and IPC Protocol** - Rust binary skeleton with correct stdin/stdout protocol, all process modes, SQLite schema creation, and delta emission pipeline (completed 2026-03-04)
 - [ ] **Phase 6: SQLite Layer and Model Infrastructure** - Complete MailStore with all data models, WAL mode, single-writer pattern, and schema migrations matching the C++ baseline
-- [x] **Phase 7: IMAP Background Sync Worker** - Full IMAP sync against live accounts: folder enumeration, CONDSTORE/UID-range incremental sync, body caching, OAuth2, and Gmail-specific behaviors (completed 2026-03-04)
+- [x] **Phase 7: IMAP Background Sync Worker** - Full IMAP sync against live accounts: folder enumeration, CONDSTORE/UID-range incremental sync, body caching, OAuth2, and Gmail-specific behaviors (completed 2026-03-04)
 - [ ] **Phase 8: Foreground IDLE and Task Execution** - IMAP IDLE monitoring, task processor for all 13+ task types, SMTP send via lettre, and crash recovery
 - [ ] **Phase 9: CalDAV, CardDAV, and Metadata Workers** - Calendar and contact sync via libdav, Gmail Google People API contacts, and metadata HTTP long-polling worker
 - [ ] **Phase 10: Cross-Platform Builds, Packaging, and C++ Deletion** - Verified binaries for all 5 targets, asar unpacking, binary size validation, and complete C++ source deletion
@@ -105,10 +105,13 @@ Plans:
   5. On startup after a crash, tasks stuck in `remote` state are reset to `local` state and re-queued; completed tasks expire after the configurable period
   6. The IDLE connection uses a dedicated IMAP session separate from the background sync session — both sessions run concurrently without protocol errors
   7. Body sync progress updates emit to the UI during large syncs so the user sees incremental message loading rather than a long pause
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md — Task infrastructure: TaskKind enum, two-phase execute_task, crash recovery, completed task expiry, lettre dependency
+- [ ] 08-02-PLAN.md — SMTP sender with TLS/STARTTLS/clear + password/XOAUTH2 auth, and MIME multipart builder from draft JSON
+- [ ] 08-03-PLAN.md — Foreground IDLE worker with 25-min re-IDLE, task interruption via mpsc relay, wiring into sync.rs and stdin_loop
+- [ ] 08-04-PLAN.md — All 8 task type remote-phase handlers (IMAP flag/folder/label commands + SMTP send) and body sync progress emission
 
 ### Phase 9: CalDAV, CardDAV, and Metadata Workers
 **Goal**: Calendar events and contacts sync bidirectionally for standard CalDAV/CardDAV providers and Gmail accounts; plugin metadata long-polls and persists correctly
@@ -158,6 +161,6 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 (can overlap with 7-8) ->
 | 5. Core Infrastructure and IPC Protocol | 2/2 | Complete   | 2026-03-04 | - |
 | 6. SQLite Layer and Model Infrastructure | 2/3 | In Progress|  | - |
 | 7. IMAP Background Sync Worker | 7/7 | Complete   | 2026-03-05 | - |
-| 8. Foreground IDLE and Task Execution | v2.0 | 0/? | Not started | - |
+| 8. Foreground IDLE and Task Execution | v2.0 | 0/4 | Planned | - |
 | 9. CalDAV, CardDAV, and Metadata Workers | v2.0 | 0/? | Not started | - |
 | 10. Cross-Platform Builds, Packaging, and C++ Deletion | v2.0 | 0/? | Not started | - |
