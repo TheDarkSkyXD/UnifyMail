@@ -712,6 +712,7 @@ async fn run_sync_cycle_and_bodies(
             }
         };
 
+        let mut body_fetch_count: usize = 0;
         for (msg_id, uid) in needing_bodies {
             if uid == 0 {
                 continue;
@@ -730,10 +731,29 @@ async fn run_sync_cycle_and_bodies(
                         if let Some(body_bytes) = fetch.body() {
                             let body_str = String::from_utf8_lossy(body_bytes).into_owned();
                             let snippet: String = body_str.chars().take(200).collect();
-                            if let Err(e) = store.save_body(msg_id.clone(), body_str, snippet).await {
+                            if let Err(e) = store.save_body(msg_id.clone(), body_str, snippet.clone()).await {
                                 tracing::warn!(account_id = %account.id, msg_id = %msg_id, error = %e, "Failed to save body");
                             } else {
                                 had_changes = true;
+
+                                // IMPR-07: Per-message progress delta so UI sees incremental loading.
+                                // Emit a persist delta for the Message model so Electron can update
+                                // the snippet and show body loading progress in real time.
+                                delta.emit(crate::delta::item::DeltaStreamItem::new(
+                                    "persist",
+                                    "Message",
+                                    vec![serde_json::json!({
+                                        "id": msg_id,
+                                        "snippet": snippet,
+                                    })],
+                                ));
+
+                                body_fetch_count += 1;
+                                // Yield to tokio scheduler every 10 messages to avoid
+                                // starving other tasks during large body sync batches.
+                                if body_fetch_count % 10 == 0 {
+                                    tokio::task::yield_now().await;
+                                }
                             }
                         }
                     }
@@ -745,13 +765,108 @@ async fn run_sync_cycle_and_bodies(
         }
     }
 
-    // Drain priority body_queue items
+    // -----------------------------------------------------------------------
+    // Drain priority body_queue items (Phase 7 deferral completed here)
+    //
+    // Priority items are message IDs requested via the NeedBodies stdin command.
+    // For each ID: look up the message's remoteUID and folder path, then fetch the body.
+    // -----------------------------------------------------------------------
     while let Some(msg_id) = body_queue.next() {
-        tracing::debug!(account_id = %account.id, msg_id = %msg_id, "Processing priority body queue item");
-        // Priority items: find message in store to get UID and folder, then fetch body
-        // For now, log and continue — UID lookup requires find_all with a custom query
-        // which is deferred to Phase 8 when we have full message search helpers.
-        let _ = msg_id;
+        tracing::debug!(
+            account_id = %account.id,
+            msg_id = %msg_id,
+            "Processing priority body queue item"
+        );
+
+        // Look up remoteUID and folder path via the MailStore helper
+        let uid_and_folder = match store.find_message_uid_and_folder(&msg_id).await {
+            Ok(Some(pair)) => pair,
+            Ok(None) => {
+                tracing::warn!(
+                    account_id = %account.id,
+                    msg_id = %msg_id,
+                    "Priority body queue: message not found or has no IMAP UID — skipping"
+                );
+                continue;
+            }
+            Err(e) => {
+                tracing::warn!(
+                    account_id = %account.id,
+                    msg_id = %msg_id,
+                    error = %e,
+                    "Priority body queue: DB lookup failed — skipping"
+                );
+                continue;
+            }
+        };
+
+        let (uid, folder_path) = uid_and_folder;
+
+        // SELECT the folder, then fetch the body
+        if let Err(e) = session.select_condstore(&folder_path).await {
+            tracing::warn!(
+                account_id = %account.id,
+                msg_id = %msg_id,
+                folder = %folder_path,
+                error = %e,
+                "Priority body queue: SELECT folder failed — skipping"
+            );
+            continue;
+        }
+
+        let mut body_stream = match session.uid_fetch(&uid.to_string(), "BODY.PEEK[]").await {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!(
+                    account_id = %account.id,
+                    uid = uid,
+                    msg_id = %msg_id,
+                    error = %e,
+                    "Priority body queue: BODY.PEEK[] fetch failed"
+                );
+                continue;
+            }
+        };
+
+        if let Some(fetch_result) = body_stream.next().await {
+            match fetch_result {
+                Ok(fetch) => {
+                    if let Some(body_bytes) = fetch.body() {
+                        let body_str = String::from_utf8_lossy(body_bytes).into_owned();
+                        let snippet: String = body_str.chars().take(200).collect();
+                        if let Err(e) = store.save_body(msg_id.clone(), body_str, snippet.clone()).await {
+                            tracing::warn!(
+                                account_id = %account.id,
+                                msg_id = %msg_id,
+                                error = %e,
+                                "Priority body queue: save_body failed"
+                            );
+                        } else {
+                            had_changes = true;
+
+                            // IMPR-07: Per-message progress delta for priority fetch
+                            delta.emit(crate::delta::item::DeltaStreamItem::new(
+                                "persist",
+                                "Message",
+                                vec![serde_json::json!({
+                                    "id": msg_id,
+                                    "snippet": snippet,
+                                })],
+                            ));
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        account_id = %account.id,
+                        uid = uid,
+                        msg_id = %msg_id,
+                        error = %e,
+                        "Priority body queue: body stream error"
+                    );
+                }
+            }
+        }
     }
 
     // -----------------------------------------------------------------------

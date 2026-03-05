@@ -642,6 +642,45 @@ impl MailStore {
         Ok(results)
     }
 
+    /// Look up a message's remoteUID and folder path by message ID.
+    ///
+    /// Used by the priority body queue drain to map message IDs → IMAP UIDs + folder paths.
+    /// Returns `Some((remote_uid, folder_path))` if the message exists and has a valid UID.
+    /// Returns `None` if the message was deleted or has no IMAP UID (uid = 0).
+    pub async fn find_message_uid_and_folder(
+        &self,
+        message_id: &str,
+    ) -> Result<Option<(u32, String)>, SyncError> {
+        let message_id = message_id.to_string();
+        let reader = self.reader.as_ref().unwrap_or(&self.writer);
+
+        let result = reader
+            .call(move |db| -> Result<Option<(u32, String)>, rusqlite::Error> {
+                // Join Message with Folder to get the folder path for IMAP SELECT
+                let sql = "
+                    SELECT Message.remoteUID, Folder.path
+                    FROM Message
+                    INNER JOIN Folder ON Folder.id = Message.remoteFolderId
+                    WHERE Message.id = ?1
+                      AND Message.remoteUID > 0
+                    LIMIT 1
+                ";
+                let mut stmt = db.prepare_cached(sql)?;
+                let mut rows = stmt.query(rusqlite::params![message_id])?;
+                if let Some(row) = rows.next()? {
+                    let uid: u32 = row.get(0)?;
+                    let folder_path: String = row.get(1)?;
+                    Ok(Some((uid, folder_path)))
+                } else {
+                    Ok(None)
+                }
+            })
+            .await
+            .map_err(|e| SyncError::Database(e.to_string()))?;
+
+        Ok(result)
+    }
+
     /// Clear `remoteUID` for all messages in a folder.
     ///
     /// Called when UIDVALIDITY changes (RFC 4549 full re-sync). Setting `remoteUID = 0`
