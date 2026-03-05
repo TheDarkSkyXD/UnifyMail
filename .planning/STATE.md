@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 08-02-PLAN.md (SmtpSender TLS/STARTTLS/clear, XOAUTH2/password auth, 30s timeout, MIME builder 5 variants)
-last_updated: "2026-03-05T01:39:14.671Z"
+stopped_at: Completed 08-03-PLAN.md (IDLE foreground worker, task interrupt relay pattern, queue-task stdin routing)
+last_updated: "2026-03-05T01:59:13.087Z"
 last_activity: 2026-03-04 — Completed 07-06-PLAN.md (body caching age policy, background_sync loop with 60s/300s backoff, WakeWorkers/NeedBodies stdin dispatch via mpsc channels, MailStore body query helpers, stub replacement)
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 ---
@@ -196,6 +196,9 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 08-01]: find_local_tasks uses store.writer not reader — Task writes and reads tightly coupled during execution; using writer avoids WAL visibility lag for tasks just written
 - [Phase 08-02]: SmtpSender is stateless — transport instances created fresh per send to avoid connection state issues
 - [Phase 08-02]: lettre auth error detection uses string matching on '535' and 'authentication' — SmtpResult doesn't expose structured response codes as enum in 0.11
+- [Phase 08-03]: into_inner() added to ImapSession: idle() consumes Session<T>, foreground worker needs raw inner session; into_inner() provides clean ownership transfer
+- [Phase 08-03]: fg_wake_tx cloned before stdin_loop move: mpsc::Sender is cheaply clonable, both senders deliver to same wake_rx; foreground and stdin both signal background sync
+- [Phase 08-03]: IDLE relay pattern: relay task owns task_rx and StopSource; dropping StopSource triggers ManualInterrupt; relay returns (task_rx, maybe_task) after idle_future completes
 
 ### Pending Todos
 
@@ -209,8 +212,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-05T01:39:14.669Z
-Stopped at: Completed 08-02-PLAN.md (SmtpSender TLS/STARTTLS/clear, XOAUTH2/password auth, 30s timeout, MIME builder 5 variants)
+Last session: 2026-03-05T01:59:13.084Z
+Stopped at: Completed 08-03-PLAN.md (IDLE foreground worker, task interrupt relay pattern, queue-task stdin routing)
 Resume file: None
 
 ---
