@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-03-05T00:39:47.793Z"
+stopped_at: Completed 08-01-PLAN.md (TaskKind enum, execute_task, task_store helpers, crash recovery, lettre dependency)
+last_updated: "2026-03-05T01:17:28.543Z"
 last_activity: 2026-03-04 — Completed 07-06-PLAN.md (body caching age policy, background_sync loop with 60s/300s backoff, WakeWorkers/NeedBodies stdin dispatch via mpsc channels, MailStore body query helpers, stub replacement)
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 16
+  completed_plans: 13
 ---
 
 ---
@@ -192,6 +192,8 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 07-07]: Priority body_queue drain deferred to Phase 8 — message-ID-to-UID mapping requires find_all helper not yet available; background body prefetch via find_messages_needing_bodies() works fully
 - [Phase 07-imap-background-sync-worker]: reqwest form feature needed explicitly for .form() method; emit_secrets_updated() uses DeltaStreamItem factory; Windows MSYS2 PATH must include C:\msys64\mingw64\bin for cargo test
 - [Phase 07-06]: background_sync stub replaced with full function; stdin channels: try_send for WakeWorkers/NeedBodies (non-blocking); Account has no Clone — Arc::new(account) consumes owned value
+- [Phase 08-01]: execute_task _delta param uses underscore prefix (stub for Plan 03) — store.save() already emits persist deltas; Plan 03 will add direct delta emissions
+- [Phase 08-01]: find_local_tasks uses store.writer not reader — Task writes and reads tightly coupled during execution; using writer avoids WAL visibility lag for tasks just written
 
 ### Pending Todos
 
@@ -205,9 +207,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-05T00:39:47.788Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-foreground-idle-and-task-execution/08-CONTEXT.md
+Last session: 2026-03-05T01:17:28.541Z
+Stopped at: Completed 08-01-PLAN.md (TaskKind enum, execute_task, task_store helpers, crash recovery, lettre dependency)
+Resume file: None
 
 ---
 *Last updated: 2026-03-04 after v1.0 milestone completion*

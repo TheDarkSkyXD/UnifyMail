@@ -176,7 +176,7 @@ pub async fn execute_task(
     task: &mut Task,
     task_kind: &TaskKind,
     store: &MailStore,
-    delta: &DeltaStream,
+    _delta: &DeltaStream,
 ) -> Result<(), SyncError> {
     // ---- Phase A: local — mark as remote, persist, emit delta ----
     task.status = "remote".to_string();
@@ -413,7 +413,8 @@ mod tests {
             extra: Default::default(),
         };
 
-        // execute_task uses store.save() internally which emits to the store's delta channel
+        // execute_task uses store.save() internally which emits to the store's delta channel.
+        // _delta param is a stub; Plan 03 will use it for additional direct delta emissions.
         execute_task(&mut task, &kind, &store, &*delta_arc).await.unwrap();
 
         assert_eq!(task.status, "complete");
