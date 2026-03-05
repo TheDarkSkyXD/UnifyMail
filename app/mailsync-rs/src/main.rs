@@ -31,6 +31,7 @@ mod imap;
 mod modes;
 mod models;
 mod oauth2;
+mod smtp;
 mod stdin_loop;
 mod store;
 mod tasks;
