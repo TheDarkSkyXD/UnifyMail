@@ -19,6 +19,8 @@
 // flush its buffer before the process terminates.
 
 use crate::delta::DeltaStream;
+use crate::models::task_model::Task;
+use crate::tasks::{parse_task_kind, TaskKind};
 use std::sync::Arc;
 use tokio::io::{BufReader, Lines};
 use tokio::sync::mpsc;
@@ -133,16 +135,54 @@ fn parse_command(line: &str) -> Option<StdinCommand> {
 /// Dispatches a parsed command to the appropriate handler.
 ///
 /// WakeWorkers and NeedBodies are forwarded to the background sync worker via mpsc channels.
-/// All other handlers remain as stubs (Phase 8 implements queue-task, etc.).
+/// QueueTask is parsed and forwarded to the foreground worker via task_tx.
 fn dispatch_command(
     command: StdinCommand,
     _delta: &Arc<DeltaStream>,
     wake_tx: &mpsc::Sender<()>,
     body_queue_tx: &mpsc::Sender<Vec<String>>,
+    task_tx: &mpsc::Sender<(Task, TaskKind)>,
 ) {
     match command {
         StdinCommand::QueueTask { task_json } => {
-            tracing::debug!("QueueTask received (stub): {task_json}");
+            // Parse the task JSON into a Task model and TaskKind enum
+            match parse_task_kind(&task_json) {
+                Ok(task_kind) => {
+                    // Build Task model from the JSON fields for DB persistence
+                    let task = Task {
+                        id: task_json
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        account_id: task_json
+                            .get("aid")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        version: task_json
+                            .get("v")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0),
+                        class_name: task_json
+                            .get("__cls")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        status: "local".to_string(),
+                        should_cancel: None,
+                        error: None,
+                    };
+                    // Non-blocking send: log a warning if the channel is full or closed.
+                    // With capacity 32, this should not drop tasks under normal load.
+                    if task_tx.try_send((task, task_kind)).is_err() {
+                        tracing::warn!("QueueTask: task channel full or closed — task dropped");
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("QueueTask: failed to parse task JSON: {e}. JSON: {task_json}");
+                }
+            }
         }
         StdinCommand::CancelTask { task_id } => {
             tracing::debug!("CancelTask received (stub): taskId={task_id}");
@@ -191,8 +231,8 @@ fn dispatch_command(
 /// - On error: log, continue
 /// - Orphan mode: log EOF but don't signal shutdown
 ///
-/// `wake_tx` and `body_queue_tx` are forwarded to `dispatch_command` for
-/// WakeWorkers and NeedBodies commands respectively.
+/// `wake_tx`, `body_queue_tx`, and `task_tx` are forwarded to `dispatch_command` for
+/// WakeWorkers, NeedBodies, and QueueTask commands respectively.
 ///
 /// Per the CRITICAL note above: do NOT create a new BufReader inside this fn.
 /// The Lines iterator already has the correct read position after the handshake.
@@ -203,6 +243,7 @@ pub async fn stdin_loop(
     mut lines: Lines<BufReader<tokio::io::Stdin>>,
     wake_tx: mpsc::Sender<()>,
     body_queue_tx: mpsc::Sender<Vec<String>>,
+    task_tx: mpsc::Sender<(Task, TaskKind)>,
 ) {
     loop {
         match lines.next_line().await {
@@ -215,7 +256,7 @@ pub async fn stdin_loop(
 
                 // Parse and dispatch the command
                 if let Some(command) = parse_command(&line) {
-                    dispatch_command(command, &delta, &wake_tx, &body_queue_tx);
+                    dispatch_command(command, &delta, &wake_tx, &body_queue_tx, &task_tx);
                 }
                 // If parse_command returns None: already logged, continue
             }
