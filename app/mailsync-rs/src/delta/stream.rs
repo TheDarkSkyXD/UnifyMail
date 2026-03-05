@@ -40,4 +40,24 @@ impl DeltaStream {
     pub fn emit_process_state(&self, account_id: &str, connection_error: bool) {
         self.emit(DeltaStreamItem::process_state(account_id, connection_error));
     }
+
+    /// Emits a ProcessState delta with sync progress information.
+    ///
+    /// Used by the background sync worker to report per-folder sync progress to
+    /// Electron's OnlineStatusStore. Progress is a value from 0.0 to 1.0.
+    pub fn emit_sync_progress(&self, account_id: &str, folder_path: &str, progress: f32) {
+        let item = DeltaStreamItem::new(
+            "persist",
+            "ProcessState",
+            vec![serde_json::json!({
+                "id": account_id,
+                "accountId": account_id,
+                "syncProgress": {
+                    "folderPath": folder_path,
+                    "progress": progress,
+                },
+            })],
+        );
+        self.emit(item);
+    }
 }

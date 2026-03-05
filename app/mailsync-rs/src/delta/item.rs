@@ -76,6 +76,37 @@ impl DeltaStreamItem {
         Self::new("persist", "ProcessState", vec![model_json])
     }
 
+    /// Creates a ProcessAccountSecretsUpdated delta for OAuth token rotation.
+    ///
+    /// Emitted when a refresh token changes so Electron persists the new credentials.
+    /// Electron's `mailsync-bridge.ts` handles this delta by updating the account's
+    /// stored OAuth tokens in the keychain/settings.
+    ///
+    /// # JSON shape
+    /// ```json
+    /// { "type": "persist", "modelClass": "ProcessAccountSecretsUpdated",
+    ///   "modelJSONs": [{
+    ///     "accountId": "<id>", "id": "<id>",
+    ///     "accessToken": "<token>", "refreshToken": "<token>",
+    ///     "expiry": <unix_timestamp>
+    ///   }] }
+    /// ```
+    pub fn account_secrets_updated(
+        account_id: &str,
+        access_token: &str,
+        refresh_token: &str,
+        expiry_unix: i64,
+    ) -> Self {
+        let json = serde_json::json!({
+            "accountId": account_id,
+            "id": account_id,
+            "accessToken": access_token,
+            "refreshToken": refresh_token,
+            "expiry": expiry_unix,
+        });
+        Self::new("persist", "ProcessAccountSecretsUpdated", vec![json])
+    }
+
     /// Attempts to coalesce another DeltaStreamItem into this one.
     ///
     /// Returns true if merge was possible (same delta_type AND same model_class).

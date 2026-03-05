@@ -579,6 +579,123 @@ impl MailStore {
     }
 
     // ========================================================================
+    // IMAP body caching helpers
+    // ========================================================================
+
+    /// Find messages in a folder that need body fetching.
+    ///
+    /// Returns `(message_id, remote_uid)` pairs for messages where:
+    /// - `accountId` matches
+    /// - `remoteFolderId` matches
+    /// - `date > cutoff_timestamp` OR `draft = 1` (always include drafts)
+    /// - `remoteUID > 0` (message is synced, has a real IMAP UID)
+    /// - No corresponding `MessageBody` record exists
+    ///
+    /// Results are ordered by `date DESC` (newest first), limited to `limit` rows.
+    ///
+    /// SQL matches C++ SyncWorker.cpp:1028 exactly.
+    pub async fn find_messages_needing_bodies(
+        &self,
+        account_id: &str,
+        folder_id: &str,
+        cutoff_timestamp: i64,
+        limit: i64,
+    ) -> Result<Vec<(String, u32)>, SyncError> {
+        let account_id = account_id.to_string();
+        let folder_id = folder_id.to_string();
+
+        let reader = self.reader.as_ref().unwrap_or(&self.writer);
+
+        let results = reader
+            .call(move |db| -> Result<Vec<(String, u32)>, rusqlite::Error> {
+                let sql = "
+                    SELECT Message.id, Message.remoteUID
+                    FROM Message
+                    LEFT JOIN MessageBody ON MessageBody.id = Message.id
+                    WHERE Message.accountId = ?1
+                      AND Message.remoteFolderId = ?2
+                      AND (Message.date > ?3 OR Message.draft = 1)
+                      AND Message.remoteUID > 0
+                      AND MessageBody.id IS NULL
+                    ORDER BY Message.date DESC
+                    LIMIT ?4
+                ";
+                let mut stmt = db.prepare_cached(sql)?;
+                let rows = stmt.query_map(
+                    rusqlite::params![account_id, folder_id, cutoff_timestamp, limit],
+                    |row| {
+                        let id: String = row.get(0)?;
+                        let uid: u32 = row.get(1)?;
+                        Ok((id, uid))
+                    },
+                )?;
+
+                let mut result = Vec::new();
+                for row in rows {
+                    result.push(row?);
+                }
+                Ok(result)
+            })
+            .await
+            .map_err(|e| SyncError::Database(e.to_string()))?;
+
+        Ok(results)
+    }
+
+    /// Clear `remoteUID` for all messages in a folder.
+    ///
+    /// Called when UIDVALIDITY changes (RFC 4549 full re-sync). Setting `remoteUID = 0`
+    /// marks all messages as "unlinked" from their IMAP UIDs. The next sync cycle will
+    /// re-assign UIDs by matching headers and re-download any missing bodies.
+    pub async fn unlink_messages_in_folder(
+        &self,
+        account_id: &str,
+        folder_id: &str,
+    ) -> Result<(), SyncError> {
+        let account_id = account_id.to_string();
+        let folder_id = folder_id.to_string();
+
+        self.writer
+            .call(move |db| -> Result<(), rusqlite::Error> {
+                db.execute(
+                    "UPDATE Message SET remoteUID = 0 WHERE accountId = ?1 AND remoteFolderId = ?2",
+                    rusqlite::params![account_id, folder_id],
+                )?;
+                Ok(())
+            })
+            .await
+            .map_err(|e| SyncError::Database(e.to_string()))
+    }
+
+    /// Persist a message body (BODY.PEEK[] bytes) into the MessageBody table.
+    ///
+    /// Inserts or replaces the body and snippet for the given message ID.
+    /// The `value` is the raw UTF-8 body string; `snippet` is a short plain-text preview.
+    /// Sets `fetchedAt` to the current UTC datetime to track body cache age.
+    pub async fn save_body(
+        &self,
+        message_id: String,
+        value: String,
+        snippet: String,
+    ) -> Result<(), SyncError> {
+        self.writer
+            .call(move |db| -> Result<(), rusqlite::Error> {
+                db.execute(
+                    "INSERT OR REPLACE INTO MessageBody (id, value, fetchedAt) VALUES (?1, ?2, datetime('now'))",
+                    rusqlite::params![message_id, value],
+                )?;
+                // Update snippet on the Message row
+                db.execute(
+                    "UPDATE Message SET snippet = ?1 WHERE id = ?2",
+                    rusqlite::params![snippet, message_id],
+                )?;
+                Ok(())
+            })
+            .await
+            .map_err(|e| SyncError::Database(e.to_string()))
+    }
+
+    // ========================================================================
     // Transaction support
     // ========================================================================
 

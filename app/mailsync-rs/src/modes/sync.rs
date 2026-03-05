@@ -1,13 +1,13 @@
 // Sync mode — the main operating mode for mailsync-rs.
 //
 // Per 05-RESEARCH.md Pattern 8:
-// - Three independent tokio tasks: stdin_loop, delta_flush_task, background_sync_stub
+// - Three independent tokio tasks: stdin_loop, delta_flush_task, background_sync
 // - Handshake is done in main.rs before calling run()
 // - After run() starts: emit ProcessState delta to tell Electron the account is online
 // - Sync mode loops until stdin closes (exit 141)
 //
-// Phase 5: All IMAP/SMTP work is stubbed. The account appears "online" to Electron
-// but no actual mail syncing occurs. Commands are accepted and logged at debug level.
+// Phase 7: background_sync_stub replaced with real background_sync function.
+// Stdin commands WakeWorkers and NeedBodies are forwarded via mpsc channels.
 //
 // EXIT PROTOCOL:
 // 1. stdin_loop detects EOF -> sends shutdown broadcast signal -> returns
@@ -22,6 +22,8 @@ use crate::account::{Account, Identity};
 use crate::cli::Args;
 use crate::delta::{delta_flush_task, DeltaStream, DeltaStreamItem};
 use crate::error::SyncError;
+use crate::imap::sync_worker::background_sync;
+use crate::oauth2::TokenManager;
 use crate::stdin_loop::stdin_loop;
 use crate::store::mail_store::MailStore;
 use std::sync::Arc;
@@ -71,6 +73,17 @@ pub async fn run(
         "ProcessState delta queued — account will appear online to Electron after flush"
     );
 
+    // Create mpsc channels for background_sync communication from stdin commands:
+    // - wake_tx/wake_rx: WakeWorkers command resets backoff and re-accelerates sync
+    // - body_queue_tx/body_queue_rx: NeedBodies command inserts IDs at front of BodyQueue
+    let (wake_tx, wake_rx) = mpsc::channel::<()>(32);
+    let (body_queue_tx, body_queue_rx) = mpsc::channel::<Vec<String>>(32);
+
+    // Create shared TokenManager for OAuth2 token caching and refresh.
+    // Wrapped in Arc<Mutex<>> so the background_sync task and future IDLE session
+    // (Phase 8) don't race on concurrent refresh requests.
+    let token_manager = Arc::new(tokio::sync::Mutex::new(TokenManager::new()));
+
     // Task 1: stdin_loop — reads commands from the shared stdin reader, signals shutdown on EOF
     // The Lines iterator is passed directly so stdin_loop continues reading from where
     // the handshake left off (no data lost from multiple BufReader instances).
@@ -78,24 +91,36 @@ pub async fn run(
     let stdin_delta = Arc::clone(&delta);
     let orphan = args.orphan;
     let stdin_handle = tokio::spawn(async move {
-        stdin_loop(stdin_shutdown_tx, stdin_delta, orphan, lines).await;
+        stdin_loop(stdin_shutdown_tx, stdin_delta, orphan, lines, wake_tx, body_queue_tx).await;
     });
 
     // Task 2: delta_flush_task — owns stdout, flushes every 500ms.
     // We keep the JoinHandle so we can await it after the delta channel closes.
     let flush_handle = tokio::spawn(delta_flush_task(delta_rx));
 
-    // Task 3: background sync stub — waits for shutdown signal, does nothing
-    // Phase 7+ will replace this with real IMAP sync work
+    // Task 3: background_sync — real IMAP sync worker (replaces background_sync_stub).
+    // Connects to IMAP, syncs all folders with backoff scheduling, and processes
+    // body fetch requests from stdin commands (need-bodies, wake-workers).
     let sync_shutdown_rx = shutdown_tx.subscribe();
-    let sync_handle = tokio::spawn(background_sync_stub(sync_shutdown_rx));
+    let sync_account = Arc::new(account);
+    let sync_store = Arc::clone(&_store);
+    let sync_delta = Arc::clone(&delta);
+    let sync_handle = tokio::spawn(background_sync(
+        sync_account,
+        sync_store,
+        sync_delta,
+        token_manager,
+        sync_shutdown_rx,
+        wake_rx,
+        body_queue_rx,
+    ));
 
     // Wait for stdin_loop to complete (it returns after signaling shutdown on EOF)
     stdin_handle.await.ok();
 
     tracing::info!("stdin_loop completed — initiating graceful shutdown");
 
-    // Cancel background sync stub (it's just waiting on shutdown signal)
+    // Cancel background sync worker (shutdown broadcast was already sent)
     sync_handle.abort();
 
     // Drop the DeltaStream Arc to close the mpsc channel sender.
@@ -114,12 +139,3 @@ pub async fn run(
     std::process::exit(141);
 }
 
-/// Placeholder for Phase 7+ IMAP sync workers.
-///
-/// In Phase 5, this task simply waits for the shutdown broadcast signal.
-/// The real IMAP sync loop will be implemented in Phase 7 (IMAP Engine).
-async fn background_sync_stub(mut shutdown_rx: broadcast::Receiver<()>) {
-    tracing::debug!("background_sync_stub started — waiting for shutdown");
-    let _ = shutdown_rx.recv().await;
-    tracing::debug!("background_sync_stub received shutdown signal");
-}

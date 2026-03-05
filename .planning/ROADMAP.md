@@ -29,7 +29,7 @@ Replace the `app/mailsync/` C++ sync engine (~16,200 LOC, 50 source files) with 
 
 - [x] **Phase 5: Core Infrastructure and IPC Protocol** - Rust binary skeleton with correct stdin/stdout protocol, all process modes, SQLite schema creation, and delta emission pipeline (completed 2026-03-04)
 - [ ] **Phase 6: SQLite Layer and Model Infrastructure** - Complete MailStore with all data models, WAL mode, single-writer pattern, and schema migrations matching the C++ baseline
-- [ ] **Phase 7: IMAP Background Sync Worker** - Full IMAP sync against live accounts: folder enumeration, CONDSTORE/UID-range incremental sync, body caching, OAuth2, and Gmail-specific behaviors
+- [x] **Phase 7: IMAP Background Sync Worker** - Full IMAP sync against live accounts: folder enumeration, CONDSTORE/UID-range incremental sync, body caching, OAuth2, and Gmail-specific behaviors (completed 2026-03-04)
 - [ ] **Phase 8: Foreground IDLE and Task Execution** - IMAP IDLE monitoring, task processor for all 13+ task types, SMTP send via lettre, and crash recovery
 - [ ] **Phase 9: CalDAV, CardDAV, and Metadata Workers** - Calendar and contact sync via libdav, Gmail Google People API contacts, and metadata HTTP long-polling worker
 - [ ] **Phase 10: Cross-Platform Builds, Packaging, and C++ Deletion** - Verified binaries for all 5 targets, asar unpacking, binary size validation, and complete C++ source deletion
@@ -82,7 +82,7 @@ Plans:
   5. Gmail accounts show only INBOX, All Mail, Trash, and Spam folders; X-GM-LABELS, X-GM-MSGID, and X-GM-THRID extension data are parsed and stored on message records
   6. OAuth2 tokens are checked for expiry within a 5-minute buffer before every IMAP authenticate; expired tokens refresh automatically and the updated credentials emit a `ProcessAccountSecretsUpdated` delta to the UI
   7. All IMAP network operations complete within their per-operation timeout or resolve with a structured error classifying the failure as auth, TLS, network, or server error
-**Plans**: 6 plans
+**Plans**: 7 plans
 
 Plans:
 - [ ] 07-01-PLAN.md — Cargo deps, imap/oauth2 module scaffold, SyncError classification methods
@@ -91,6 +91,7 @@ Plans:
 - [ ] 07-04-PLAN.md — Stable message ID (SHA-256+Base58), Fetch-to-Message conversion, Gmail extensions, threading, BodyQueue
 - [ ] 07-05-PLAN.md — CONDSTORE incremental sync, UID-range fallback, UIDVALIDITY reset, folder priority, timeouts
 - [ ] 07-06-PLAN.md — Body caching with age policy, sync loop with backoff/wake, stdin dispatch wiring, stub replacement
+- [ ] 07-07-PLAN.md — Gap closure: wire sync algorithms into run_sync_cycle_and_bodies() live loop
 
 ### Phase 8: Foreground IDLE and Task Execution
 **Goal**: Users can send email, move messages, and change flags from the Electron UI with changes reflected immediately — the foreground IDLE worker monitors for new mail in real time and executes all task types reliably with crash recovery
@@ -156,7 +157,7 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 (can overlap with 7-8) ->
 | 4.2 validateAccount Integration Verification | v1.0 | 1/1 | Complete | 2026-03-04 |
 | 5. Core Infrastructure and IPC Protocol | 2/2 | Complete   | 2026-03-04 | - |
 | 6. SQLite Layer and Model Infrastructure | 2/3 | In Progress|  | - |
-| 7. IMAP Background Sync Worker | v2.0 | 0/6 | Not started | - |
+| 7. IMAP Background Sync Worker | 7/7 | Complete   | 2026-03-05 | - |
 | 8. Foreground IDLE and Task Execution | v2.0 | 0/? | Not started | - |
 | 9. CalDAV, CardDAV, and Metadata Workers | v2.0 | 0/? | Not started | - |
 | 10. Cross-Platform Builds, Packaging, and C++ Deletion | v2.0 | 0/? | Not started | - |

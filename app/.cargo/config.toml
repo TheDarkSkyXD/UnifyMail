@@ -1,0 +1,28 @@
+# Workspace-level Cargo configuration.
+#
+# Windows MSYS2/MinGW toolchain configuration.
+#
+# This configuration handles several Windows MSYS2/MinGW-specific build issues:
+#
+# 1. dlltool/gcc path: Build scripts need gcc.exe and dlltool.exe on PATH.
+#    MSYS2 installs them to C:\msys64\mingw64\bin.
+#
+# 2. nanosleep64: aws-lc-sys references nanosleep64 which is not exported by
+#    MSYS2 mingw pthread. We provide a stub archive at C:/msys64/tmp/.
+#
+# 3. getrandom 0.3 raw-dylib: Forces windows_legacy backend (RtlGenRandom)
+#    to avoid raw-dylib which requires dlltool at compile time.
+#
+# This affects only x86_64-pc-windows-gnu (MinGW GCC toolchain).
+# Release builds on CI use x86_64-pc-windows-msvc and are unaffected.
+
+[target.x86_64-pc-windows-gnu]
+linker = "C:/msys64/mingw64/bin/gcc.exe"
+ar = "C:/msys64/mingw64/bin/ar.exe"
+rustflags = [
+    "-L", "C:/msys64/tmp",
+    "-l", "static=nanosleep64_stub",
+    "-C", "link-arg=-Wl,--allow-multiple-definition",
+    "--cfg", "getrandom_backend=\"windows_legacy\"",
+    "-C", "link-arg=-lucrt",
+]

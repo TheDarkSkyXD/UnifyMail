@@ -21,6 +21,7 @@
 use crate::delta::DeltaStream;
 use std::sync::Arc;
 use tokio::io::{BufReader, Lines};
+use tokio::sync::mpsc;
 
 /// All C++ stdin command types from main.cpp runListenOnMainThread().
 ///
@@ -131,9 +132,14 @@ fn parse_command(line: &str) -> Option<StdinCommand> {
 
 /// Dispatches a parsed command to the appropriate handler.
 ///
-/// All handlers in Phase 5 are stubs: they log at debug level and return.
-/// Electron UI does not expect responses for stub commands.
-fn dispatch_command(command: StdinCommand, _delta: &Arc<DeltaStream>) {
+/// WakeWorkers and NeedBodies are forwarded to the background sync worker via mpsc channels.
+/// All other handlers remain as stubs (Phase 8 implements queue-task, etc.).
+fn dispatch_command(
+    command: StdinCommand,
+    _delta: &Arc<DeltaStream>,
+    wake_tx: &mpsc::Sender<()>,
+    body_queue_tx: &mpsc::Sender<Vec<String>>,
+) {
     match command {
         StdinCommand::QueueTask { task_json } => {
             tracing::debug!("QueueTask received (stub): {task_json}");
@@ -142,10 +148,17 @@ fn dispatch_command(command: StdinCommand, _delta: &Arc<DeltaStream>) {
             tracing::debug!("CancelTask received (stub): taskId={task_id}");
         }
         StdinCommand::WakeWorkers => {
-            tracing::debug!("WakeWorkers received (stub)");
+            tracing::debug!("WakeWorkers received — sending wake signal to sync worker");
+            // Non-blocking send: if channel is full, the sync worker already has a pending wake
+            if wake_tx.try_send(()).is_err() {
+                tracing::debug!("WakeWorkers: wake channel full or closed, signal dropped");
+            }
         }
         StdinCommand::NeedBodies { message_ids } => {
-            tracing::debug!("NeedBodies received (stub): {} message ids", message_ids.len());
+            tracing::debug!("NeedBodies received: {} message ids — forwarding to body queue", message_ids.len());
+            if body_queue_tx.try_send(message_ids).is_err() {
+                tracing::warn!("NeedBodies: body_queue channel full or closed, request dropped");
+            }
         }
         StdinCommand::SyncCalendar => {
             tracing::debug!("SyncCalendar received (stub)");
@@ -178,6 +191,9 @@ fn dispatch_command(command: StdinCommand, _delta: &Arc<DeltaStream>) {
 /// - On error: log, continue
 /// - Orphan mode: log EOF but don't signal shutdown
 ///
+/// `wake_tx` and `body_queue_tx` are forwarded to `dispatch_command` for
+/// WakeWorkers and NeedBodies commands respectively.
+///
 /// Per the CRITICAL note above: do NOT create a new BufReader inside this fn.
 /// The Lines iterator already has the correct read position after the handshake.
 pub async fn stdin_loop(
@@ -185,6 +201,8 @@ pub async fn stdin_loop(
     delta: Arc<DeltaStream>,
     orphan: bool,
     mut lines: Lines<BufReader<tokio::io::Stdin>>,
+    wake_tx: mpsc::Sender<()>,
+    body_queue_tx: mpsc::Sender<Vec<String>>,
 ) {
     loop {
         match lines.next_line().await {
@@ -197,7 +215,7 @@ pub async fn stdin_loop(
 
                 // Parse and dispatch the command
                 if let Some(command) = parse_command(&line) {
-                    dispatch_command(command, &delta);
+                    dispatch_command(command, &delta, &wake_tx, &body_queue_tx);
                 }
                 // If parse_command returns None: already logged, continue
             }

@@ -38,6 +38,22 @@ thiserror = "2"
 # Ordered map for delta coalesce buffer
 indexmap = "2"
 
+# Phase 7: IMAP sync worker
+async-imap = { version = "0.11", features = ["runtime-tokio"], default-features = false }
+imap-proto = "0.16"
+tokio-rustls = "0.26"
+rustls-platform-verifier = "0.6"
+mail-parser = "0.11"
+ammonia = "4"
+oauth2 = { version = "5", features = ["reqwest"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-native-certs", "json", "form"] }
+sha2 = "0.10"
+bs58 = "0.5"
+rfc2047-decoder = "1"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+base64 = "0.22"
+tokio-stream = "0.1"
+
 [dev-dependencies]
 tempfile = "3"
 rusqlite = { version = "0.37", features = ["bundled"] }
