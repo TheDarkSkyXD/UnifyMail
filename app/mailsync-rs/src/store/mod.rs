@@ -7,6 +7,7 @@
 
 pub mod mail_store;
 pub mod migrations;
+pub mod task_store;
 pub mod transaction;
 
 pub use mail_store::{MailStore, SqlParam};

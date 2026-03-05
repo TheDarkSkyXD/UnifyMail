@@ -33,6 +33,7 @@ mod models;
 mod oauth2;
 mod stdin_loop;
 mod store;
+mod tasks;
 
 use clap::Parser;
 use cli::{Args, Mode};
