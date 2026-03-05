@@ -8,22 +8,17 @@
 // Plans 03 and 04 wire execute_task into the IDLE loop and fill in remote phase impls.
 // Phase 9 will add SyncbackEventTask remote implementation.
 
-#![allow(dead_code)]
-#![allow(unused_imports)]
-
 pub mod recovery;
 
 use serde::{Deserialize, Serialize};
 
 use crate::account::Account;
-use crate::delta::item::DeltaStreamItem;
 use crate::delta::stream::DeltaStream;
 use crate::error::SyncError;
 use crate::imap::task_executor::{execute_remote_phase, ImapTaskOps};
 use crate::models::task_model::Task;
 use crate::oauth2::TokenManager;
 use crate::store::mail_store::MailStore;
-use crate::store::task_store;
 
 // ============================================================================
 // TaskKind — serde-tagged enum for all 8 C++ task type names

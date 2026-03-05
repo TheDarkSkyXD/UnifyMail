@@ -6,7 +6,8 @@
 //   - Re-issues IDLE every 25 minutes to prevent 29-minute server timeout (IDLE-01)
 //   - Interrupts IDLE immediately when a task arrives via mpsc channel (IDLE-02)
 //   - Calls idle.done().await unconditionally after every IDLE exit (Pitfall 1)
-//   - Executes tasks between IDLE cycles, then drains any queued tasks
+//   - Executes tasks between IDLE cycles using real ImapSession (via from_inner)
+//   - Drains any queued tasks before re-entering IDLE
 //   - Signals background sync when new mail is detected via wake_tx
 //   - Reconnects on connection errors with exponential backoff (max 3 retries then 30s sleep)
 //
@@ -30,13 +31,13 @@ use crate::tasks::{execute_task, TaskKind};
 
 /// Connects and authenticates a fresh IMAP session for the foreground worker.
 ///
-/// Obtains an OAuth2 token (if applicable) via the shared TokenManager.
-/// Returns the inner `async_imap::Session` directly so the caller can call `.idle()`.
+/// Returns the full `ImapSession` (with capabilities and is_gmail) so the caller
+/// can preserve metadata when converting to raw session for IDLE and back via from_inner().
 async fn connect_session(
     account: &Account,
     token_manager: &Arc<Mutex<TokenManager>>,
     delta: &Arc<DeltaStream>,
-) -> Result<async_imap::Session<ImapTlsStream>, SyncError> {
+) -> Result<ImapSession, SyncError> {
     let pre_auth = ImapSession::connect(account).await?;
 
     // Get OAuth2 token if this account uses OAuth2
@@ -55,7 +56,7 @@ async fn connect_session(
         pre_auth.authenticate(account, None).await?
     };
 
-    Ok(session.into_inner())
+    Ok(session)
 }
 
 /// Foreground IDLE worker — runs concurrently with background_sync.
@@ -110,7 +111,8 @@ pub async fn run_foreground_worker(
     }
 
     // ---- Connect the foreground IMAP session ----
-    let mut raw_session = match connect_session(&account, &token_manager, &delta).await {
+    // Preserve capabilities and is_gmail for use with from_inner() after IDLE cycles.
+    let imap_session = match connect_session(&account, &token_manager, &delta).await {
         Ok(s) => s,
         Err(e) => {
             tracing::error!(
@@ -121,6 +123,13 @@ pub async fn run_foreground_worker(
             return;
         }
     };
+
+    // Extract session metadata before converting to raw for IDLE.
+    // These are updated on each reconnect so the from_inner() calls below
+    // always use the capabilities of the currently active connection.
+    let mut capabilities = imap_session.capabilities.clone();
+    let mut is_gmail = imap_session.is_gmail();
+    let mut raw_session = imap_session.into_inner();
 
     // SELECT INBOX for the foreground session
     if let Err(e) = raw_session.select("INBOX").await {
@@ -161,8 +170,12 @@ pub async fn run_foreground_worker(
                 Ok(s) => raw_session = s,
                 Err(_) => {
                     // Session unrecoverable — reconnect from scratch
-                    raw_session = match reconnect(&account, &token_manager, &delta).await {
-                        Some(s) => s,
+                    match reconnect(&account, &token_manager, &delta).await {
+                        Some((s, caps, gmail)) => {
+                            raw_session = s;
+                            capabilities = caps;
+                            is_gmail = gmail;
+                        }
                         None => break,
                     };
                 }
@@ -211,10 +224,23 @@ pub async fn run_foreground_worker(
                     account_id = %account.id,
                     "Foreground worker: idle.done() failed: {e} — reconnecting"
                 );
-                raw_session = match reconnect(&account, &token_manager, &delta).await {
-                    Some(s) => s,
+                match reconnect(&account, &token_manager, &delta).await {
+                    Some((s, caps, gmail)) => {
+                        raw_session = s;
+                        capabilities = caps;
+                        is_gmail = gmail;
+                        // Re-SELECT INBOX after reconnect
+                        if let Err(e) = raw_session.select("INBOX").await {
+                            tracing::error!(
+                                account_id = %account.id,
+                                "Foreground worker: failed to SELECT INBOX after reconnect: {e}"
+                            );
+                            break;
+                        }
+                    }
                     None => break,
                 };
+                continue;
             }
         }
 
@@ -250,64 +276,82 @@ pub async fn run_foreground_worker(
                     account_id = %account.id,
                     "IDLE error: {e} — reconnecting"
                 );
-                raw_session = match reconnect(&account, &token_manager, &delta).await {
-                    Some(s) => s,
+                match reconnect(&account, &token_manager, &delta).await {
+                    Some((s, caps, gmail)) => {
+                        raw_session = s;
+                        capabilities = caps;
+                        is_gmail = gmail;
+                        // Re-SELECT INBOX after reconnect
+                        if let Err(e) = raw_session.select("INBOX").await {
+                            tracing::error!(
+                                account_id = %account.id,
+                                "Foreground worker: failed to SELECT INBOX after reconnect: {e}"
+                            );
+                            break;
+                        }
+                    }
                     None => break,
-                };
-                // Re-SELECT INBOX after reconnect
-                if let Err(e) = raw_session.select("INBOX").await {
-                    tracing::error!(
-                        account_id = %account.id,
-                        "Foreground worker: failed to SELECT INBOX after reconnect: {e}"
-                    );
-                    break;
                 }
                 continue;
             }
         }
 
-        // Process the task received during IDLE (if any)
-        // The foreground worker re-uses raw_session for task execution by wrapping it
-        // in an ImapSession adapter. After task execution, the session is re-SELECTed
-        // on INBOX before re-entering IDLE.
+        // Execute the task received during IDLE (if any) and drain all queued tasks.
         //
-        // Note: raw_session is an async_imap::Session which doesn't implement ImapTaskOps.
-        // Tasks are executed with None session to skip direct IMAP ops for now — the
-        // execute_remote_phase wiring in tasks/mod.rs handles this via ImapSession when
-        // a proper ImapSession (not raw) is available. The foreground session is used for
-        // IDLE only; task remote operations use a separate ImapSession obtained from
-        // the foreground connect flow.
+        // Strategy: wrap raw_session into ImapSession via from_inner() so task handlers
+        // can use the full ImapTaskOps implementation. After all tasks are done,
+        // unwrap back to raw session via into_inner() for the next IDLE cycle.
         //
-        // TODO: Wire a proper ImapSession-based task executor here when the IDLE/task
-        // session sharing architecture is finalized (currently raw_session supports IDLE
-        // but ImapTaskOps requires ImapSession wrapper).
-        if let Some((mut task, task_kind)) = maybe_task {
+        // Both the initial task from the relay and any queued tasks are executed within
+        // the same wrapped-session scope to avoid repeated wrap/unwrap overhead.
+        if maybe_task.is_some() {
+            let (mut task, task_kind) = maybe_task.unwrap();
             tracing::debug!(
                 account_id = %account.id,
                 task_id = %task.id,
                 class_name = %task.class_name,
                 "Foreground worker: executing task"
             );
-            execute_task(&mut task, &task_kind, &store, &delta, None, None, None)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::error!(
-                        account_id = %account.id,
-                        task_id = %task.id,
-                        "Task execution failed: {e}"
-                    );
-                });
-        }
 
-        // Drain any additional queued tasks before re-entering IDLE
-        while let Ok((mut task, task_kind)) = task_rx.try_recv() {
-            tracing::debug!(
-                account_id = %account.id,
-                task_id = %task.id,
-                class_name = %task.class_name,
-                "Foreground worker: draining queued task"
-            );
-            execute_task(&mut task, &task_kind, &store, &delta, None, None, None)
+            // Wrap raw session into ImapSession for task execution
+            let mut imap_session =
+                ImapSession::from_inner(raw_session, capabilities.clone(), is_gmail);
+
+            execute_task(
+                &mut task,
+                &task_kind,
+                &store,
+                &delta,
+                Some(&mut imap_session),
+                Some(&account),
+                Some(&token_manager),
+            )
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!(
+                    account_id = %account.id,
+                    task_id = %task.id,
+                    "Task execution failed: {e}"
+                );
+            });
+
+            // Drain any additional queued tasks in the same IMAP session
+            while let Ok((mut task, task_kind)) = task_rx.try_recv() {
+                tracing::debug!(
+                    account_id = %account.id,
+                    task_id = %task.id,
+                    class_name = %task.class_name,
+                    "Foreground worker: draining queued task"
+                );
+                execute_task(
+                    &mut task,
+                    &task_kind,
+                    &store,
+                    &delta,
+                    Some(&mut imap_session),
+                    Some(&account),
+                    Some(&token_manager),
+                )
                 .await
                 .unwrap_or_else(|e| {
                     tracing::error!(
@@ -316,6 +360,69 @@ pub async fn run_foreground_worker(
                         "Queued task execution failed: {e}"
                     );
                 });
+            }
+
+            // Unwrap back to raw session for the next IDLE cycle
+            raw_session = imap_session.into_inner();
+        } else {
+            // No initial task from relay — drain any tasks queued during the IDLE cycle
+            // (e.g., queued while a Timeout or NewData response was being handled)
+            if let Ok((mut task, task_kind)) = task_rx.try_recv() {
+                let mut imap_session =
+                    ImapSession::from_inner(raw_session, capabilities.clone(), is_gmail);
+
+                tracing::debug!(
+                    account_id = %account.id,
+                    task_id = %task.id,
+                    class_name = %task.class_name,
+                    "Foreground worker: draining queued task (no initial task from relay)"
+                );
+                execute_task(
+                    &mut task,
+                    &task_kind,
+                    &store,
+                    &delta,
+                    Some(&mut imap_session),
+                    Some(&account),
+                    Some(&token_manager),
+                )
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        account_id = %account.id,
+                        task_id = %task.id,
+                        "Queued task execution failed: {e}"
+                    );
+                });
+
+                while let Ok((mut task, task_kind)) = task_rx.try_recv() {
+                    tracing::debug!(
+                        account_id = %account.id,
+                        task_id = %task.id,
+                        class_name = %task.class_name,
+                        "Foreground worker: draining queued task"
+                    );
+                    execute_task(
+                        &mut task,
+                        &task_kind,
+                        &store,
+                        &delta,
+                        Some(&mut imap_session),
+                        Some(&account),
+                        Some(&token_manager),
+                    )
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!(
+                            account_id = %account.id,
+                            task_id = %task.id,
+                            "Queued task execution failed: {e}"
+                        );
+                    });
+                }
+
+                raw_session = imap_session.into_inner();
+            }
         }
 
         // Re-SELECT INBOX before re-entering IDLE
@@ -325,17 +432,21 @@ pub async fn run_foreground_worker(
                 account_id = %account.id,
                 "Foreground worker: failed to re-SELECT INBOX: {e} — reconnecting"
             );
-            raw_session = match reconnect(&account, &token_manager, &delta).await {
-                Some(s) => s,
+            match reconnect(&account, &token_manager, &delta).await {
+                Some((s, caps, gmail)) => {
+                    raw_session = s;
+                    capabilities = caps;
+                    is_gmail = gmail;
+                    // Try selecting INBOX once more after reconnect
+                    if let Err(e) = raw_session.select("INBOX").await {
+                        tracing::error!(
+                            account_id = %account.id,
+                            "Foreground worker: SELECT INBOX after reconnect failed: {e} — exiting"
+                        );
+                        break;
+                    }
+                }
                 None => break,
-            };
-            // Try selecting INBOX once more after reconnect
-            if let Err(e) = raw_session.select("INBOX").await {
-                tracing::error!(
-                    account_id = %account.id,
-                    "Foreground worker: SELECT INBOX after reconnect failed: {e} — exiting"
-                );
-                break;
             }
         }
     }
@@ -348,13 +459,15 @@ pub async fn run_foreground_worker(
 
 /// Attempts to reconnect with exponential backoff (3 retries, then 30s sleep).
 ///
-/// Returns None if all retries are exhausted and the connection cannot be restored.
+/// Returns `Some((raw_session, capabilities, is_gmail))` on success, so callers
+/// can update their local copies and use `ImapSession::from_inner()` for task execution.
+/// Returns `None` if all retries are exhausted.
 /// Emits a connectionError ProcessState delta on persistent auth failure.
 async fn reconnect(
     account: &Arc<Account>,
     token_manager: &Arc<Mutex<TokenManager>>,
     delta: &Arc<DeltaStream>,
-) -> Option<async_imap::Session<ImapTlsStream>> {
+) -> Option<(async_imap::Session<ImapTlsStream>, Vec<String>, bool)> {
     const MAX_RETRIES: u32 = 3;
 
     for attempt in 0..MAX_RETRIES {
@@ -369,12 +482,15 @@ async fn reconnect(
         tokio::time::sleep(delay).await;
 
         match connect_session(account, token_manager, delta).await {
-            Ok(session) => {
+            Ok(imap_session) => {
                 tracing::info!(
                     account_id = %account.id,
                     "Foreground worker: reconnected successfully"
                 );
-                return Some(session);
+                let capabilities = imap_session.capabilities.clone();
+                let is_gmail = imap_session.is_gmail();
+                let raw_session = imap_session.into_inner();
+                return Some((raw_session, capabilities, is_gmail));
             }
             Err(e) => {
                 tracing::warn!(

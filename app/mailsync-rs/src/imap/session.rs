@@ -275,6 +275,29 @@ impl ImapSession {
         self.session
     }
 
+    /// Reconstructs an `ImapSession` from a raw async-imap Session and metadata.
+    ///
+    /// Used by the foreground IDLE worker to re-wrap the raw session after
+    /// `idle.done().await` returns it. The `capabilities` and `is_gmail` fields
+    /// are preserved from the original `ImapSession` that was deconstructed
+    /// via `into_inner()`.
+    ///
+    /// # Parameters
+    /// - `session`: the raw async-imap Session returned by `idle.done().await`
+    /// - `capabilities`: server capabilities from the original ImapSession
+    /// - `is_gmail`: whether server has X-GM-EXT-1 capability
+    pub fn from_inner(
+        session: Session<ImapTlsStream>,
+        capabilities: Vec<String>,
+        is_gmail: bool,
+    ) -> Self {
+        ImapSession {
+            session,
+            capabilities,
+            is_gmail,
+        }
+    }
+
     /// Connects to the IMAP server described by `account.extra["settings"]`.
     ///
     /// Reads: `imap_host`, `imap_port`, `imap_security` ("SSL/TLS" or "STARTTLS").

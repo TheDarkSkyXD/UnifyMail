@@ -18,8 +18,6 @@
 //   SyncbackMetadataTask → Ok(()) — local-only, no remote IMAP
 //   SyncbackEventTask   → Ok(()) — CalDAV deferred to Phase 9
 
-#![allow(dead_code)]
-
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
