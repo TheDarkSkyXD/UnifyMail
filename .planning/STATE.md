@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 08-01-PLAN.md (TaskKind enum, execute_task, task_store helpers, crash recovery, lettre dependency)
-last_updated: "2026-03-05T01:17:28.543Z"
+stopped_at: Completed 08-02-PLAN.md (SmtpSender TLS/STARTTLS/clear, XOAUTH2/password auth, 30s timeout, MIME builder 5 variants)
+last_updated: "2026-03-05T01:39:14.671Z"
 last_activity: 2026-03-04 — Completed 07-06-PLAN.md (body caching age policy, background_sync loop with 60s/300s backoff, WakeWorkers/NeedBodies stdin dispatch via mpsc channels, MailStore body query helpers, stub replacement)
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 ---
@@ -194,6 +194,8 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 07-06]: background_sync stub replaced with full function; stdin channels: try_send for WakeWorkers/NeedBodies (non-blocking); Account has no Clone — Arc::new(account) consumes owned value
 - [Phase 08-01]: execute_task _delta param uses underscore prefix (stub for Plan 03) — store.save() already emits persist deltas; Plan 03 will add direct delta emissions
 - [Phase 08-01]: find_local_tasks uses store.writer not reader — Task writes and reads tightly coupled during execution; using writer avoids WAL visibility lag for tasks just written
+- [Phase 08-02]: SmtpSender is stateless — transport instances created fresh per send to avoid connection state issues
+- [Phase 08-02]: lettre auth error detection uses string matching on '535' and 'authentication' — SmtpResult doesn't expose structured response codes as enum in 0.11
 
 ### Pending Todos
 
@@ -207,8 +209,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-05T01:17:28.541Z
-Stopped at: Completed 08-01-PLAN.md (TaskKind enum, execute_task, task_store helpers, crash recovery, lettre dependency)
+Last session: 2026-03-05T01:39:14.669Z
+Stopped at: Completed 08-02-PLAN.md (SmtpSender TLS/STARTTLS/clear, XOAUTH2/password auth, 30s timeout, MIME builder 5 variants)
 Resume file: None
 
 ---

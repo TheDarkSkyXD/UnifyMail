@@ -161,6 +161,6 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 (can overlap with 7-8) ->
 | 5. Core Infrastructure and IPC Protocol | 2/2 | Complete   | 2026-03-04 | - |
 | 6. SQLite Layer and Model Infrastructure | 2/3 | In Progress|  | - |
 | 7. IMAP Background Sync Worker | 7/7 | Complete   | 2026-03-05 | - |
-| 8. Foreground IDLE and Task Execution | 1/4 | In Progress|  | - |
+| 8. Foreground IDLE and Task Execution | 2/4 | In Progress|  | - |
 | 9. CalDAV, CardDAV, and Metadata Workers | v2.0 | 0/? | Not started | - |
 | 10. Cross-Platform Builds, Packaging, and C++ Deletion | v2.0 | 0/? | Not started | - |
