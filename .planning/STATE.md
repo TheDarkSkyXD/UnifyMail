@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
-stopped_at: Completed 08-04-PLAN.md (all 8 task remote-phase handlers, ImapTaskOps trait, body sync progress, priority body queue drain)
-last_updated: "2026-03-05T02:17:54.479Z"
+stopped_at: "Completed 08-05-PLAN.md (ImapSession::from_inner, real session wiring into execute_task, dead_code removal)"
+last_updated: "2026-03-05T02:49:55.071Z"
 last_activity: 2026-03-04 — Completed 07-06-PLAN.md (body caching age policy, background_sync loop with 60s/300s backoff, WakeWorkers/NeedBodies stdin dispatch via mpsc channels, MailStore body query helpers, stub replacement)
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 17
+  completed_plans: 17
 ---
 
 ---
@@ -200,6 +200,9 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 08-03]: fg_wake_tx cloned before stdin_loop move: mpsc::Sender is cheaply clonable, both senders deliver to same wake_rx; foreground and stdin both signal background sync
 - [Phase 08-03]: IDLE relay pattern: relay task owns task_rx and StopSource; dropping StopSource triggers ManualInterrupt; relay returns (task_rx, maybe_task) after idle_future completes
 - [Phase 08-04]: async-trait added for ImapTaskOps: #[async_trait::async_trait] for async fn in trait objects; execute_task takes Option params to avoid breaking existing tests; Box::pin for uid_store/uid_expunge streams (async-imap 0.11 !Unpin blocks); append() is 4-arg direct call not builder pattern in async-imap 0.11.2
+- [Phase 08-05]: from_inner() constructor added to ImapSession: enables session reconstruction after IDLE.done() returns raw session; preserves capabilities and is_gmail across the into_inner()/from_inner() round-trip
+- [Phase 08-05]: connect_session() returns ImapSession not raw: capabilities and is_gmail preserved for from_inner() usage; callers extract raw_session via into_inner() immediately before IDLE entry
+- [Phase 08-05]: reconnect() returns (raw_session, capabilities, is_gmail) tuple: caller updates mut variables so from_inner() always uses current connection metadata after reconnect
 
 ### Pending Todos
 
@@ -213,8 +216,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-05T02:17:54.477Z
-Stopped at: Completed 08-04-PLAN.md (all 8 task remote-phase handlers, ImapTaskOps trait, body sync progress, priority body queue drain)
+Last session: 2026-03-05T02:49:55.068Z
+Stopped at: Completed 08-05-PLAN.md (ImapSession::from_inner, real session wiring into execute_task, dead_code removal)
 Resume file: None
 
 ---
