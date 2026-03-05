@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rewrite mailsync Engine in Rust
 status: executing
+stopped_at: Completed 07-06-PLAN.md
+last_updated: "2026-03-05T00:34:51.280Z"
+last_activity: 2026-03-04 — Completed 07-05-PLAN.md (CONDSTORE incremental sync, UID-range fallback, UIDVALIDITY reset, folder priority sort, FolderSyncState with modseq-as-string, 42 tests)
+progress:
+  total_phases: 6
+  completed_phases: 3
+  total_plans: 12
+  completed_plans: 12
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Rewrite mailsync Engine in Rust
+status: executing
 stopped_at: Completed 07-05-PLAN.md
 last_updated: "2026-03-05T00:11:19.846Z"
 last_activity: 2026-03-04 — Completed 07-05-PLAN.md (CONDSTORE incremental sync, UID-range fallback, UIDVALIDITY reset, folder priority sort, FolderSyncState with modseq-as-string, 42 tests)
 progress:
-  total_phases: 6
+  [██████████] 100%
   completed_phases: 3
   total_plans: 12
   completed_plans: 12
@@ -117,9 +133,9 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Milestone: v2.0 — Rewrite mailsync Engine in Rust
-Phase: 7 of 10 (IMAP Background Sync Worker) — Plan 05 of 07 complete
+Phase: 7 of 10 (IMAP Background Sync Worker) — Plan 07 of 07 complete (Phase complete)
 Status: Executing
-Last activity: 2026-03-04 — Completed 07-05-PLAN.md (CONDSTORE incremental sync, UID-range fallback, UIDVALIDITY reset, folder priority sort, FolderSyncState with modseq-as-string, 42 tests)
+Last activity: 2026-03-04 — Completed 07-06-PLAN.md (body caching age policy, background_sync loop with 60s/300s backoff, WakeWorkers/NeedBodies stdin dispatch via mpsc channels, MailStore body query helpers, stub replacement)
 
 ## Completed Milestones
 
@@ -160,6 +176,7 @@ v1.0 decisions archived with outcomes — see PROJECT.md.
 - [Phase 07-07]: + Send added to uid_fetch() return type — dyn Stream trait object must be Send for tokio::spawn background_sync future
 - [Phase 07-07]: Priority body_queue drain deferred to Phase 8 — message-ID-to-UID mapping requires find_all helper not yet available; background body prefetch via find_messages_needing_bodies() works fully
 - [Phase 07-imap-background-sync-worker]: reqwest form feature needed explicitly for .form() method; emit_secrets_updated() uses DeltaStreamItem factory; Windows MSYS2 PATH must include C:\msys64\mingw64\bin for cargo test
+- [Phase 07-06]: background_sync stub replaced with full function; stdin channels: try_send for WakeWorkers/NeedBodies (non-blocking); Account has no Clone — Arc::new(account) consumes owned value
 
 ### Pending Todos
 
@@ -173,8 +190,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-05T00:07:09.410Z
-Stopped at: Completed 07-05-PLAN.md
+Last session: 2026-03-05T00:34:46.467Z
+Stopped at: Completed 07-06-PLAN.md
 Resume file: None
 
 ---
