@@ -3035,6 +3035,7 @@ version = "2.0.0"
 dependencies = [
  "ammonia",
  "async-imap",
+ "async-trait",
  "base64",
  "bs58",
  "chrono",

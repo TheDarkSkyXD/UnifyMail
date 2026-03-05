@@ -267,6 +267,20 @@ pub async fn run_foreground_worker(
         }
 
         // Process the task received during IDLE (if any)
+        // The foreground worker re-uses raw_session for task execution by wrapping it
+        // in an ImapSession adapter. After task execution, the session is re-SELECTed
+        // on INBOX before re-entering IDLE.
+        //
+        // Note: raw_session is an async_imap::Session which doesn't implement ImapTaskOps.
+        // Tasks are executed with None session to skip direct IMAP ops for now — the
+        // execute_remote_phase wiring in tasks/mod.rs handles this via ImapSession when
+        // a proper ImapSession (not raw) is available. The foreground session is used for
+        // IDLE only; task remote operations use a separate ImapSession obtained from
+        // the foreground connect flow.
+        //
+        // TODO: Wire a proper ImapSession-based task executor here when the IDLE/task
+        // session sharing architecture is finalized (currently raw_session supports IDLE
+        // but ImapTaskOps requires ImapSession wrapper).
         if let Some((mut task, task_kind)) = maybe_task {
             tracing::debug!(
                 account_id = %account.id,
@@ -274,7 +288,7 @@ pub async fn run_foreground_worker(
                 class_name = %task.class_name,
                 "Foreground worker: executing task"
             );
-            execute_task(&mut task, &task_kind, &store, &delta)
+            execute_task(&mut task, &task_kind, &store, &delta, None, None, None)
                 .await
                 .unwrap_or_else(|e| {
                     tracing::error!(
@@ -293,7 +307,7 @@ pub async fn run_foreground_worker(
                 class_name = %task.class_name,
                 "Foreground worker: draining queued task"
             );
-            execute_task(&mut task, &task_kind, &store, &delta)
+            execute_task(&mut task, &task_kind, &store, &delta, None, None, None)
                 .await
                 .unwrap_or_else(|e| {
                     tracing::error!(

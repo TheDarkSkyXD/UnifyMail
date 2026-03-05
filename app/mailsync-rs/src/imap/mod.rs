@@ -12,3 +12,4 @@ pub mod foreground_worker;
 pub mod mail_processor;
 pub mod session;
 pub mod sync_worker;
+pub mod task_executor;

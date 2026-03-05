@@ -493,6 +493,107 @@ impl ImapSession {
     ///
     /// The stream borrows `self` mutably — the caller must exhaust or drop it before
     /// calling other session methods.
+    /// Returns true if the server supports RFC 6851 UID MOVE.
+    pub fn has_move_capability(&self) -> bool {
+        self.capabilities.iter().any(|c| c.contains("MOVE"))
+    }
+
+    /// SELECT a mailbox by path with a 30-second timeout.
+    pub async fn select(&mut self, path: &str) -> Result<(), SyncError> {
+        timeout(Duration::from_secs(30), self.session.select(path))
+            .await
+            .map_err(|_| SyncError::Timeout)?
+            .map_err(SyncError::from)?;
+        Ok(())
+    }
+
+    /// UID STORE — sets or removes flags on a set of UIDs.
+    ///
+    /// Consumes the response stream to completion.
+    /// The stream returned by async-imap's uid_store is not `Send` so we consume it inline.
+    pub async fn uid_store_flags(&mut self, uid_set: &str, flags: &str) -> Result<(), SyncError> {
+        use tokio_stream::StreamExt;
+        let stream_result = timeout(
+            Duration::from_secs(30),
+            self.session.uid_store(uid_set, flags),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)?;
+        // Pin to ensure Unpin bound for .next()
+        let mut s = Box::pin(stream_result);
+        while let Some(result) = s.next().await {
+            result.map_err(SyncError::from)?;
+        }
+        Ok(())
+    }
+
+    /// UID MOVE — atomically moves messages to another folder (RFC 6851).
+    pub async fn uid_move(&mut self, uid_set: &str, to_folder: &str) -> Result<(), SyncError> {
+        timeout(
+            Duration::from_secs(30),
+            self.session.uid_mv(uid_set, to_folder),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)
+    }
+
+    /// UID COPY — copies messages to another folder.
+    pub async fn uid_copy_to(&mut self, uid_set: &str, to_folder: &str) -> Result<(), SyncError> {
+        timeout(
+            Duration::from_secs(30),
+            self.session.uid_copy(uid_set, to_folder),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)
+    }
+
+    /// UID EXPUNGE — permanently removes messages marked with \\Deleted.
+    ///
+    /// Consumes the expunge notification stream to completion (required for command completion).
+    pub async fn uid_expunge_uids(&mut self, uid_set: &str) -> Result<(), SyncError> {
+        use tokio_stream::StreamExt;
+
+        let stream_result = timeout(
+            Duration::from_secs(30),
+            self.session.uid_expunge(uid_set),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)?;
+
+        // Pin and consume the stream; async-imap's parse_expunge produces a Send+Unpin stream
+        // since it's built on filter_map/take_while from futures::StreamExt.
+        // The extra boxing ensures we have an Unpin stream to call .next().await on.
+        let mut s = Box::pin(stream_result);
+        while let Some(result) = s.next().await {
+            result.map_err(SyncError::from)?;
+        }
+        Ok(())
+    }
+
+    /// APPEND — uploads a raw RFC 2822 message to a folder.
+    ///
+    /// `flags`: optional IMAP flag string (e.g., "(\\Seen)").
+    /// `content`: raw message bytes.
+    pub async fn append_message(
+        &mut self,
+        folder: &str,
+        flags: Option<&str>,
+        content: &[u8],
+    ) -> Result<(), SyncError> {
+        // async-imap's append signature: append(mailbox, flags: Option<&str>, internaldate: Option<&str>, content)
+        timeout(
+            Duration::from_secs(30),
+            self.session.append(folder, flags, None, content),
+        )
+        .await
+        .map_err(|_| SyncError::Timeout)?
+        .map_err(SyncError::from)
+    }
+
     /// UID FETCH wrapper — returns a pinned boxed stream.
     ///
     /// The stream is boxed to avoid `impl Stream + '_` RPIT lifetime issues across

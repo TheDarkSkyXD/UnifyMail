@@ -59,6 +59,9 @@ lettre = { version = "0.11", default-features = false, features = [
     "builder", "smtp-transport", "tokio1", "tokio1-rustls-tls", "hostname",
 ] }
 
+# Phase 8: Async trait support for ImapTaskOps testability
+async-trait = "0.1"
+
 [dev-dependencies]
 tempfile = "3"
 rusqlite = { version = "0.37", features = ["bundled"] }

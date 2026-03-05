@@ -15,10 +15,13 @@ pub mod recovery;
 
 use serde::{Deserialize, Serialize};
 
+use crate::account::Account;
 use crate::delta::item::DeltaStreamItem;
 use crate::delta::stream::DeltaStream;
 use crate::error::SyncError;
+use crate::imap::task_executor::{execute_remote_phase, ImapTaskOps};
 use crate::models::task_model::Task;
+use crate::oauth2::TokenManager;
 use crate::store::mail_store::MailStore;
 use crate::store::task_store;
 
@@ -163,27 +166,40 @@ pub fn parse_task_kind(task_json: &serde_json::Value) -> Result<TaskKind, SyncEr
 /// Phase A (local):
 ///   1. Set task.status = "remote"
 ///   2. Save via store (triggers persist delta)
-///   3. Emit explicit persist delta for the task (so Electron updates UI immediately)
 ///
 /// Phase B (remote):
-///   4. Call execute_remote() — stub returning Ok(()) for now (Plan 04 fills in)
-///   5. On success: set status = "complete", save, emit delta
-///   6. On error: set status = "complete" with error field, save, emit delta
+///   3. Call execute_remote_phase() with the provided session (or no-op if None)
+///   4. On success: set status = "complete", save, emit delta
+///   5. On error: set status = "complete" with error field, save, emit delta
 ///
 /// The task is always marked "complete" after remote phase (success or failure).
 /// Errors are stored in task.error for UI display.
+///
+/// # Session parameter
+/// When `session` is Some, the remote phase executes real IMAP/SMTP commands.
+/// When `session` is None, the remote phase is skipped (useful for tests or local-only tasks).
 pub async fn execute_task(
     task: &mut Task,
     task_kind: &TaskKind,
     store: &MailStore,
-    _delta: &DeltaStream,
+    delta: &DeltaStream,
+    session: Option<&mut dyn ImapTaskOps>,
+    account: Option<&Account>,
+    token_manager: Option<&tokio::sync::Mutex<TokenManager>>,
 ) -> Result<(), SyncError> {
     // ---- Phase A: local — mark as remote, persist, emit delta ----
     task.status = "remote".to_string();
     store.save(task).await?;
 
-    // ---- Phase B: remote — call stub, handle success/error ----
-    match execute_remote(task_kind).await {
+    // ---- Phase B: remote — call execute_remote_phase, handle success/error ----
+    let remote_result = if let (Some(sess), Some(acct), Some(tm)) = (session, account, token_manager) {
+        execute_remote_phase(sess, task_kind, acct, store, delta, tm).await
+    } else {
+        // No session provided — skip remote phase (local-only tasks or test mode)
+        Ok(())
+    };
+
+    match remote_result {
         Ok(()) => {
             task.status = "complete".to_string();
             task.error = None;
@@ -200,15 +216,6 @@ pub async fn execute_task(
     // Persist final status
     store.save(task).await?;
 
-    Ok(())
-}
-
-/// Remote phase stub — returns Ok(()) for all task kinds.
-///
-/// Plan 04 replaces this with real IMAP/SMTP implementations per variant.
-/// SyncbackEventTask remote is deferred to Phase 9 (CalDAV).
-async fn execute_remote(_task_kind: &TaskKind) -> Result<(), SyncError> {
-    // Stub: all tasks succeed locally. Plan 04 fills in per-variant remote logic.
     Ok(())
 }
 
@@ -381,7 +388,8 @@ mod tests {
             "draftId": "draft1"
         })).unwrap();
 
-        execute_task(&mut task, &kind, &store, &delta).await.unwrap();
+        // Pass None for session/account/token_manager — tests skip remote phase
+        execute_task(&mut task, &kind, &store, &delta, None, None, None).await.unwrap();
 
         // After execute_task, status should be "complete" (both phases ran)
         assert_eq!(task.status, "complete");
@@ -414,8 +422,8 @@ mod tests {
         };
 
         // execute_task uses store.save() internally which emits to the store's delta channel.
-        // _delta param is a stub; Plan 03 will use it for additional direct delta emissions.
-        execute_task(&mut task, &kind, &store, &*delta_arc).await.unwrap();
+        // Pass None for session/account/token_manager — tests skip remote phase.
+        execute_task(&mut task, &kind, &store, &*delta_arc, None, None, None).await.unwrap();
 
         assert_eq!(task.status, "complete");
         assert!(task.error.is_none());
