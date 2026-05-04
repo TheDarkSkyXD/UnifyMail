@@ -83,7 +83,7 @@
     "underscore": "^1.13.8",
     "underscore.string": "^3.3.5",
     "utf7": "^1.0.1",
-    "uuid": "^13.0.0",
+    "uuid": "^14.0.0",
     "vcf": "^2.0.5",
     "windows-iana": "^4.2.1",
     "xml2js": "^0.6.2"
